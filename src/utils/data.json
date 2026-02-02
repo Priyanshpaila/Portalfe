@@ -1,0 +1,957 @@
+{
+    "documentType": [
+        {
+            "documentTypeNo": 2,
+            "isDefault": false,
+            "documentTypeName": "PO"
+        }
+    ],
+    "purchaseType": [
+        {
+            "purchaseTypeNo": 4,
+            "isDefault": false,
+            "purchaseTypeName": "General"
+        }
+    ],
+    "purchaseCategory": [
+        {
+            "categoryNo": 1,
+            "categoryValue": 0,
+            "categoryName": "Domestic"
+        }
+    ],
+    "refDocumentType": [
+        {
+            "refDocumentNo": 1,
+            "refDocumentValue": 0,
+            "refDocumentName": "Quotation",
+            "isDefault": true
+        },
+        {
+            "refDocumentNo": 3,
+            "refDocumentValue": 0,
+            "refDocumentName": "Purchase Request",
+            "isDefault": false
+        }
+    ],
+    "expenses": [],
+    "payments": [
+        {
+            "paymentTypeNo": 1,
+            "paymentType": "Down Payment",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 2,
+            "paymentType": "Down Payment - PI",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 3,
+            "paymentType": "Against Bill",
+            "isDefault": false
+        }
+    ],
+    "department": [],
+    "currency": [],
+    "rateType": [],
+    "freightType": [
+        {
+            "freightTypeNo": 1,
+            "freightType": "TOPAY"
+        },
+        {
+            "freightTypeNo": 2,
+            "freightType": "FOR"
+        },
+        {
+            "freightTypeNo": 3,
+            "freightType": "FOR As Actual"
+        }
+    ],
+    "freightRate": [
+        {
+            "freightRateNo": 1,
+            "freightRate": "Per Unit"
+        },
+        {
+            "freightRateNo": 2,
+            "freightRate": "Fixed"
+        },
+        {
+            "freightRateNo": 3,
+            "freightRate": "Per Trip"
+        }
+    ],
+    "termsNconditions": [
+        {
+            "headNo": 1,
+            "headName": "PAYMENT TERM",
+            "terms": "TC0001",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 2,
+            "headName": "FREIGHT (DELIVERY TERM)",
+            "terms": "TC0002",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 7,
+            "headName": "WARRANTY",
+            "terms": "TC0007",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 8,
+            "headName": "GURRANTY",
+            "terms": "TC0008",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 9,
+            "headName": "COMMISSIONING",
+            "terms": "TC0009",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 10,
+            "headName": "INSPECTION",
+            "terms": "TC0010",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 11,
+            "headName": "PACKAGING & FORWARDING",
+            "terms": "TC0011",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 12,
+            "headName": "LOADING & UNLOADING CHARGES",
+            "terms": "TC0012",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 17,
+            "headName": "LD CLAUSE",
+            "terms": "TC0013",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 18,
+            "headName": "PERFORMANCE GUARANTEE",
+            "terms": "TC0018",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 19,
+            "headName": "INSURANCE",
+            "terms": "TC0019",
+            "isDefault": false,
+            "isCompulsary": false
+        },
+        {
+            "headNo": 20,
+            "headName": "DOCUMENTATION",
+            "terms": "TC0020",
+            "isDefault": false,
+            "isCompulsary": false
+        }
+    ],
+    "payOn": [
+        {
+            "paymentPayOnNo": 1,
+            "payOn": "Basic Amount",
+            "isDefault": false
+        },
+        {
+            "paymentPayOnNo": 2,
+            "payOn": "Net Amount",
+            "isDefault": false
+        },
+        {
+            "paymentPayOnNo": 3,
+            "payOn": "Balance Amount",
+            "isDefault": false
+        }
+    ],
+    "dueBasis": [
+        {
+            "dueBasisNo": 1,
+            "dueBasisName": "Gate Receipt Entry",
+            "isDefault": true
+        }
+    ],
+    "carrierType": [
+        {
+            "carrierTypeNo": 1,
+            "carrierTypeName": "Truck",
+            "isDefault": true
+        }
+    ],
+    "serialNo": [],
+    "paymentMode": [
+        {
+            "paymentModeNo": 5,
+            "paymentModeName": "Cheque",
+            "isDefault": true
+        },
+        {
+            "paymentModeNo": 1,
+            "paymentModeName": "Cash",
+            "isDefault": false
+        },
+        {
+            "paymentModeNo": 2,
+            "paymentModeName": "DD",
+            "isDefault": false
+        },
+        {
+            "paymentModeNo": 6,
+            "paymentModeName": "LC",
+            "isDefault": false
+        },
+        {
+            "paymentModeNo": 3,
+            "paymentModeName": "NEFT",
+            "isDefault": false
+        },
+        {
+            "paymentModeNo": 4,
+            "paymentModeName": "RTGS",
+            "isDefault": false
+        }
+    ],
+    "otherCharges": [
+        {
+            "otherChargesNo": 2,
+            "otherChargesName": "OTHER CHARGES",
+            "description": "",
+            "amount": 0.00,
+            "nature": 1,
+            "isGstApplicable": true
+        },
+        {
+            "otherChargesNo": 3,
+            "otherChargesName": "PACKING & FORWARDING",
+            "description": "",
+            "amount": 0.00,
+            "nature": 1,
+            "isGstApplicable": true
+        }
+    ],
+    "paymentGroup": [
+        {
+            "paymentGroupNo": 1,
+            "paymentGroupName": "Against Bill",
+            "isDefault": false
+        },
+        {
+            "paymentGroupNo": 2,
+            "paymentGroupName": "Downpayment",
+            "isDefault": false
+        },
+        {
+            "paymentGroupNo": 3,
+            "paymentGroupName": "PI",
+            "isDefault": false
+        }
+    ],
+    "billing": [
+        {
+            "billingQtyNo": 1,
+            "billingQtyName": "PO Qty"
+        },
+        {
+            "billingQtyNo": 2,
+            "billingQtyName": "Challan Qty"
+        },
+        {
+            "billingQtyNo": 3,
+            "billingQtyName": "Accepted Qty"
+        },
+        {
+            "billingQtyNo": 4,
+            "billingQtyName": "Received Qty"
+        },
+        {
+            "billingQtyNo": 5,
+            "billingQtyName": "Dispatch/ Consumption Qty"
+        }
+    ],
+    "tolerance": [
+        {
+            "toleranceBasisNo": 1,
+            "toleranceBasis": "Qty."
+        },
+        {
+            "toleranceBasisNo": 2,
+            "toleranceBasis": "Percentage"
+        },
+        {
+            "toleranceBasisNo": -1,
+            "toleranceBasis": "None"
+        }
+    ],
+    "tncGroups": [
+        {
+            "tncGroupNo": 2,
+            "tncGroupName": "INSURANCE",
+            "code": "TG0001"
+        }
+    ],
+    "poSettings": {
+        "showPaymentTerms": true,
+        "poHsnCompulasry": true,
+        "poAuthorizationLevelWise": true,
+        "poCsplValidation": false,
+        "isTaxSelectionHsnWise": false,
+        "isCapitalIndentValidationInPo": true,
+        "isPoGstValidation": true,
+        "isChargeOnEditable": true,
+        "defaultChargeOn": 1,
+        "isValidateRefDocNo": false,
+        "isHidePoInsertButton": false,
+        "isRouteApplicable": true,
+        "isPoAutoPublish": true,
+        "isIndentMainRemarkInPo": false,
+        "defaultDueDays": 0,
+        "isOtherChargesEditableInPo": false,
+        "isShowStockDetail": false,
+        "isEnableAuditLog": false,
+        "isShowPoAttachment": true,
+        "isPoInsertIntoTally": false,
+        "isShowPriorityInPo": true
+    },
+    "authorizationGroup": [
+        {
+            "poAuthorizationGroupNo": 241,
+            "code": "AG0072",
+            "name": "PM_ELEC_CAPITAL ( AG0072 )"
+        },
+        {
+            "poAuthorizationGroupNo": 242,
+            "code": "AG0071",
+            "name": "PM_MECH_CAPITAL ( AG0071 )"
+        },
+        {
+            "poAuthorizationGroupNo": 245,
+            "code": "AG0068",
+            "name": "RM_SOLAR ( AG0068 )"
+        },
+        {
+            "poAuthorizationGroupNo": 254,
+            "code": "AG0078",
+            "name": "GI_MECH_NEW ( AG0078 )"
+        },
+        {
+            "poAuthorizationGroupNo": 255,
+            "code": "AG0079",
+            "name": "GI_ELEC_NEW ( AG0079 )"
+        },
+        {
+            "poAuthorizationGroupNo": 277,
+            "code": "AG0067",
+            "name": "Marketing_GRP1 ( AG0067 )"
+        },
+        {
+            "poAuthorizationGroupNo": 289,
+            "code": "AG0018",
+            "name": "PM_IT ( AG0018 )"
+        },
+        {
+            "poAuthorizationGroupNo": 290,
+            "code": "AG0019",
+            "name": "PM_IT_Above_2Lac ( AG0019 )"
+        },
+        {
+            "poAuthorizationGroupNo": 291,
+            "code": "AG0021",
+            "name": "LPD_Above_2Lac ( AG0021 )"
+        },
+        {
+            "poAuthorizationGroupNo": 292,
+            "code": "AG0022",
+            "name": "LPD_DIV ( AG0022 )"
+        },
+        {
+            "poAuthorizationGroupNo": 293,
+            "code": "AG0024",
+            "name": "TLT_MECH ( AG0024 )"
+        },
+        {
+            "poAuthorizationGroupNo": 294,
+            "code": "AG0025",
+            "name": "GALVA_MECH ( AG0025 )"
+        },
+        {
+            "poAuthorizationGroupNo": 295,
+            "code": "AG0026",
+            "name": "TLT_ELEC ( AG0026 )"
+        },
+        {
+            "poAuthorizationGroupNo": 296,
+            "code": "AG0027",
+            "name": "GALVA_ELEC ( AG0027 )"
+        },
+        {
+            "poAuthorizationGroupNo": 298,
+            "code": "AG0033",
+            "name": "Galva_Mech_Pranay_Sir ( AG0033 )"
+        },
+        {
+            "poAuthorizationGroupNo": 299,
+            "code": "AG0034",
+            "name": "CT_ELEC ( AG0034 )"
+        },
+        {
+            "poAuthorizationGroupNo": 300,
+            "code": "AG0035",
+            "name": "CT_MECH ( AG0035 )"
+        },
+        {
+            "poAuthorizationGroupNo": 301,
+            "code": "AG0036",
+            "name": "CT_IT ( AG0036 )"
+        },
+        {
+            "poAuthorizationGroupNo": 303,
+            "code": "AG0049",
+            "name": "PM_ELEC ( AG0049 )"
+        },
+        {
+            "poAuthorizationGroupNo": 304,
+            "code": "AG0050",
+            "name": "PM_MECH ( AG0050 )"
+        },
+        {
+            "poAuthorizationGroupNo": 307,
+            "code": "AG0053",
+            "name": "Solar_Elec ( AG0053 )"
+        },
+        {
+            "poAuthorizationGroupNo": 308,
+            "code": "AG0054",
+            "name": "Galva_Mech_Blw_1L ( AG0054 )"
+        },
+        {
+            "poAuthorizationGroupNo": 309,
+            "code": "AG0058",
+            "name": "Solar_IT ( AG0058 )"
+        },
+        {
+            "poAuthorizationGroupNo": 310,
+            "code": "AG0060",
+            "name": "Mill_Mech ( AG0060 )"
+        },
+        {
+            "poAuthorizationGroupNo": 311,
+            "code": "AG0062",
+            "name": "Mill_Elec ( AG0062 )"
+        },
+        {
+            "poAuthorizationGroupNo": 312,
+            "code": "AG0063",
+            "name": "Marketing_GRP2 ( AG0063 )"
+        },
+        {
+            "poAuthorizationGroupNo": 313,
+            "code": "AG0064",
+            "name": "LPD_IT ( AG0064 )"
+        },
+        {
+            "poAuthorizationGroupNo": 315,
+            "code": "AG0066",
+            "name": "CT_FAB ( AG0066 )"
+        },
+        {
+            "poAuthorizationGroupNo": 317,
+            "code": "AG0070",
+            "name": "URG_PO ( AG0070 )"
+        },
+        {
+            "poAuthorizationGroupNo": 318,
+            "code": "AG0073",
+            "name": "HOUSEKEEPING ( AG0073 )"
+        },
+        {
+            "poAuthorizationGroupNo": 320,
+            "code": "AG0075",
+            "name": "GI_PO ( AG0075 )"
+        },
+        {
+            "poAuthorizationGroupNo": 322,
+            "code": "AG0085",
+            "name": "GALVA_IT ( AG0085 )"
+        },
+        {
+            "poAuthorizationGroupNo": 323,
+            "code": "AG0084",
+            "name": "CT_AUTO_SAFETY ( AG0084 )"
+        },
+        {
+            "poAuthorizationGroupNo": 324,
+            "code": "AG0081",
+            "name": "CIVIL_CT ( AG0081 )"
+        },
+        {
+            "poAuthorizationGroupNo": 325,
+            "code": "AG0080",
+            "name": "CIVIL_PM ( AG0080 )"
+        },
+        {
+            "poAuthorizationGroupNo": 326,
+            "code": "AG0052",
+            "name": "Solar_Mech ( AG0052 )"
+        },
+        {
+            "poAuthorizationGroupNo": 327,
+            "code": "AG0069",
+            "name": "HR_Below_500000 ( AG0069 )"
+        },
+        {
+            "poAuthorizationGroupNo": 328,
+            "code": "AG0074",
+            "name": "HRD_COMMON ( AG0074 )"
+        },
+        {
+            "poAuthorizationGroupNo": 329,
+            "code": "AG0051",
+            "name": "EED_Div ( AG0051 )"
+        },
+        {
+            "poAuthorizationGroupNo": 330,
+            "code": "AG0065",
+            "name": "TLT_IT ( AG0065 )"
+        },
+        {
+            "poAuthorizationGroupNo": 331,
+            "code": "AG0086",
+            "name": "CT_IT_NEW ( AG0086 )"
+        }
+    ],
+    "companyDetail": {
+        "locationNo": 525,
+        "locationName": "RAIPUR"
+    },
+    "termsNCondition": [
+        {
+            "headNo": 1,
+            "headName": "PAYMENT TERM",
+            "terms": null
+        },
+        {
+            "headNo": 2,
+            "headName": "FREIGHT (DELIVERY TERM)",
+            "terms": null
+        },
+        {
+            "headNo": 7,
+            "headName": "WARRANTY",
+            "terms": null
+        },
+        {
+            "headNo": 8,
+            "headName": "GURRANTY",
+            "terms": null
+        },
+        {
+            "headNo": 9,
+            "headName": "COMMISSIONING",
+            "terms": null
+        },
+        {
+            "headNo": 10,
+            "headName": "INSPECTION",
+            "terms": null
+        },
+        {
+            "headNo": 11,
+            "headName": "PACKAGING & FORWARDING",
+            "terms": null
+        },
+        {
+            "headNo": 12,
+            "headName": "LOADING & UNLOADING CHARGES",
+            "terms": null
+        },
+        {
+            "headNo": 17,
+            "headName": "LD CLAUSE",
+            "terms": null
+        },
+        {
+            "headNo": 18,
+            "headName": "PERFORMANCE GUARANTEE",
+            "terms": null
+        },
+        {
+            "headNo": 19,
+            "headName": "INSURANCE",
+            "terms": null
+        },
+        {
+            "headNo": 20,
+            "headName": "DOCUMENTATION",
+            "terms": null
+        }
+    ],
+    "taxFillValues": {
+        "chargeType": [
+            {
+                "chargeTypeNo": 2,
+                "chargeType": "Exclusive"
+            }
+        ],
+        "nature": [
+            {
+                "natureNo": 1,
+                "nature": "Percentage"
+            },
+            {
+                "natureNo": 2,
+                "nature": "Amount"
+            },
+            {
+                "natureNo": 3,
+                "nature": "On Unit"
+            }
+        ],
+        "chargeOn": [
+            {
+                "chargeOnNo": 2,
+                "chargeOn": "On Item"
+            }
+        ],
+        "charge": [
+            {
+                "miscChargeNo": 92,
+                "chargeName": "CGST @ 0%",
+                "rate": 0.000,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 73,
+                "chargeName": "CGST @ 2.5%",
+                "rate": 2.500,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 74,
+                "chargeName": "CGST @ 9%",
+                "rate": 9.000,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 97,
+                "chargeName": "CGST @1.5%",
+                "rate": 1.500,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 80,
+                "chargeName": "CGST @14%",
+                "rate": 14.000,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 78,
+                "chargeName": "CGST @6%",
+                "rate": 6.000,
+                "calculationNature": 1,
+                "groupCode": "CENGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *    [Central GST]",
+                "groupNo": 34,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 8,
+                "chargeName": "DISC",
+                "rate": 0.000,
+                "calculationNature": 2,
+                "groupCode": "DISC01",
+                "formula": "([Basic Amount]) *  [DISCOUNT] * 0.01",
+                "groupNo": 18,
+                "serialNo": 1
+            },
+            {
+                "miscChargeNo": 94,
+                "chargeName": "IGST @0%",
+                "rate": 0.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 86,
+                "chargeName": "IGST @12%",
+                "rate": 12.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 81,
+                "chargeName": "IGST @18",
+                "rate": 18.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 84,
+                "chargeName": "IGST @28",
+                "rate": 28.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 99,
+                "chargeName": "IGST @3%",
+                "rate": 3.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 85,
+                "chargeName": "IGST @5%",
+                "rate": 5.000,
+                "calculationNature": 1,
+                "groupCode": "INTGST",
+                "formula": "( [Basic Amount] - [DISC01]  ) * 0.01 *     [Integrated GST]",
+                "groupNo": 36,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 93,
+                "chargeName": "SGST @ 0%",
+                "rate": 0.000,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 83,
+                "chargeName": "SGST @ 14%",
+                "rate": 14.000,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 76,
+                "chargeName": "SGST @ 2.5%",
+                "rate": 2.500,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 82,
+                "chargeName": "SGST @ 6%",
+                "rate": 6.000,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 75,
+                "chargeName": "SGST @ 9%",
+                "rate": 9.000,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 98,
+                "chargeName": "SGST @1.5%",
+                "rate": 1.500,
+                "calculationNature": 1,
+                "groupCode": "STAGST",
+                "formula": "( [Basic Amount] - [DISC01])   *   [State GST] * 0.01",
+                "groupNo": 35,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 95,
+                "chargeName": "UTGST @ 0%",
+                "rate": 0.000,
+                "calculationNature": 1,
+                "groupCode": "UNTGST",
+                "formula": "( [Basic Amount] -[DISC01])   *   [UT GST] * 0.01",
+                "groupNo": 37,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 91,
+                "chargeName": "UTGST @ 14%",
+                "rate": 14.000,
+                "calculationNature": 1,
+                "groupCode": "UNTGST",
+                "formula": "( [Basic Amount] -[DISC01])   *   [UT GST] * 0.01",
+                "groupNo": 37,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 88,
+                "chargeName": "UTGST @ 2.5%",
+                "rate": 2.500,
+                "calculationNature": 1,
+                "groupCode": "UNTGST",
+                "formula": "( [Basic Amount] -[DISC01])   *   [UT GST] * 0.01",
+                "groupNo": 37,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 89,
+                "chargeName": "UTGST @ 6%",
+                "rate": 6.000,
+                "calculationNature": 1,
+                "groupCode": "UNTGST",
+                "formula": "( [Basic Amount] -[DISC01])   *   [UT GST] * 0.01",
+                "groupNo": 37,
+                "serialNo": 3
+            },
+            {
+                "miscChargeNo": 90,
+                "chargeName": "UTGST @ 9%",
+                "rate": 9.000,
+                "calculationNature": 1,
+                "groupCode": "UNTGST",
+                "formula": "( [Basic Amount] -[DISC01])   *   [UT GST] * 0.01",
+                "groupNo": 37,
+                "serialNo": 3
+            }
+        ]
+    },
+    "baseDate": [
+        {
+            "paymentTypeNo": 1,
+            "baseDateNo": 1,
+            "baseDate": "Document Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 2,
+            "baseDateNo": 1,
+            "baseDate": "Document Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 3,
+            "baseDateNo": 1,
+            "baseDate": "Document Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 1,
+            "baseDateNo": 2,
+            "baseDate": "Posting Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 2,
+            "baseDateNo": 2,
+            "baseDate": "Posting Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 3,
+            "baseDateNo": 2,
+            "baseDate": "Posting Date",
+            "isDefault": false
+        },
+        {
+            "paymentTypeNo": 3,
+            "baseDateNo": 3,
+            "baseDate": "Transaction Date",
+            "isDefault": false
+        }
+    ],
+    "deliveryMode": [
+        {
+            "deliveryModeNo": 1,
+            "deliveryModeType": "By Air"
+        },
+        {
+            "deliveryModeNo": 2,
+            "deliveryModeType": "By Rail"
+        },
+        {
+            "deliveryModeNo": 3,
+            "deliveryModeType": "By Road"
+        },
+        {
+            "deliveryModeNo": 4,
+            "deliveryModeType": "By Ship"
+        }
+    ],
+    "formCustomValidationList": [],
+    "priorityMaster": [
+        {
+            "priorityNo": 1,
+            "priorityName": "Urgent"
+        },
+        {
+            "priorityNo": 2,
+            "priorityName": "Medium"
+        },
+        {
+            "priorityNo": 3,
+            "priorityName": "Low"
+        }
+    ]
+}
