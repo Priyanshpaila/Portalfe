@@ -4,18 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { IoIosAdd } from 'react-icons/io'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-    Button,
-    DatePicker,
-    Dialog,
-    FormContainer,
-    FormItem,
-    Input,
-    Select,
-    Spinner,
-    Table,
-    Tabs,
-} from '@/components/ui'
+import { Button, DatePicker, Dialog, FormContainer, FormItem, Input, Select, Spinner, Table, Tabs } from '@/components/ui'
 import TabContent from '@/components/ui/Tabs/TabContent'
 import TabList from '@/components/ui/Tabs/TabList'
 import TabNav from '@/components/ui/Tabs/TabNav'
@@ -58,6 +47,9 @@ type IndentMetaValues = {
     materialNumber?: string
     storageLocation?: string
     trackingNumber?: string
+    indentQty: string
+    preRFQQty: string
+    prePOQty: string
 }
 
 const indentTypeOptions = [
@@ -298,7 +290,10 @@ export default function RFQ() {
         if (index >= 0) {
             setValues((prev) => ({
                 ...prev,
-                file: prev.file?.slice(0, index).concat(_file).concat(prev.file.slice(index + 1)),
+                file: prev.file
+                    ?.slice(0, index)
+                    .concat(_file)
+                    .concat(prev.file.slice(index + 1)),
                 attachments: prev.attachments
                     ?.slice(0, index)
                     .concat({
@@ -404,7 +399,7 @@ export default function RFQ() {
         <div>
             <title>Request For Quotation</title>
 
-            <Loading type="cover" loading={flags?.loading}>
+            <Loading type='cover' loading={flags?.loading}>
                 <Formik<RFQFormValues>
                     enableReinitialize={true}
                     initialValues={{
@@ -412,8 +407,7 @@ export default function RFQ() {
                         dueDate: formValues.dueDate ? new Date(formValues.dueDate as any) : null,
                         rfqDate: formValues.rfqDate ? new Date(formValues.rfqDate as any) : null,
                     }}
-                    onSubmit={handleSubmit}
-                >
+                    onSubmit={handleSubmit}>
                     {(form) => {
                         const { values, setFieldValue: _setFieldValue, setValues: _setValues } = form
 
@@ -429,9 +423,7 @@ export default function RFQ() {
 
                             const nextLineFromMaster = computeNextLineNumber(indents as any[])
                             const existingLine = String((indent as any)?.lineNumber ?? '').trim()
-                            const lineToUse = existingLine
-                                ? pad5(parseInt(digitsOnly5(existingLine) || '0', 10) || 1)
-                                : nextLineFromMaster
+                            const lineToUse = existingLine ? pad5(parseInt(digitsOnly5(existingLine) || '0', 10) || 1) : nextLineFromMaster
 
                             const initial: IndentMetaValues = {
                                 company: String((indent as any)?.company ?? '').trim(),
@@ -448,6 +440,9 @@ export default function RFQ() {
                                 materialNumber: String((indent as any)?.materialNumber ?? '').trim(),
                                 storageLocation: String((indent as any)?.storageLocation ?? '').trim(),
                                 trackingNumber: String((indent as any)?.trackingNumber ?? '').trim(),
+                                indentQty: String((indent as any)?.indentQty ?? '0'),
+                                preRFQQty: String((indent as any)?.preRFQQty ?? '0'),
+                                prePOQty: String((indent as any)?.prePOQty ?? '0'),
                             }
 
                             setIndentMeta({
@@ -468,6 +463,11 @@ export default function RFQ() {
 
                             setIndentMeta((p) => ({ ...p, loading: true }))
                             try {
+                                const toNum0 = (x: any) => {
+                                    const n = Number(String(x ?? '').trim())
+                                    return Number.isFinite(n) ? Math.max(0, n) : 0
+                                }
+
                                 const payload: any = {
                                     company: meta.company?.trim(),
                                     indentNumber: meta.indentNumber?.trim(),
@@ -475,7 +475,10 @@ export default function RFQ() {
                                     lineNumber: meta.lineNumber?.trim(),
                                     costCenter: meta.costCenter?.trim(),
                                     requestedBy: meta.requestedBy?.trim(),
-                                    documentType: meta.indentType, // ✅ indent type stored here
+                                    documentType: meta.indentType,
+                                    indentQty: toNum0(meta.indentQty),
+                                    preRFQQty: toNum0(meta.preRFQQty),
+                                    prePOQty: toNum0(meta.prePOQty),
                                 }
 
                                 // persist meta onto ITEM_MASTER doc
@@ -519,55 +522,63 @@ export default function RFQ() {
                         return (
                             <>
                                 <Form className={classNames('px-1', 'mt-3', allowEdit ? null : 'prevent-edit')}>
-                                    <input hidden type="file" id="file-input" onChange={(e) => onFileSelect(e, setValues)} />
+                                    <input hidden type='file' id='file-input' onChange={(e) => onFileSelect(e, setValues)} />
 
-                                    <FormContainer className="text-xs">
-                                        <Tabs variant="underline" value={tab} onChange={setTab}>
+                                    <FormContainer className='text-xs'>
+                                        <Tabs variant='underline' value={tab} onChange={setTab}>
                                             <TabList>
                                                 {tabs.map((i) => (
-                                                    <TabNav key={i} className="pt-0" value={i}>
-                                                        <span className="text-xs">{i}</span>
+                                                    <TabNav key={i} className='pt-0' value={i}>
+                                                        <span className='text-xs'>{i}</span>
                                                     </TabNav>
                                                 ))}
 
-                                                <TabNav disabled className="p-0 opacity-100 cursor-auto flex-1 justify-end gap-1" value="actions">
+                                                <TabNav disabled className='p-0 opacity-100 cursor-auto flex-1 justify-end gap-1' value='actions'>
                                                     {allowEdit && (
                                                         <>
                                                             {tabs[3] === tab && (
                                                                 <>
                                                                     <Button
                                                                         disabled={!allowEdit}
-                                                                        type="button"
-                                                                        variant="twoTone"
-                                                                        size="xs"
+                                                                        type='button'
+                                                                        variant='twoTone'
+                                                                        size='xs'
                                                                         icon={<IoIosAdd />}
-                                                                        onClick={addActionHandler}
-                                                                    >
+                                                                        onClick={addActionHandler}>
                                                                         Add Vendor
                                                                     </Button>
-                                                                    <hr className="h-4 w-[1.5px] bg-slate-200" />
+                                                                    <hr className='h-4 w-[1.5px] bg-slate-200' />
                                                                 </>
                                                             )}
 
                                                             <Button
                                                                 disabled={!allowEdit}
-                                                                type="button"
-                                                                variant="solid"
-                                                                size="xs"
+                                                                type='button'
+                                                                variant='solid'
+                                                                size='xs'
                                                                 icon={<MdOutlineSave />}
-                                                                onClick={() => handleSave(values)}
-                                                            >
+                                                                onClick={() => handleSave(values)}>
                                                                 Save
                                                             </Button>
 
-                                                            <Button disabled={!allowEdit} type="submit" variant="solid" size="xs" icon={<MdOutlineDownloadDone />}>
+                                                            <Button
+                                                                disabled={!allowEdit}
+                                                                type='submit'
+                                                                variant='solid'
+                                                                size='xs'
+                                                                icon={<MdOutlineDownloadDone />}>
                                                                 Submit
                                                             </Button>
                                                         </>
                                                     )}
 
                                                     {formValues?._id && (
-                                                        <Button type="button" variant="solid" size="xs" color="red" onClick={() => setFlags({ deleteDialog: true })}>
+                                                        <Button
+                                                            type='button'
+                                                            variant='solid'
+                                                            size='xs'
+                                                            color='red'
+                                                            onClick={() => setFlags({ deleteDialog: true })}>
                                                             Delete
                                                         </Button>
                                                     )}
@@ -575,13 +586,13 @@ export default function RFQ() {
                                             </TabList>
 
                                             <TabContent value={tabs[0]}>
-                                                <div className="flex w-full gap-2 mt-2">
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="RFQ Number">
+                                                <div className='flex w-full gap-2 mt-2'>
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='RFQ Number'>
                                                         <Field
                                                             disabled
-                                                            type="text"
-                                                            className="px-1"
-                                                            name="rfqNumber"
+                                                            type='text'
+                                                            className='px-1'
+                                                            name='rfqNumber'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.rfqNumber}
@@ -589,24 +600,24 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="RFQ Date">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='RFQ Date'>
                                                         <Field
                                                             disabled
-                                                            name="rfqDate"
+                                                            name='rfqDate'
                                                             component={DatePicker}
-                                                            inputFormat="DD/MM/YYYY"
+                                                            inputFormat='DD/MM/YYYY'
                                                             size={'xs'}
                                                             value={values.rfqDate || null}
                                                             onChange={() => null}
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem asterisk className="mb-3" labelClass="text-xs" label="Due Date">
+                                                    <FormItem asterisk className='mb-3' labelClass='text-xs' label='Due Date'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            name="dueDate"
+                                                            name='dueDate'
                                                             component={DateTimepicker}
-                                                            inputFormat="DD/MM/YYYY hh:mm a"
+                                                            inputFormat='DD/MM/YYYY hh:mm a'
                                                             clearable={false}
                                                             size={'xs'}
                                                             value={values.dueDate || null}
@@ -614,12 +625,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Person Name">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Person Name'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="text"
-                                                            className="px-1"
-                                                            name="contactPersonName"
+                                                            type='text'
+                                                            className='px-1'
+                                                            name='contactPersonName'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactPersonName}
@@ -627,12 +638,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Number">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Number'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="number"
-                                                            className="px-1"
-                                                            name="contactNumber"
+                                                            type='number'
+                                                            className='px-1'
+                                                            name='contactNumber'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactNumber}
@@ -642,12 +653,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Email">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Email'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="email"
-                                                            className="px-1"
-                                                            name="contactEmail"
+                                                            type='email'
+                                                            className='px-1'
+                                                            name='contactEmail'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactEmail}
@@ -656,13 +667,13 @@ export default function RFQ() {
                                                     </FormItem>
                                                 </div>
 
-                                                <FormItem labelClass="text-xs" label="Remarks">
+                                                <FormItem labelClass='text-xs' label='Remarks'>
                                                     <Field
                                                         textArea
                                                         disabled={!allowEdit}
-                                                        type="text"
-                                                        className="p-1"
-                                                        name="remarks"
+                                                        type='text'
+                                                        className='p-1'
+                                                        name='remarks'
                                                         component={Input}
                                                         size={'xs'}
                                                         value={values.remarks}
@@ -673,7 +684,7 @@ export default function RFQ() {
 
                                             <TabContent value={tabs[1]}>
                                                 <Indents
-                                                    className="h-[45vh] overflow-auto"
+                                                    className='h-[45vh] overflow-auto'
                                                     indents={indents || []}
                                                     disabled={!allowEdit}
                                                     selection={indentSelection}
@@ -696,36 +707,38 @@ export default function RFQ() {
                                                         setIndentSelection((prev) => ({ ...prev, [val.id as string]: false }))
                                                         setValues((prev) => ({
                                                             ...prev,
-                                                            items: (prev.items || []).filter((i: any) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode)),
+                                                            items: (prev.items || []).filter(
+                                                                (i: any) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode),
+                                                            ),
                                                         }))
                                                     }}
                                                 />
                                             </TabContent>
 
                                             <TabContent value={tabs[2]}>
-                                                <div className="h-[45vh] overflow-auto">
-                                                    <Table compact className="text-xs" containerClassName="h-full">
-                                                        <THead className="sticky top-0">
+                                                <div className='h-[45vh] overflow-auto'>
+                                                    <Table compact className='text-xs' containerClassName='h-full'>
+                                                        <THead className='sticky top-0'>
                                                             <Tr>
-                                                                <Th className="border-r  border-r-slate-400/80">Type</Th>
-                                                                <Th className="w-full ">Terms & Conditions</Th>
+                                                                <Th className='border-r  border-r-slate-400/80'>Type</Th>
+                                                                <Th className='w-full '>Terms & Conditions</Th>
                                                             </Tr>
                                                         </THead>
                                                         <TBody>
                                                             {termsConditionsOptions.map(({ value: key }) => (
                                                                 <Tr key={key}>
-                                                                    <Td className="border-r border-r-slate-400/80 whitespace-nowrap">
-                                                                        <div className="flex items-center gap-2">
+                                                                    <Td className='border-r border-r-slate-400/80 whitespace-nowrap'>
+                                                                        <div className='flex items-center gap-2'>
                                                                             <span>{termsConditionsOptions.find((i) => i.value === key)?.label}</span>
                                                                         </div>
                                                                     </Td>
-                                                                    <Td className="py-0">
+                                                                    <Td className='py-0'>
                                                                         <Input
                                                                             disabled={!allowEdit}
-                                                                            size="xs"
+                                                                            size='xs'
                                                                             name={`termsConditions.${key}`}
-                                                                            className="border-none !p-0 ring-0 outline-0 m-0"
-                                                                            placeholder="Terms & Conditions"
+                                                                            className='border-none !p-0 ring-0 outline-0 m-0'
+                                                                            placeholder='Terms & Conditions'
                                                                             value={(values.termsConditions as any)[key]}
                                                                             onChange={(e) => setFieldValue(e.target.name, e.target.value)}
                                                                         />
@@ -738,9 +751,9 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[3]}>
-                                                <div className="h-[45vh] overflow-auto">
-                                                    <Table compact className="text-xs">
-                                                        <THead className="sticky top-0">
+                                                <div className='h-[45vh] overflow-auto'>
+                                                    <Table compact className='text-xs'>
+                                                        <THead className='sticky top-0'>
                                                             <Tr>
                                                                 <Th>#</Th>
                                                                 <Th>Vendor Name</Th>
@@ -765,15 +778,16 @@ export default function RFQ() {
                                                                     {values.status === 0 && (
                                                                         <Td>
                                                                             <Button
-                                                                                type="button"
-                                                                                variant="twoTone"
-                                                                                color="red"
-                                                                                size="xs"
-                                                                                icon={<MdClose className="size-4" />}
+                                                                                type='button'
+                                                                                variant='twoTone'
+                                                                                color='red'
+                                                                                size='xs'
+                                                                                icon={<MdClose className='size-4' />}
                                                                                 onClick={() =>
                                                                                     setValues((prev) => ({
                                                                                         ...prev,
-                                                                                        vendors: prev?.vendors?.filter((_i) => _i.vendorCode !== i.vendorCode) || [],
+                                                                                        vendors:
+                                                                                            prev?.vendors?.filter((_i) => _i.vendorCode !== i.vendorCode) || [],
                                                                                     }))
                                                                                 }
                                                                             />
@@ -787,11 +801,16 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[4]}>
-                                                <div className="flex gap-2 h-[45vh] overflow-auto">
-                                                    <AttachmentsTable id={values._id || 'uploaded'} info="Uploaded" isSmall={true} attachments={values.attachments || []} />
+                                                <div className='flex gap-2 h-[45vh] overflow-auto'>
+                                                    <AttachmentsTable
+                                                        id={values._id || 'uploaded'}
+                                                        info='Uploaded'
+                                                        isSmall={true}
+                                                        attachments={values.attachments || []}
+                                                    />
                                                     <AttachmentsTable
                                                         id={values._id || 'selected'}
-                                                        info="Selected"
+                                                        info='Selected'
                                                         isEditable={true}
                                                         isDisabled={!allowEdit}
                                                         attachments={values.attachments || []}
@@ -801,7 +820,7 @@ export default function RFQ() {
                                             </TabContent>
                                         </Tabs>
 
-                                        <div className="max-h-[35vh] overflow-auto mt-2">
+                                        <div className='max-h-[35vh] overflow-auto mt-2'>
                                             <RFQItemsTable isEditable={allowEdit} items={values.items || []} setFieldValue={setFieldValue} />
                                         </div>
                                     </FormContainer>
@@ -837,16 +856,15 @@ export default function RFQ() {
 
             <ConfirmDialog
                 isOpen={!!flags?.deleteDialog}
-                type="danger"
-                title="Delete RFQ"
-                confirmText="Delete"
-                cancelText="Cancel"
-                confirmButtonColor="red"
+                type='danger'
+                title='Delete RFQ'
+                confirmText='Delete'
+                cancelText='Cancel'
+                confirmButtonColor='red'
                 loading={flags?.deleting}
                 closable={!false}
                 onCancel={() => setFlags({})}
-                onConfirm={handleDelete}
-            >
+                onConfirm={handleDelete}>
                 Are you sure you want to delete this RFQ? This action cannot be undone.
             </ConfirmDialog>
         </div>
@@ -923,16 +941,27 @@ const IndentMetaDialog = ({
         return lastIndentNumber ? generateIndentNumber(lastIndentNumber) : 'IN00000001'
     }, [lastIndentNumber])
 
+    // ✅ number helpers
+    const toNum = (x: any) => {
+        const n = Number(String(x ?? '').trim())
+        return Number.isFinite(n) ? n : NaN
+    }
+    const toNum0 = (x: any) => {
+        const n = Number(String(x ?? '').trim())
+        return Number.isFinite(n) ? Math.max(0, n) : 0
+    }
+
     const initial: IndentMetaValues = useMemo(() => {
         const base: IndentMetaValues =
             initialValues || {
                 company: indent?.company || '',
-                indentNumber: (indent as any)?.indentNumber || '', // ✅ if exists, keep it
+                indentNumber: (indent as any)?.indentNumber || '',
                 indentDate: (indent as any)?.documentDate ? new Date((indent as any).documentDate) : new Date(),
                 lineNumber: (indent as any)?.lineNumber || '00001',
                 costCenter: (indent as any)?.costCenter || '',
                 requestedBy: (indent as any)?.requestedBy || '',
                 indentType: (indent as any)?.documentCategory || indentTypeOptions[0].value,
+
                 itemDescription: (indent as any)?.itemDescription || '',
                 techSpec: (indent as any)?.techSpec || '',
                 make: (indent as any)?.make || '',
@@ -940,175 +969,331 @@ const IndentMetaDialog = ({
                 materialNumber: (indent as any)?.materialNumber || '',
                 storageLocation: (indent as any)?.storageLocation || '',
                 trackingNumber: (indent as any)?.trackingNumber || '',
+
+                // ✅ qty defaults
+                indentQty: String((indent as any)?.indentQty ?? '0'),
+                preRFQQty: String((indent as any)?.preRFQQty ?? '0'),
+                prePOQty: String((indent as any)?.prePOQty ?? '0'),
             }
 
         return {
             ...base,
-            indentNumber: base.indentNumber?.trim() ? base.indentNumber : generatedIndentNo, // ✅ only auto-generate if empty
-            lineNumber: base.lineNumber?.trim() ? pad5(parseInt(digitsOnly5(base.lineNumber) || '0', 10) || 1) : '00001',
-            // ✅ ensure requestedBy is auto-filled (even if initialValues missing)
+            indentNumber: base.indentNumber?.trim() ? base.indentNumber : generatedIndentNo,
+            lineNumber: base.lineNumber?.trim()
+                ? pad5(parseInt(digitsOnly5(base.lineNumber) || '0', 10) || 1)
+                : '00001',
             requestedBy: base.requestedBy?.trim() ? base.requestedBy : loggedInName,
+
+            // ✅ ensure qty fields always exist as strings
+            indentQty: String((base as any).indentQty ?? '0'),
+            preRFQQty: String((base as any).preRFQQty ?? '0'),
+            prePOQty: String((base as any).prePOQty ?? '0'),
         }
     }, [initialValues, indent, generatedIndentNo, loggedInName])
 
     return (
-        <Dialog isOpen={open} onClose={onClose} width={700}>
-            <h6 className="mb-2 text-xl">Indent Details</h6>
+        <Dialog isOpen={open} onClose={onClose} width={760}>
+            {/* ✅ Make dialog layout column and limit height */}
+            <div className="flex max-h-[85vh] flex-col">
+                {/* Header */}
+                <div className="pb-3">
+                    <h6 className="text-xl font-semibold">Indent Details</h6>
+                    <div className="mt-1 text-xs opacity-80">
+                        <b>{indent?.itemCode}</b> — {indent?.itemDescription}
+                    </div>
+                </div>
 
-            <div className="mb-3 text-xs opacity-80">
-                <b>{indent?.itemCode}</b> — {indent?.itemDescription}
+                <Formik<IndentMetaValues>
+                    enableReinitialize
+                    initialValues={initial}
+                    validate={(v) => {
+                        const errors: Partial<Record<keyof IndentMetaValues, any>> = {}
+
+                        if (!v.company?.trim()) errors.company = 'Required'
+                        if (!v.indentNumber?.trim()) errors.indentNumber = 'Required'
+                        if (!v.indentDate) errors.indentDate = 'Required'
+                        if (!v.costCenter?.trim()) errors.costCenter = 'Required'
+                        if (!v.requestedBy?.trim()) errors.requestedBy = 'Required'
+                        if (!v.indentType?.trim()) errors.indentType = 'Required'
+
+                        const ln = digitsOnly5(v.lineNumber)
+                        if (!ln || ln.length !== 5) errors.lineNumber = 'Line number must be 5 digits'
+
+                        // ✅ qty validation
+                        const iq = toNum(v.indentQty)
+                        const rq = toNum(v.preRFQQty)
+                        const pq = toNum(v.prePOQty)
+
+                        if (!Number.isFinite(iq) || iq < 0) errors.indentQty = 'Enter a valid non-negative number'
+                        if (!Number.isFinite(rq) || rq < 0) errors.preRFQQty = 'Enter a valid non-negative number'
+                        if (!Number.isFinite(pq) || pq < 0) errors.prePOQty = 'Enter a valid non-negative number'
+
+                        if (Number.isFinite(iq) && Number.isFinite(rq) && Number.isFinite(pq)) {
+                            if (rq + pq > iq) errors.prePOQty = 'Pre RFQ + Pre PO cannot exceed Indent Qty'
+                        }
+
+                        return errors
+                    }}
+                    onSubmit={onSubmit}
+                >
+                    {({ values, setFieldValue, errors, touched }) => {
+                        const computedBalance = Math.max(
+                            0,
+                            toNum0(values.indentQty) - toNum0(values.preRFQQty) - toNum0(values.prePOQty),
+                        )
+
+                        return (
+                            <Form className="min-h-0 flex flex-col">
+                                {/* ✅ Scrollable Body */}
+                                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                                    <FormContainer>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <FormItem
+                                                asterisk
+                                                label="Company"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.company && errors.company)}
+                                                errorMessage={errors.company}
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    value={values.company}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('company', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Indent Number"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.indentNumber && errors.indentNumber)}
+                                                errorMessage={errors.indentNumber}
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    value={values.indentNumber}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('indentNumber', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Indent Date"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.indentDate && errors.indentDate)}
+                                                errorMessage={errors.indentDate}
+                                            >
+                                                <DatePicker
+                                                    size="sm"
+                                                    inputFormat="DD/MM/YYYY"
+                                                    value={values.indentDate}
+                                                    onChange={(d: Date | null) => setFieldValue('indentDate', d)}
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Line Number"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.lineNumber && errors.lineNumber)}
+                                                errorMessage={errors.lineNumber}
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    value={values.lineNumber}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('lineNumber', digitsOnly5(e.target.value))
+                                                    }
+                                                    onBlur={() =>
+                                                        setFieldValue(
+                                                            'lineNumber',
+                                                            pad5(parseInt(digitsOnly5(values.lineNumber) || '0', 10) || 0),
+                                                        )
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Cost Centre"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.costCenter && errors.costCenter)}
+                                                errorMessage={errors.costCenter}
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    value={values.costCenter}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('costCenter', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Requested By"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5"
+                                                invalid={!!(touched.requestedBy && errors.requestedBy)}
+                                                errorMessage={errors.requestedBy}
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    disabled={Boolean(loggedInName)}
+                                                    value={values.requestedBy}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('requestedBy', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label="Indent Type"
+                                                labelClass="text-xs !mb-1"
+                                                className="mb-2.5 md:col-span-2"
+                                                invalid={!!(touched.indentType && errors.indentType)}
+                                                errorMessage={errors.indentType}
+                                            >
+                                                <Select
+                                                    size="sm"
+                                                    options={indentTypeOptions}
+                                                    value={indentTypeOptions.find((o) => o.value === values.indentType)}
+                                                    onChange={(opt) => setFieldValue('indentType', opt?.value)}
+                                                />
+                                            </FormItem>
+
+                                            {/* Optional details */}
+                                            <FormItem label="Item Description" labelClass="text-xs !mb-1" className="mb-2.5">
+                                                <Input
+                                                    size="sm"
+                                                    value={values.itemDescription}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('itemDescription', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem label="Tech Specification" labelClass="text-xs !mb-1" className="mb-2.5">
+                                                <Input
+                                                    size="sm"
+                                                    value={values.techSpec}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('techSpec', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            <FormItem label="Make" labelClass="text-xs !mb-1" className="mb-2.5">
+                                                <Input
+                                                    size="sm"
+                                                    value={values.make}
+                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                        setFieldValue('make', e.target.value)
+                                                    }
+                                                />
+                                            </FormItem>
+
+                                            {/* ✅ Quantities */}
+                                            <div className="md:col-span-2 mt-1 rounded-lg border bg-gray-50 p-3">
+                                                <div className="text-sm font-semibold mb-2">Quantities</div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                                    <FormItem
+                                                        asterisk
+                                                        label="Indent Qty"
+                                                        labelClass="text-xs !mb-1"
+                                                        className="mb-0"
+                                                        invalid={!!(touched.indentQty && (errors as any).indentQty)}
+                                                        errorMessage={(errors as any).indentQty}
+                                                    >
+                                                        <Input
+                                                            size="sm"
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            value={values.indentQty}
+                                                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                                setFieldValue('indentQty', e.target.value)
+                                                            }
+                                                        />
+                                                    </FormItem>
+
+                                                    <FormItem
+                                                        label="Pre RFQ Qty"
+                                                        labelClass="text-xs !mb-1"
+                                                        className="mb-0"
+                                                        invalid={!!(touched.preRFQQty && (errors as any).preRFQQty)}
+                                                        errorMessage={(errors as any).preRFQQty}
+                                                    >
+                                                        <Input
+                                                            size="sm"
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            value={values.preRFQQty}
+                                                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                                setFieldValue('preRFQQty', e.target.value)
+                                                            }
+                                                        />
+                                                    </FormItem>
+
+                                                    <FormItem
+                                                        label="Pre PO Qty"
+                                                        labelClass="text-xs !mb-1"
+                                                        className="mb-0"
+                                                        invalid={!!(touched.prePOQty && (errors as any).prePOQty)}
+                                                        errorMessage={(errors as any).prePOQty}
+                                                    >
+                                                        <Input
+                                                            size="sm"
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            value={values.prePOQty}
+                                                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                                setFieldValue('prePOQty', e.target.value)
+                                                            }
+                                                        />
+                                                    </FormItem>
+
+                                                    <FormItem label="Balance Qty (auto)" labelClass="text-xs !mb-1" className="mb-0">
+                                                        <Input size="sm" disabled value={String(computedBalance)} />
+                                                    </FormItem>
+                                                </div>
+
+                                                <div className="mt-2 text-[11px] opacity-70">
+                                                    Balance = Indent Qty − Pre RFQ Qty − Pre PO Qty (min 0)
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* bottom spacing so content doesn't hide behind sticky footer */}
+                                        <div className="h-2" />
+                                    </FormContainer>
+                                </div>
+
+                                {/* ✅ Sticky footer */}
+                                <div className="sticky bottom-0 border-t bg-white/95 py-3 backdrop-blur flex justify-end gap-2">
+                                    <Button type="button" size="sm" variant="plain" disabled={loading} onClick={onClose}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" size="sm" variant="solid" disabled={loading}>
+                                        {loading ? <Spinner size={16} /> : 'Save'}
+                                    </Button>
+                                </div>
+                            </Form>
+                        )
+                    }}
+                </Formik>
             </div>
-
-            <Formik<IndentMetaValues>
-                enableReinitialize
-                initialValues={initial}
-                validate={(v) => {
-                    const errors: Partial<Record<keyof IndentMetaValues, string>> = {}
-
-                    if (!v.company?.trim()) errors.company = 'Required'
-                    if (!v.indentNumber?.trim()) errors.indentNumber = 'Required'
-                    if (!v.indentDate) errors.indentDate = 'Required'
-                    if (!v.costCenter?.trim()) errors.costCenter = 'Required'
-                    if (!v.requestedBy?.trim()) errors.requestedBy = 'Required'
-                    if (!v.indentType?.trim()) errors.indentType = 'Required'
-
-                    const ln = digitsOnly5(v.lineNumber)
-                    if (!ln || ln.length !== 5) errors.lineNumber = 'Line number must be 5 digits'
-                    return errors
-                }}
-                onSubmit={onSubmit}
-            >
-                {({ values, setFieldValue, errors, touched }) => (
-                    <Form>
-                        <FormContainer>
-                            <div className="grid grid-cols-2 gap-2">
-                                <FormItem
-                                    asterisk
-                                    label="Company"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.company && errors.company)}
-                                    errorMessage={errors.company}
-                                >
-                                    <Input size="sm" value={values.company} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('company', e.target.value)} />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Indent Number"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.indentNumber && errors.indentNumber)}
-                                    errorMessage={errors.indentNumber}
-                                >
-                                    <Input size="sm" value={values.indentNumber} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('indentNumber', e.target.value)} />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Indent Date"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.indentDate && errors.indentDate)}
-                                    errorMessage={errors.indentDate}
-                                >
-                                    <DatePicker
-                                        size="sm"
-                                        inputFormat="DD/MM/YYYY"
-                                        value={values.indentDate}
-                                        onChange={(d: Date | null) => {
-                                            setFieldValue('indentDate', d)
-                                        }}
-                                    />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Line Number"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.lineNumber && errors.lineNumber)}
-                                    errorMessage={errors.lineNumber}
-                                >
-                                    <Input
-                                        size="sm"
-                                        value={values.lineNumber}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('lineNumber', digitsOnly5(e.target.value))}
-                                        onBlur={() => setFieldValue('lineNumber', pad5(parseInt(digitsOnly5(values.lineNumber) || '0', 10) || 0))}
-                                    />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Cost Centre"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.costCenter && errors.costCenter)}
-                                    errorMessage={errors.costCenter}
-                                >
-                                    <Input size="sm" value={values.costCenter} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('costCenter', e.target.value)} />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Requested By"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5"
-                                    invalid={!!(touched.requestedBy && errors.requestedBy)}
-                                    errorMessage={errors.requestedBy}
-                                >
-                                    <Input
-                                        size="sm"
-                                        disabled={Boolean(loggedInName)} // ✅ disable if we have logged in name
-                                        value={values.requestedBy}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('requestedBy', e.target.value)}
-                                    />
-                                </FormItem>
-
-                                <FormItem
-                                    asterisk
-                                    label="Indent Type"
-                                    labelClass="text-xs !mb-1"
-                                    className="mb-2.5 col-span-2"
-                                    invalid={!!(touched.indentType && errors.indentType)}
-                                    errorMessage={errors.indentType}
-                                >
-                                    <Select
-                                        size="sm"
-                                        options={indentTypeOptions}
-                                        value={indentTypeOptions.find((o) => o.value === values.indentType)}
-                                        onChange={(opt) => setFieldValue('indentType', opt?.value)}
-                                    />
-                                </FormItem>
-
-                                {/* Additional fields for other data in the indent model */}
-                                <FormItem label="Item Description" labelClass="text-xs !mb-1" className="mb-2.5">
-                                    <Input size="sm" value={values.itemDescription} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('itemDescription', e.target.value)} />
-                                </FormItem>
-
-                                <FormItem label="Tech Specification" labelClass="text-xs !mb-1" className="mb-2.5">
-                                    <Input size="sm" value={values.techSpec} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('techSpec', e.target.value)} />
-                                </FormItem>
-
-                                <FormItem label="Make" labelClass="text-xs !mb-1" className="mb-2.5">
-                                    <Input size="sm" value={values.make} onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('make', e.target.value)} />
-                                </FormItem>
-
-                                {/* Continue adding all fields you want from the model */}
-                            </div>
-
-                            <div className="flex justify-end gap-2 mt-4">
-                                <Button type="button" size="sm" variant="plain" disabled={loading} onClick={onClose}>
-                                    Cancel
-                                </Button>
-                                <Button type="submit" size="sm" variant="solid" disabled={loading}>
-                                    {loading ? <Spinner size={16} /> : 'Save'}
-                                </Button>
-                            </div>
-                        </FormContainer>
-                    </Form>
-                )}
-            </Formik>
         </Dialog>
     )
 }
+
