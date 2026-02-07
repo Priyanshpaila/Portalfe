@@ -101,10 +101,10 @@ function IndentsComponent({ disabled, indents, selection, handleSelection, handl
                 },
             },
 
-            { enableSorting: false, header: 'Company', accessorKey: 'company' },
+            // { enableSorting: false, header: 'Company', accessorKey: 'company' },
             { enableSorting: false, header: 'Indent No', accessorKey: 'indentNumber' },
             { enableSorting: false, header: 'Indent Date', accessorKey: '_documentDate' },
-            { enableSorting: false, header: 'Line No', accessorKey: 'lineNumber' },
+            // { enableSorting: false, header: 'Line No', accessorKey: 'lineNumber' },
             { enableSorting: false, header: 'Item Code', accessorKey: 'itemCode' },
             { enableSorting: false, header: 'Item Description', accessorKey: 'itemDescription' },
             { enableSorting: false, header: 'Tech Specification', accessorKey: 'techSpec' },

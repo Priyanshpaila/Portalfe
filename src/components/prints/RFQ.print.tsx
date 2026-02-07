@@ -1,34 +1,88 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { RFQType } from '@/@types/app'
 import { companies } from '@/utils/data'
 import { formatDate } from '@/utils/formatDate'
 
-const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
-    const companyInfo = {
-        name: companies[0]?.companyName,
-        address: '490/1 Urla Industrial Area, Urla, CHHATTISGARH, INDIA',
-        phone: '0771-4082350',
-        telefax: '0771-4082452',
-        email: 'purchase@rrispat.com',
+function safeJsonParse<T>(raw: string): T | null {
+    try {
+        return JSON.parse(raw) as T
+    } catch {
+        return null
     }
+}
 
-    const signatories = {
-        createdBy: 'C MURALIDHAR RAO',
-        authorisedBy: 'C MURALIDHAR RAO',
+function pickName(obj: any): string {
+    if (!obj || typeof obj !== 'object') return ''
+    return (obj?.fullName || obj?.name || obj?.username || obj?.userName || obj?.displayName || obj?.email || '').toString()
+}
+
+function getLoggedInUserLabel(): string {
+    try {
+        if (typeof window === 'undefined') return ''
+        const candidates = ['admin', 'user', 'userDetails', 'auth_user']
+        for (const key of candidates) {
+            const raw = localStorage.getItem(key)
+            if (!raw) continue
+
+            const outer = safeJsonParse<any>(raw)
+            if (!outer) continue
+
+            const direct = pickName(outer)
+            if (direct) return direct
+
+            if (typeof outer?.auth === 'string') {
+                const authObj = safeJsonParse<any>(outer.auth)
+                const fromAuthUser = pickName(authObj?.user)
+                if (fromAuthUser) return fromAuthUser
+            }
+
+            const fromOuterUser = pickName(outer?.user)
+            if (fromOuterUser) return fromOuterUser
+        }
+        return ''
+    } catch {
+        return ''
     }
+}
+
+const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
+    const [userLabel, setUserLabel] = useState('')
+
+    useEffect(() => {
+        setUserLabel(getLoggedInUserLabel())
+    }, [])
+
+    // Resolve company info dynamically (no hardcoded RR Ispat)
+    const companyInfo = useMemo(() => {
+        // Try to match by whatever your RFQ stores (plantCode / company name / etc.)
+        const companyMatch =
+            companies?.find((c: any) => c?.plantCode?.toString() === (rfq as any)?.company?.toString()) ||
+            companies?.find((c: any) => c?.companyName?.toString() === (rfq as any)?.company?.toString()) ||
+            companies?.find((c: any) => c?.companyName?.toString() === (rfq as any)?.companyName?.toString()) ||
+            companies?.[0] ||
+            {}
+
+        return {
+            name: companyMatch?.companyName || (rfq as any)?.companyName || (rfq as any)?.company || '',
+
+            email: companyMatch?.email || '',
+        }
+    }, [rfq])
 
     return (
         <div>
             <div className='max-w-3xl mx-auto text-gray-800 border border-black text-sm'>
-                {/* Company Info */}
+                {/* Header */}
                 <div className='text-center border-b px-1 py-3 border-b-black relative'>
                     <h1 className='text-lg font-bold'>{companyInfo.name}</h1>
-                    <p>{companyInfo.address}</p>
-                    <p>
-                        Phone: {companyInfo.phone} Telefax: {companyInfo.telefax} Email: {companyInfo.email}
-                    </p>
 
-                    <img src='/img/logo/logo-title.png' className='absolute left-0 top-1/2 -translate-y-1/2' width={140} />
+                    {/* ✅ Replacing ADDRESS with Logged-in User */}
+                    <p className='font-bold text-2xl'>{userLabel || ''}</p>
+
+                    {/* Show contact line only if any exist */}
+                    {companyInfo.email && <p>{companyInfo.email ? `Email: ${companyInfo.email}` : ''}</p>}
+
+                    <img src='/img/logo/logo-title.png' className='absolute left-0 top-1/2 -translate-y-1/2' width={140} alt='logo' />
                 </div>
 
                 {/* Title */}
@@ -85,7 +139,7 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
                         </thead>
                         <tbody>
                             {rfq?.items?.map((item, idx) => (
-                                <tr key={item.itemCode}>
+                                <tr key={`${item.itemCode}-${idx}`}>
                                     <td className='border border-l-transparent border-black p-[2px] text-center'>{idx + 1}</td>
                                     <td className='border border-black p-[2px]'>{item.itemCode}</td>
                                     <td className='border border-black p-[2px]'>{item.itemDescription}</td>
@@ -111,13 +165,13 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
                         </thead>
                         <tbody>
                             {rfq?.vendors?.map((vendor, vi) => (
-                                <tr key={vendor.vendorCode}>
+                                <tr key={`${vendor.vendorCode}-${vi}`}>
                                     <td className='border border-l-transparent border-black p-[2px] text-center'>{vi + 1}</td>
                                     <td className='border border-black p-[2px] font-bold w-2/5 align-baseline'>{vendor.name}</td>
                                     <td className='border border-r-transparent border-black p-[2px] w-3/5'>
                                         <p>{vendor.location}</p>
                                         <p>
-                                            Email: <span>{vendor.contactPerson.email}</span>
+                                            Email: <span>{vendor?.contactPerson?.email}</span>
                                         </p>
                                     </td>
                                 </tr>
@@ -127,7 +181,7 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
                 </div>
 
                 {/* Terms and Conditions */}
-                <div>
+                {/* <div>
                     <span className='font-bold p-[2px]'>Terms & Conditions</span>
                     <table className='w-full border-y border-black '>
                         <tbody>
@@ -135,29 +189,19 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
                                 <tr key={index}>
                                     <td className='px-[2px] whitespace-nowrap'>{term}</td>
                                     <td className='px-[2px]'>:</td>
-                                    <td className='px-[2px] w-full'>{rfq?.termsConditions[term]}</td>
+                                    <td className='px-[2px] w-full'>{(rfq as any)?.termsConditions?.[term]}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                </div>
+                </div> */}
 
-                {/* Footer */}
+                {/* Footer (no hardcoded RR Ispat) */}
                 <div className='p-[2px]'>
-                    <div>
-                        <p className='text-right'>For, R.R. Ispat (A unit of GPIL)</p>
-                    </div>
-                    <div className='flex mt-8'>
-                        <div className='flex-1'>
-                            <p>Created By</p>
-                            <p>{signatories.createdBy}</p>
-                        </div>
-                        <div className='flex-1'>
-                            <p>Authorized By</p>
-                            <p>{signatories.authorisedBy}</p>
-                        </div>
-                        <div className='flex-1'></div>
-                    </div>
+                    {!!companyInfo.name && <p className='text-right'>For, {companyInfo.name}</p>}
+
+                    {/* ✅ Signatories removed as requested */}
+                    <div className='h-12' />
                 </div>
             </div>
         </div>

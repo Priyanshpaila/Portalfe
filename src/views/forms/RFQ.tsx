@@ -33,9 +33,9 @@ type RFQFormValues = Omit<RFQType, 'dueDate' | 'rfqDate'> & {
 
 type IndentMetaValues = {
     company: string
-    indentNumber: string
+    indentNumber: string // now backend-generated if empty
     indentDate: Date | null
-    lineNumber: string
+    lineNumber: string // now backend-generated if empty
     costCenter: string
     requestedBy: string
     indentType: string
@@ -178,17 +178,6 @@ function getLoggedInUserLabel() {
     }
 }
 
-function computeNextLineNumber(items: any[]) {
-    const nums = (items || [])
-        .map((i) => String(i?.lineNumber ?? '').replace(/\D/g, ''))
-        .filter(Boolean)
-        .map((x) => parseInt(x, 10))
-        .filter((n) => Number.isFinite(n))
-
-    const next = (nums.length ? Math.max(...nums) : 0) + 1
-    return pad5(next)
-}
-
 /** ---------- select all helpers ---------- */
 
 function isNonEmpty(v: any) {
@@ -208,6 +197,8 @@ function indentIndentType(i: any) {
     return String(i?.documentType ?? i?.documentCategory ?? i?.indentType ?? '').trim()
 }
 
+// ✅ keep completeness strict (indentNumber & lineNumber must exist on the indent record)
+// so selecting can happen only after server has generated them.
 function isIndentComplete(i: any) {
     const company = i?.company
     const indentNumber = i?.indentNumber
@@ -240,7 +231,7 @@ function buildMetaFromIndent(i: any, fallbackRequestedBy: string): Partial<Inden
         company: String(i?.company ?? '').trim(),
         indentNumber: String(i?.indentNumber ?? '').trim(),
         indentDate: i?.documentDate ? new Date(i.documentDate) : new Date(),
-        lineNumber: ln ? pad5(parseInt(ln, 10) || 0) : '00001',
+        lineNumber: ln ? pad5(parseInt(ln, 10) || 0) : '',
         costCenter: String(i?.costCenter ?? '').trim(),
         requestedBy: String(i?.requestedBy ?? '').trim() || fallbackRequestedBy,
         indentType: indentIndentType(i),
@@ -420,7 +411,10 @@ export default function RFQ() {
         if (index >= 0) {
             setValues((prev) => ({
                 ...prev,
-                file: prev.file?.slice(0, index).concat(_file).concat(prev.file.slice(index + 1)),
+                file: prev.file
+                    ?.slice(0, index)
+                    .concat(_file)
+                    .concat(prev.file.slice(index + 1)),
                 attachments: prev.attachments
                     ?.slice(0, index)
                     .concat({
@@ -525,7 +519,7 @@ export default function RFQ() {
         <div>
             <title>Request For Quotation</title>
 
-            <Loading type="cover" loading={flags?.loading}>
+            <Loading type='cover' loading={flags?.loading}>
                 <Formik<RFQFormValues>
                     enableReinitialize={true}
                     initialValues={{
@@ -533,8 +527,7 @@ export default function RFQ() {
                         dueDate: formValues.dueDate ? new Date(formValues.dueDate as any) : null,
                         rfqDate: formValues.rfqDate ? new Date(formValues.rfqDate as any) : null,
                     }}
-                    onSubmit={handleSubmit}
-                >
+                    onSubmit={handleSubmit}>
                     {(form) => {
                         const { values, setFieldValue: _setFieldValue, setValues: _setValues } = form
 
@@ -545,19 +538,16 @@ export default function RFQ() {
                         const setFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = allowEdit ? _setFieldValue : noopSetFieldValue
 
                         const openIndentMetaDialog = (indent: IndentType, mode: 'select' | 'edit' = 'select') => {
+                            // ✅ NO FRONTEND AUTO-GEN: keep empty if missing; server will generate
                             const existingIndentNo = String((indent as any)?.indentNumber ?? '').trim()
-
-                            const nextLineFromMaster = computeNextLineNumber(indents as any[])
-                            const existingLine = String((indent as any)?.lineNumber ?? '').trim()
-                            const lineToUse = existingLine
-                                ? pad5(parseInt(digitsOnly5(existingLine) || '0', 10) || 1)
-                                : nextLineFromMaster
+                            const existingLineRaw = digitsOnly5(String((indent as any)?.lineNumber ?? ''))
+                            const existingLine = existingLineRaw ? pad5(parseInt(existingLineRaw, 10) || 0) : ''
 
                             const initial: IndentMetaValues = {
-                                company: String((indent as any)?.company ?? '').trim(),
-                                indentNumber: existingIndentNo,
+                                company: String((indent as any)?.company ?? '').trim() || loggedInName,
+                                indentNumber: existingIndentNo, // readonly; server generates if empty
                                 indentDate: (indent as any)?.documentDate ? new Date((indent as any).documentDate) : new Date(),
-                                lineNumber: lineToUse,
+                                lineNumber: existingLine, // readonly; server generates if empty
                                 costCenter: String((indent as any)?.costCenter ?? '').trim(),
                                 requestedBy: String((indent as any)?.requestedBy ?? '').trim() || loggedInName,
                                 indentType: String((indent as any)?.documentType ?? '').trim(),
@@ -605,14 +595,15 @@ export default function RFQ() {
                                     return Number.isFinite(n) ? Math.max(0, n) : 0
                                 }
 
+                                // ✅ IMPORTANT: DO NOT send indentNumber/lineNumber from frontend.
+                                // Backend must generate them if missing.
                                 const payload: any = {
                                     company: meta.company?.trim(),
-                                    indentNumber: meta.indentNumber?.trim(),
                                     documentDate: meta.indentDate ? new Date(meta.indentDate) : new Date(),
-                                    lineNumber: meta.lineNumber?.trim(),
                                     costCenter: meta.costCenter?.trim(),
                                     requestedBy: meta.requestedBy?.trim(),
                                     documentType: meta.indentType,
+
                                     indentQty: toNum0Local(meta.indentQty),
                                     preRFQQty: toNum0Local(meta.preRFQQty),
                                     prePOQty: toNum0Local(meta.prePOQty),
@@ -626,6 +617,17 @@ export default function RFQ() {
 
                                 const updated = resp?.data?.data || resp?.data || {}
                                 const updatedId = String(updated.id || updated._id || indent.id)
+
+                                // ✅ safety: ensure server generated values
+                                const serverIndentNo = String(updated?.indentNumber ?? '').trim()
+                                const serverLineRaw = digitsOnly5(String(updated?.lineNumber ?? ''))
+                                const serverLineOk = serverLineRaw.length === 5
+
+                                if (!serverIndentNo || !serverLineOk) {
+                                    showError('Server did not generate Indent Number / Line Number. Please contact support.')
+                                    setIndentMeta((p) => ({ ...p, loading: false }))
+                                    return
+                                }
 
                                 setIndents((prev) =>
                                     prev.map((x: any) =>
@@ -653,7 +655,8 @@ export default function RFQ() {
                                                 String(it?.itemCode ?? '').trim() === String(newItem?.itemCode ?? '').trim(),
                                         )
 
-                                        const nextItems = idx >= 0 ? existing.map((it: any, j: number) => (j === idx ? newItem : it)) : existing.concat([newItem])
+                                        const nextItems =
+                                            idx >= 0 ? existing.map((it: any, j: number) => (j === idx ? newItem : it)) : existing.concat([newItem])
                                         return { ...prev, items: nextItems }
                                     })
                                 }
@@ -670,55 +673,63 @@ export default function RFQ() {
                         return (
                             <>
                                 <Form className={classNames('px-1', 'mt-3', allowEdit ? null : 'prevent-edit')}>
-                                    <input hidden type="file" id="file-input" onChange={(e) => onFileSelect(e, setValues)} />
+                                    <input hidden type='file' id='file-input' onChange={(e) => onFileSelect(e, setValues)} />
 
-                                    <FormContainer className="text-xs">
-                                        <Tabs variant="underline" value={tab} onChange={setTab}>
+                                    <FormContainer className='text-xs'>
+                                        <Tabs variant='underline' value={tab} onChange={setTab}>
                                             <TabList>
                                                 {tabs.map((i) => (
-                                                    <TabNav key={i} className="pt-0" value={i}>
-                                                        <span className="text-xs">{i}</span>
+                                                    <TabNav key={i} className='pt-0' value={i}>
+                                                        <span className='text-xs'>{i}</span>
                                                     </TabNav>
                                                 ))}
 
-                                                <TabNav disabled className="p-0 opacity-100 cursor-auto flex-1 justify-end gap-1" value="actions">
+                                                <TabNav disabled className='p-0 opacity-100 cursor-auto flex-1 justify-end gap-1' value='actions'>
                                                     {allowEdit && (
                                                         <>
                                                             {tabs[3] === tab && (
                                                                 <>
                                                                     <Button
                                                                         disabled={!allowEdit}
-                                                                        type="button"
-                                                                        variant="twoTone"
-                                                                        size="xs"
+                                                                        type='button'
+                                                                        variant='twoTone'
+                                                                        size='xs'
                                                                         icon={<IoIosAdd />}
-                                                                        onClick={addActionHandler}
-                                                                    >
+                                                                        onClick={addActionHandler}>
                                                                         Add Vendor
                                                                     </Button>
-                                                                    <hr className="h-4 w-[1.5px] bg-slate-200" />
+                                                                    <hr className='h-4 w-[1.5px] bg-slate-200' />
                                                                 </>
                                                             )}
 
                                                             <Button
                                                                 disabled={!allowEdit}
-                                                                type="button"
-                                                                variant="solid"
-                                                                size="xs"
+                                                                type='button'
+                                                                variant='solid'
+                                                                size='xs'
                                                                 icon={<MdOutlineSave />}
-                                                                onClick={() => handleSave(values)}
-                                                            >
+                                                                onClick={() => handleSave(values)}>
                                                                 Save
                                                             </Button>
 
-                                                            <Button disabled={!allowEdit} type="submit" variant="solid" size="xs" icon={<MdOutlineDownloadDone />}>
+                                                            <Button
+                                                                disabled={!allowEdit}
+                                                                type='submit'
+                                                                variant='solid'
+                                                                size='xs'
+                                                                icon={<MdOutlineDownloadDone />}>
                                                                 Submit
                                                             </Button>
                                                         </>
                                                     )}
 
                                                     {formValues?._id && (
-                                                        <Button type="button" variant="solid" size="xs" color="red" onClick={() => setFlags({ deleteDialog: true })}>
+                                                        <Button
+                                                            type='button'
+                                                            variant='solid'
+                                                            size='xs'
+                                                            color='red'
+                                                            onClick={() => setFlags({ deleteDialog: true })}>
                                                             Delete
                                                         </Button>
                                                     )}
@@ -726,13 +737,13 @@ export default function RFQ() {
                                             </TabList>
 
                                             <TabContent value={tabs[0]}>
-                                                <div className="flex w-full gap-2 mt-2">
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="RFQ Number">
+                                                <div className='flex w-full gap-2 mt-2'>
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='RFQ Number'>
                                                         <Field
                                                             disabled
-                                                            type="text"
-                                                            className="px-1"
-                                                            name="rfqNumber"
+                                                            type='text'
+                                                            className='px-1'
+                                                            name='rfqNumber'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.rfqNumber}
@@ -740,24 +751,24 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="RFQ Date">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='RFQ Date'>
                                                         <Field
                                                             disabled
-                                                            name="rfqDate"
+                                                            name='rfqDate'
                                                             component={DatePicker}
-                                                            inputFormat="DD/MM/YYYY"
+                                                            inputFormat='DD/MM/YYYY'
                                                             size={'xs'}
                                                             value={values.rfqDate || null}
                                                             onChange={() => null}
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem asterisk className="mb-3" labelClass="text-xs" label="Due Date">
+                                                    <FormItem asterisk className='mb-3' labelClass='text-xs' label='Due Date'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            name="dueDate"
+                                                            name='dueDate'
                                                             component={DateTimepicker}
-                                                            inputFormat="DD/MM/YYYY hh:mm a"
+                                                            inputFormat='DD/MM/YYYY hh:mm a'
                                                             clearable={false}
                                                             size={'xs'}
                                                             value={values.dueDate || null}
@@ -765,12 +776,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Person Name">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Person Name'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="text"
-                                                            className="px-1"
-                                                            name="contactPersonName"
+                                                            type='text'
+                                                            className='px-1'
+                                                            name='contactPersonName'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactPersonName}
@@ -778,12 +789,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Number">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Number'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="number"
-                                                            className="px-1"
-                                                            name="contactNumber"
+                                                            type='number'
+                                                            className='px-1'
+                                                            name='contactNumber'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactNumber}
@@ -793,12 +804,12 @@ export default function RFQ() {
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className="mb-3" labelClass="text-xs" label="Contact Email">
+                                                    <FormItem className='mb-3' labelClass='text-xs' label='Contact Email'>
                                                         <Field
                                                             disabled={!allowEdit}
-                                                            type="email"
-                                                            className="px-1"
-                                                            name="contactEmail"
+                                                            type='email'
+                                                            className='px-1'
+                                                            name='contactEmail'
                                                             component={Input}
                                                             size={'xs'}
                                                             value={values.contactEmail}
@@ -807,13 +818,13 @@ export default function RFQ() {
                                                     </FormItem>
                                                 </div>
 
-                                                <FormItem labelClass="text-xs" label="Remarks">
+                                                <FormItem labelClass='text-xs' label='Remarks'>
                                                     <Field
                                                         textArea
                                                         disabled={!allowEdit}
-                                                        type="text"
-                                                        className="p-1"
-                                                        name="remarks"
+                                                        type='text'
+                                                        className='p-1'
+                                                        name='remarks'
                                                         component={Input}
                                                         size={'xs'}
                                                         value={values.remarks}
@@ -824,7 +835,7 @@ export default function RFQ() {
 
                                             <TabContent value={tabs[1]}>
                                                 <Indents
-                                                    className="h-[45vh] overflow-auto"
+                                                    className='h-[45vh] overflow-auto'
                                                     indents={indents || []}
                                                     disabled={!allowEdit}
                                                     selection={indentSelection}
@@ -840,7 +851,9 @@ export default function RFQ() {
                                                         // ✅ Select all only if ALL are complete
                                                         const incomplete = (indents || []).filter((i: any) => !isIndentComplete(i))
                                                         if (incomplete.length) {
-                                                            showWarning(`${incomplete.length} indents are missing required details. Please fill them first (select one-by-one).`)
+                                                            showWarning(
+                                                                `${incomplete.length} indents are missing required details. Please fill them first (select one-by-one).`,
+                                                            )
                                                             return
                                                         }
 
@@ -920,29 +933,29 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[2]}>
-                                                <div className="h-[45vh] overflow-auto">
-                                                    <Table compact className="text-xs" containerClassName="h-full">
-                                                        <THead className="sticky top-0">
+                                                <div className='h-[45vh] overflow-auto'>
+                                                    <Table compact className='text-xs' containerClassName='h-full'>
+                                                        <THead className='sticky top-0'>
                                                             <Tr>
-                                                                <Th className="border-r  border-r-slate-400/80">Type</Th>
-                                                                <Th className="w-full ">Terms & Conditions</Th>
+                                                                <Th className='border-r  border-r-slate-400/80'>Type</Th>
+                                                                <Th className='w-full '>Terms & Conditions</Th>
                                                             </Tr>
                                                         </THead>
                                                         <TBody>
                                                             {termsConditionsOptions.map(({ value: key }) => (
                                                                 <Tr key={key}>
-                                                                    <Td className="border-r border-r-slate-400/80 whitespace-nowrap">
-                                                                        <div className="flex items-center gap-2">
+                                                                    <Td className='border-r border-r-slate-400/80 whitespace-nowrap'>
+                                                                        <div className='flex items-center gap-2'>
                                                                             <span>{termsConditionsOptions.find((i) => i.value === key)?.label}</span>
                                                                         </div>
                                                                     </Td>
-                                                                    <Td className="py-0">
+                                                                    <Td className='py-0'>
                                                                         <Input
                                                                             disabled={!allowEdit}
-                                                                            size="xs"
+                                                                            size='xs'
                                                                             name={`termsConditions.${key}`}
-                                                                            className="border-none !p-0 ring-0 outline-0 m-0"
-                                                                            placeholder="Terms & Conditions"
+                                                                            className='border-none !p-0 ring-0 outline-0 m-0'
+                                                                            placeholder='Terms & Conditions'
                                                                             value={(values.termsConditions as any)[key]}
                                                                             onChange={(e) => setFieldValue(e.target.name, e.target.value)}
                                                                         />
@@ -955,9 +968,9 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[3]}>
-                                                <div className="h-[45vh] overflow-auto">
-                                                    <Table compact className="text-xs">
-                                                        <THead className="sticky top-0">
+                                                <div className='h-[45vh] overflow-auto'>
+                                                    <Table compact className='text-xs'>
+                                                        <THead className='sticky top-0'>
                                                             <Tr>
                                                                 <Th>#</Th>
                                                                 <Th>Vendor Name</Th>
@@ -982,15 +995,16 @@ export default function RFQ() {
                                                                     {values.status === 0 && (
                                                                         <Td>
                                                                             <Button
-                                                                                type="button"
-                                                                                variant="twoTone"
-                                                                                color="red"
-                                                                                size="xs"
-                                                                                icon={<MdClose className="size-4" />}
+                                                                                type='button'
+                                                                                variant='twoTone'
+                                                                                color='red'
+                                                                                size='xs'
+                                                                                icon={<MdClose className='size-4' />}
                                                                                 onClick={() =>
                                                                                     setValues((prev) => ({
                                                                                         ...prev,
-                                                                                        vendors: prev?.vendors?.filter((_i) => _i.vendorCode !== i.vendorCode) || [],
+                                                                                        vendors:
+                                                                                            prev?.vendors?.filter((_i) => _i.vendorCode !== i.vendorCode) || [],
                                                                                     }))
                                                                                 }
                                                                             />
@@ -1004,11 +1018,16 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[4]}>
-                                                <div className="flex gap-2 h-[45vh] overflow-auto">
-                                                    <AttachmentsTable id={values._id || 'uploaded'} info="Uploaded" isSmall={true} attachments={values.attachments || []} />
+                                                <div className='flex gap-2 h-[45vh] overflow-auto'>
+                                                    <AttachmentsTable
+                                                        id={values._id || 'uploaded'}
+                                                        info='Uploaded'
+                                                        isSmall={true}
+                                                        attachments={values.attachments || []}
+                                                    />
                                                     <AttachmentsTable
                                                         id={values._id || 'selected'}
-                                                        info="Selected"
+                                                        info='Selected'
                                                         isEditable={true}
                                                         isDisabled={!allowEdit}
                                                         attachments={values.attachments || []}
@@ -1018,7 +1037,7 @@ export default function RFQ() {
                                             </TabContent>
                                         </Tabs>
 
-                                        <div className="max-h-[35vh] overflow-auto mt-2">
+                                        <div className='max-h-[35vh] overflow-auto mt-2'>
                                             <RFQItemsTable isEditable={allowEdit} items={values.items || []} setFieldValue={setFieldValue} />
                                         </div>
                                     </FormContainer>
@@ -1055,35 +1074,19 @@ export default function RFQ() {
 
             <ConfirmDialog
                 isOpen={!!flags?.deleteDialog}
-                type="danger"
-                title="Delete RFQ"
-                confirmText="Delete"
-                cancelText="Cancel"
-                confirmButtonColor="red"
+                type='danger'
+                title='Delete RFQ'
+                confirmText='Delete'
+                cancelText='Cancel'
+                confirmButtonColor='red'
                 loading={flags?.deleting}
                 closable={!false}
                 onCancel={() => setFlags({})}
-                onConfirm={handleDelete}
-            >
+                onConfirm={handleDelete}>
                 Are you sure you want to delete this RFQ? This action cannot be undone.
             </ConfirmDialog>
         </div>
     )
-}
-
-// kept; not used currently
-function pad10(n: number) {
-    return String(n).padStart(10, '0')
-}
-
-const generateIndentNumber = (lastIndentNumber: string) => {
-    const raw = String(lastIndentNumber || '').trim()
-    const base = raw && raw.length >= 3 ? raw : 'IN00000000'
-    const numericStr = base.startsWith('IN') ? base.slice(2) : base.replace(/\D/g, '')
-    const numericPart = parseInt(numericStr || '0', 10)
-    const safe = Number.isFinite(numericPart) ? numericPart : 0
-    const incrementedNumber = (safe + 1).toString().padStart(8, '0')
-    return `IN${incrementedNumber}`
 }
 
 const IndentMetaDialog = ({
@@ -1105,43 +1108,7 @@ const IndentMetaDialog = ({
     indentTypeOptions: { label: string; value: string }[]
     indentTypeLoading?: boolean
 }) => {
-    const [lastIndentNumber, setLastIndentNumber] = useState<string>('')
-
     const loggedInName = useMemo(() => getLoggedInUserLabel(), [])
-
-    useEffect(() => {
-        if (!open) return
-
-        const fetchLastIndentNumber = async () => {
-            try {
-                const response = await ApiService.fetchData<any>({
-                    method: 'get',
-                    url: '/indent/last-indent-number',
-                })
-
-                const d = response?.data || {}
-                const last =
-                    d?.lastIndentNumber ||
-                    d?.lastindentNumber ||
-                    d?.lastindentnumber ||
-                    d?.lastIndentNO ||
-                    d?.lastIndentNo ||
-                    d?.lastIndent ||
-                    ''
-
-                setLastIndentNumber(String(last || '').trim())
-            } catch (error) {
-                console.error('Failed to fetch last indent number:', error)
-                setLastIndentNumber('')
-            }
-        }
-
-        fetchLastIndentNumber()
-    }, [open])
-
-    const generatedIndentNo = useMemo(() => {
-        return lastIndentNumber ? generateIndentNumber(lastIndentNumber) : 'IN00000001'
-    }, [lastIndentNumber])
 
     const toNum = (x: any) => {
         const n = Number(String(x ?? '').trim())
@@ -1155,47 +1122,54 @@ const IndentMetaDialog = ({
     const initial: IndentMetaValues = useMemo(() => {
         const defaultIndentType = indentTypeOptions?.[0]?.value || 'STANDARD'
 
-        const base: IndentMetaValues =
-            initialValues || {
-                company: (indent as any)?.company || '',
-                indentNumber: (indent as any)?.indentNumber || '',
-                indentDate: (indent as any)?.documentDate ? new Date((indent as any).documentDate) : new Date(),
-                lineNumber: (indent as any)?.lineNumber || '00001',
-                costCenter: (indent as any)?.costCenter || '',
-                requestedBy: (indent as any)?.requestedBy || '',
-                indentType: String((indent as any)?.documentType ?? '').trim() || defaultIndentType,
+        const base: IndentMetaValues = initialValues || {
+            company: (indent as any)?.company || '',
+            indentNumber: String((indent as any)?.indentNumber ?? '').trim() || '',
+            indentDate: (indent as any)?.documentDate ? new Date((indent as any).documentDate) : new Date(),
+            lineNumber: (() => {
+                const ln = digitsOnly5(String((indent as any)?.lineNumber ?? ''))
+                return ln ? pad5(parseInt(ln, 10) || 0) : ''
+            })(),
+            costCenter: (indent as any)?.costCenter || '',
+            requestedBy: (indent as any)?.requestedBy || '',
+            indentType: String((indent as any)?.documentType ?? '').trim() || defaultIndentType,
 
-                itemDescription: (indent as any)?.itemDescription || '',
-                techSpec: (indent as any)?.techSpec || '',
-                make: (indent as any)?.make || '',
-                documentNumber: (indent as any)?.documentNumber || '',
-                materialNumber: (indent as any)?.materialNumber || '',
-                storageLocation: (indent as any)?.storageLocation || '',
-                trackingNumber: (indent as any)?.trackingNumber || '',
+            itemDescription: (indent as any)?.itemDescription || '',
+            techSpec: (indent as any)?.techSpec || '',
+            make: (indent as any)?.make || '',
+            documentNumber: (indent as any)?.documentNumber || '',
+            materialNumber: (indent as any)?.materialNumber || '',
+            storageLocation: (indent as any)?.storageLocation || '',
+            trackingNumber: (indent as any)?.trackingNumber || '',
 
-                indentQty: String((indent as any)?.indentQty ?? '0'),
-                preRFQQty: String((indent as any)?.preRFQQty ?? '0'),
-                prePOQty: String((indent as any)?.prePOQty ?? '0'),
-            }
+            indentQty: String((indent as any)?.indentQty ?? '0'),
+            preRFQQty: String((indent as any)?.preRFQQty ?? '0'),
+            prePOQty: String((indent as any)?.prePOQty ?? '0'),
+        }
 
         return {
             ...base,
-            indentNumber: base.indentNumber?.trim() ? base.indentNumber : generatedIndentNo,
-            lineNumber: base.lineNumber?.trim() ? pad5(parseInt(digitsOnly5(base.lineNumber) || '0', 10) || 1) : '00001',
+            company: base.company?.trim() ? base.company : loggedInName,
+            // ✅ backend-generated: keep empty if missing
+            indentNumber: String(base.indentNumber ?? '').trim(),
+            lineNumber: (() => {
+                const ln = digitsOnly5(String(base.lineNumber ?? ''))
+                return ln ? pad5(parseInt(ln, 10) || 0) : ''
+            })(),
             requestedBy: base.requestedBy?.trim() ? base.requestedBy : loggedInName,
 
             indentQty: String((base as any).indentQty ?? '0'),
             preRFQQty: String((base as any).preRFQQty ?? '0'),
             prePOQty: String((base as any).prePOQty ?? '0'),
         }
-    }, [initialValues, indent, generatedIndentNo, loggedInName, indentTypeOptions])
+    }, [initialValues, indent, loggedInName, indentTypeOptions])
 
     return (
         <Dialog isOpen={open} onClose={onClose} width={760}>
-            <div className="flex max-h-[85vh] flex-col">
-                <div className="pb-3">
-                    <h6 className="text-xl font-semibold">Indent Details</h6>
-                    <div className="mt-1 text-xs opacity-80">
+            <div className='flex max-h-[85vh] flex-col'>
+                <div className='pb-3'>
+                    <h6 className='text-xl font-semibold'>Indent Details</h6>
+                    <div className='mt-1 text-xs opacity-80'>
                         <b>{indent?.itemCode}</b> — {(indent as any)?.itemDescription}
                     </div>
                 </div>
@@ -1207,14 +1181,16 @@ const IndentMetaDialog = ({
                         const errors: Partial<Record<keyof IndentMetaValues, any>> = {}
 
                         if (!v.company?.trim()) errors.company = 'Required'
-                        if (!v.indentNumber?.trim()) errors.indentNumber = 'Required'
+                        // ✅ indentNumber NOT required (server-generated)
                         if (!v.indentDate) errors.indentDate = 'Required'
                         if (!v.costCenter?.trim()) errors.costCenter = 'Required'
                         if (!v.requestedBy?.trim()) errors.requestedBy = 'Required'
                         if (!v.indentType?.trim()) errors.indentType = 'Required'
 
+                        // ✅ lineNumber NOT required (server-generated)
+                        // If present, must be 5 digits (existing SAP values etc.)
                         const ln = digitsOnly5(v.lineNumber)
-                        if (!ln || ln.length !== 5) errors.lineNumber = 'Line number must be 5 digits'
+                        if (v.lineNumber?.trim() && (!ln || ln.length !== 5)) errors.lineNumber = 'Line number must be 5 digits'
 
                         const iq = toNum(v.indentQty)
                         const rq = toNum(v.preRFQQty)
@@ -1230,8 +1206,7 @@ const IndentMetaDialog = ({
 
                         return errors
                     }}
-                    onSubmit={onSubmit}
-                >
+                    onSubmit={onSubmit}>
                     {({ values, setFieldValue, errors, touched }) => {
                         const computedBalance = Math.max(0, toNum0Local(values.indentQty) - toNum0Local(values.preRFQQty) - toNum0Local(values.prePOQty))
 
@@ -1240,80 +1215,74 @@ const IndentMetaDialog = ({
                         const safeOpts = has || !values.indentType ? opts : [{ label: `${values.indentType} (unknown)`, value: values.indentType }, ...opts]
 
                         return (
-                            <Form className="min-h-0 flex flex-col">
-                                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                            <Form className='min-h-0 flex flex-col'>
+                                <div className='flex-1 min-h-0 overflow-y-auto pr-1'>
                                     <FormContainer>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
                                             <FormItem
                                                 asterisk
-                                                label="Company"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
+                                                label='Company'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5'
                                                 invalid={!!(touched.company && errors.company)}
-                                                errorMessage={errors.company}
-                                            >
-                                                <Input size="sm" value={values.company} onChange={(e) => setFieldValue('company', e.target.value)} />
-                                            </FormItem>
-
-                                            <FormItem
-                                                asterisk
-                                                label="Indent Number"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
-                                                invalid={!!(touched.indentNumber && errors.indentNumber)}
-                                                errorMessage={errors.indentNumber}
-                                            >
-                                                <Input size="sm" value={values.indentNumber} onChange={(e) => setFieldValue('indentNumber', e.target.value)} />
-                                            </FormItem>
-
-                                            <FormItem
-                                                asterisk
-                                                label="Indent Date"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
-                                                invalid={!!(touched.indentDate && errors.indentDate)}
-                                                errorMessage={errors.indentDate}
-                                            >
-                                                <DatePicker size="sm" inputFormat="DD/MM/YYYY" value={values.indentDate} onChange={(d) => setFieldValue('indentDate', d)} />
-                                            </FormItem>
-
-                                            <FormItem
-                                                asterisk
-                                                label="Line Number"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
-                                                invalid={!!(touched.lineNumber && errors.lineNumber)}
-                                                errorMessage={errors.lineNumber}
-                                            >
+                                                errorMessage={errors.company}>
                                                 <Input
-                                                    size="sm"
-                                                    value={values.lineNumber}
-                                                    onChange={(e) => setFieldValue('lineNumber', digitsOnly5(e.target.value))}
-                                                    onBlur={() => setFieldValue('lineNumber', pad5(parseInt(digitsOnly5(values.lineNumber) || '0', 10) || 0))}
+                                                    size='sm'
+                                                    disabled={Boolean(loggedInName)}
+                                                    value={values.company}
+                                                    onChange={(e) => setFieldValue('company', e.target.value)}
                                                 />
                                             </FormItem>
 
-                                            <FormItem
-                                                asterisk
-                                                label="Cost Centre"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
-                                                invalid={!!(touched.costCenter && errors.costCenter)}
-                                                errorMessage={errors.costCenter}
-                                            >
-                                                <Input size="sm" value={values.costCenter} onChange={(e) => setFieldValue('costCenter', e.target.value)} />
+                                            {/* ✅ readonly, backend-generated */}
+                                            <FormItem label='Indent Number (auto)' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Input size='sm' disabled value={values.indentNumber || ''} placeholder='Auto-generated by server' />
                                             </FormItem>
 
                                             <FormItem
                                                 asterisk
-                                                label="Requested By"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5"
+                                                label='Indent Date'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5'
+                                                invalid={!!(touched.indentDate && errors.indentDate)}
+                                                errorMessage={errors.indentDate}>
+                                                <DatePicker
+                                                    size='sm'
+                                                    inputFormat='DD/MM/YYYY'
+                                                    value={values.indentDate}
+                                                    onChange={(d) => setFieldValue('indentDate', d)}
+                                                />
+                                            </FormItem>
+
+                                            {/* ✅ readonly, backend-generated */}
+                                            <FormItem
+                                                label='Line Number (auto)'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5'
+                                                invalid={!!(touched.lineNumber && errors.lineNumber)}
+                                                errorMessage={errors.lineNumber}>
+                                                <Input size='sm' disabled value={values.lineNumber || ''} placeholder='Auto-generated by server' />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label='Cost Centre'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5'
+                                                invalid={!!(touched.costCenter && errors.costCenter)}
+                                                errorMessage={errors.costCenter}>
+                                                <Input size='sm' value={values.costCenter} onChange={(e) => setFieldValue('costCenter', e.target.value)} />
+                                            </FormItem>
+
+                                            <FormItem
+                                                asterisk
+                                                label='Requested By'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5'
                                                 invalid={!!(touched.requestedBy && errors.requestedBy)}
-                                                errorMessage={errors.requestedBy}
-                                            >
+                                                errorMessage={errors.requestedBy}>
                                                 <Input
-                                                    size="sm"
+                                                    size='sm'
                                                     disabled={Boolean(loggedInName)}
                                                     value={values.requestedBy}
                                                     onChange={(e) => setFieldValue('requestedBy', e.target.value)}
@@ -1322,81 +1291,104 @@ const IndentMetaDialog = ({
 
                                             <FormItem
                                                 asterisk
-                                                label="Indent Type"
-                                                labelClass="text-xs !mb-1"
-                                                className="mb-2.5 md:col-span-2"
+                                                label='Indent Type'
+                                                labelClass='text-xs !mb-1'
+                                                className='mb-2.5 md:col-span-2'
                                                 invalid={!!(touched.indentType && errors.indentType)}
-                                                errorMessage={errors.indentType}
-                                            >
-                                                <Select size="sm" options={safeOpts} value={safeOpts.find((o) => o.value === values.indentType)} onChange={(opt) => setFieldValue('indentType', opt?.value)} />
-                                                {indentTypeLoading ? <div className="mt-1 text-[11px] opacity-70">Loading indent types…</div> : null}
+                                                errorMessage={errors.indentType}>
+                                                <Select
+                                                    size='sm'
+                                                    options={safeOpts}
+                                                    value={safeOpts.find((o) => o.value === values.indentType)}
+                                                    onChange={(opt) => setFieldValue('indentType', opt?.value)}
+                                                />
+                                                {indentTypeLoading ? <div className='mt-1 text-[11px] opacity-70'>Loading indent types…</div> : null}
                                             </FormItem>
 
-                                            <FormItem label="Item Description" labelClass="text-xs !mb-1" className="mb-2.5">
-                                                <Input size="sm" value={values.itemDescription} onChange={(e) => setFieldValue('itemDescription', e.target.value)} />
+                                            <FormItem label='Item Description' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Input
+                                                    size='sm'
+                                                    value={values.itemDescription}
+                                                    onChange={(e) => setFieldValue('itemDescription', e.target.value)}
+                                                />
                                             </FormItem>
 
-                                            <FormItem label="Tech Specification" labelClass="text-xs !mb-1" className="mb-2.5">
-                                                <Input size="sm" value={values.techSpec} onChange={(e) => setFieldValue('techSpec', e.target.value)} />
+                                            <FormItem label='Tech Specification' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Input size='sm' value={values.techSpec} onChange={(e) => setFieldValue('techSpec', e.target.value)} />
                                             </FormItem>
 
-                                            <FormItem label="Make" labelClass="text-xs !mb-1" className="mb-2.5">
-                                                <Input size="sm" value={values.make} onChange={(e) => setFieldValue('make', e.target.value)} />
+                                            <FormItem label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Input size='sm' value={values.make} onChange={(e) => setFieldValue('make', e.target.value)} />
                                             </FormItem>
 
-                                            <div className="md:col-span-2 mt-1 rounded-lg border bg-gray-50 p-3">
-                                                <div className="text-sm font-semibold mb-2">Quantities</div>
+                                            <div className='md:col-span-2 mt-1 rounded-lg border bg-gray-50 p-3'>
+                                                <div className='text-sm font-semibold mb-2'>Quantities</div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                                <div className='grid grid-cols-1 md:grid-cols-4 gap-2'>
                                                     <FormItem
                                                         asterisk
-                                                        label="Indent Qty"
-                                                        labelClass="text-xs !mb-1"
-                                                        className="mb-0"
+                                                        label='Indent Qty'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-0'
                                                         invalid={!!(touched.indentQty && (errors as any).indentQty)}
-                                                        errorMessage={(errors as any).indentQty}
-                                                    >
-                                                        <Input size="sm" type="number" inputMode="decimal" value={values.indentQty} onChange={(e) => setFieldValue('indentQty', e.target.value)} />
+                                                        errorMessage={(errors as any).indentQty}>
+                                                        <Input
+                                                            size='sm'
+                                                            type='number'
+                                                            inputMode='decimal'
+                                                            value={values.indentQty}
+                                                            onChange={(e) => setFieldValue('indentQty', e.target.value)}
+                                                        />
                                                     </FormItem>
 
                                                     <FormItem
-                                                        label="Pre RFQ Qty"
-                                                        labelClass="text-xs !mb-1"
-                                                        className="mb-0"
+                                                        label='Pre RFQ Qty'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-0'
                                                         invalid={!!(touched.preRFQQty && (errors as any).preRFQQty)}
-                                                        errorMessage={(errors as any).preRFQQty}
-                                                    >
-                                                        <Input size="sm" type="number" inputMode="decimal" value={values.preRFQQty} onChange={(e) => setFieldValue('preRFQQty', e.target.value)} />
+                                                        errorMessage={(errors as any).preRFQQty}>
+                                                        <Input
+                                                            size='sm'
+                                                            type='number'
+                                                            inputMode='decimal'
+                                                            value={values.preRFQQty}
+                                                            onChange={(e) => setFieldValue('preRFQQty', e.target.value)}
+                                                        />
                                                     </FormItem>
 
                                                     <FormItem
-                                                        label="Pre PO Qty"
-                                                        labelClass="text-xs !mb-1"
-                                                        className="mb-0"
+                                                        label='Pre PO Qty'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-0'
                                                         invalid={!!(touched.prePOQty && (errors as any).prePOQty)}
-                                                        errorMessage={(errors as any).prePOQty}
-                                                    >
-                                                        <Input size="sm" type="number" inputMode="decimal" value={values.prePOQty} onChange={(e) => setFieldValue('prePOQty', e.target.value)} />
+                                                        errorMessage={(errors as any).prePOQty}>
+                                                        <Input
+                                                            size='sm'
+                                                            type='number'
+                                                            inputMode='decimal'
+                                                            value={values.prePOQty}
+                                                            onChange={(e) => setFieldValue('prePOQty', e.target.value)}
+                                                        />
                                                     </FormItem>
 
-                                                    <FormItem label="Balance Qty (auto)" labelClass="text-xs !mb-1" className="mb-0">
-                                                        <Input size="sm" disabled value={String(computedBalance)} />
+                                                    <FormItem label='Balance Qty (auto)' labelClass='text-xs !mb-1' className='mb-0'>
+                                                        <Input size='sm' disabled value={String(computedBalance)} />
                                                     </FormItem>
                                                 </div>
 
-                                                <div className="mt-2 text-[11px] opacity-70">Balance = Indent Qty − Pre RFQ Qty − Pre PO Qty (min 0)</div>
+                                                <div className='mt-2 text-[11px] opacity-70'>Balance = Indent Qty − Pre RFQ Qty − Pre PO Qty (min 0)</div>
                                             </div>
                                         </div>
 
-                                        <div className="h-2" />
+                                        <div className='h-2' />
                                     </FormContainer>
                                 </div>
 
-                                <div className="sticky bottom-0 border-t bg-white/95 py-3 backdrop-blur flex justify-end gap-2">
-                                    <Button type="button" size="sm" variant="plain" disabled={loading} onClick={onClose}>
+                                <div className='sticky bottom-0 border-t bg-white/95 py-3 backdrop-blur flex justify-end gap-2'>
+                                    <Button type='button' size='sm' variant='plain' disabled={loading} onClick={onClose}>
                                         Cancel
                                     </Button>
-                                    <Button type="submit" size="sm" variant="solid" disabled={loading}>
+                                    <Button type='submit' size='sm' variant='solid' disabled={loading}>
                                         {loading ? <Spinner size={16} /> : 'Save'}
                                     </Button>
                                 </div>

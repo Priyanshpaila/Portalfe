@@ -2,9 +2,10 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { SLICE_BASE_NAME } from './constants'
 import { UserType } from '@/@types/app'
 
-export type UserState = Omit<UserType, 'role' | 'password' | 'status' | '_id'> & {
+export type UserState = Omit<UserType,  'password' | 'status' | '_id'> & {
     authority?: string[]
     permissions?: string[]
+    role?: string
 }
 
 const initialState: UserState = {
@@ -23,6 +24,7 @@ const userSlice = createSlice({
         setUser(state, action: PayloadAction<UserState>) {
             state.name = action.payload?.name
             state.username = action.payload?.username
+            state.role = action.payload?.role
             state.vendorCode = action.payload?.vendorCode
             state.email = action.payload?.email
             state.passwordStatus = action.payload?.passwordStatus

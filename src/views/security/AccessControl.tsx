@@ -399,7 +399,7 @@ const AddUserDialog: React.FC<UserDialogProps> = ({ open, onClose, onSubmit, rol
                     <FormContainer>
                         <div>
                             <div className='flex gap-2 items-end'>
-                                <FormItem asterisk label='Name' labelClass='text-xs !mb-1' className='mb-2.5 flex-1'>
+                                <FormItem asterisk label='Company Name' labelClass='text-xs !mb-1' className='mb-2.5 flex-1'>
                                     <Field
                                         name='name'
                                         as={Input}

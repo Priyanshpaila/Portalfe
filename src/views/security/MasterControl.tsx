@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Button, FormContainer, FormItem, Input, Spinner, Table } from '@/components/ui'
 import ApiService from '@/services/ApiService'
-import { Field, Form, Formik, FormikHelpers, FieldArray } from 'formik'
+import { Field, Form, Formik, FormikHelpers, FieldArray, useFormikContext } from 'formik'
 import { showAlert, showError } from '@/utils/hoc/showAlert'
 import { MdEdit, MdSave, MdClose } from 'react-icons/md'
 
 type ActiveTab = 'indent' | 'vendor'
 
+/** ✅ Item Master: no itemCode in UI (backend generates) */
 type ItemMasterFormValues = {
-    itemCode: string
     itemDescription: string
     techSpec: string
     make: string
@@ -23,6 +23,7 @@ type VendorContactPerson = {
     callerPhoneNumber?: string
 }
 
+/** ✅ Vendor: companyCode removed (backend generates CN00001...) */
 type VendorFormValues = {
     countryKey?: string
     name: string
@@ -43,7 +44,6 @@ type VendorFormValues = {
     gstin?: string
     orgName1?: string
     orgName2?: string
-    companyCode?: string
     cityPostalCode?: string
     street?: string
     street2?: string
@@ -78,11 +78,9 @@ const ADD_VENDOR_URL = '/vendor'
 // ✅ Indent Types APIs
 const INDENT_TYPE_CREATE_URL = '/indent-type'
 const INDENT_TYPE_LIST_URL = '/indent-type/list'
-// ✅ Update endpoint
-const indentTypeUpdateUrl = (id: string) => `/indent-type/${id}` // change if your route is different
+const indentTypeUpdateUrl = (id: string) => `/indent-type/${id}`
 
 const initialIndentValues: ItemMasterFormValues = {
-    itemCode: '',
     itemDescription: '',
     techSpec: '',
     make: '',
@@ -107,7 +105,6 @@ const initialVendorValues: VendorFormValues = {
     panNumber: '',
     gstin: '',
     msme: '',
-    companyCode: '',
     region: '',
     languageKey: '',
     contactPerson: [
@@ -166,6 +163,125 @@ function normalizeIndentTypeCode(raw: any) {
 
 const { Tr, Th, Td, THead, TBody } = Table
 
+/** ✅ Postal PIN Lookup (Vendor Form) */
+function VendorPostalLookupHint() {
+    const { values, setFieldValue } = useFormikContext<VendorFormValues>()
+
+    const [pinStatus, setPinStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+    const [pinStatusMsg, setPinStatusMsg] = useState<string>('')
+
+    const lastPinRef = useRef<string | null>(null)
+    const setFieldValueRef = useRef(setFieldValue)
+
+    useEffect(() => {
+        setFieldValueRef.current = setFieldValue
+    }, [setFieldValue])
+
+    useEffect(() => {
+        const raw = String(values.postalCode ?? '')
+        const pin = raw.replace(/\D/g, '').slice(0, 6)
+
+        // keep the form value clean (optional but nice)
+        if (raw !== pin) setFieldValueRef.current('postalCode', pin)
+
+        if (pin.length !== 6) {
+            setPinStatus('idle')
+            setPinStatusMsg('')
+            lastPinRef.current = null
+            return
+        }
+
+        // avoid refetch if same pin already fetched successfully
+        if (lastPinRef.current === pin && pinStatus === 'success') return
+
+        const ctrl = new AbortController()
+        const timeout = setTimeout(async () => {
+            setPinStatus('loading')
+            setPinStatusMsg('Looking up city & district…')
+
+            // clear stale values while loading (optional)
+            setFieldValueRef.current('city', '')
+            setFieldValueRef.current('district', '')
+
+            const setSuccess = (city: string, district: string, state: string) => {
+                if (city) setFieldValueRef.current('city', city)
+                if (district) setFieldValueRef.current('district', district)
+                // ✅ use region for State (if you want)
+                if (state) setFieldValueRef.current('region', state)
+
+                setPinStatus('success')
+                const line = [city, district, state].filter(Boolean).join(', ')
+                setPinStatusMsg(line || 'Found')
+                lastPinRef.current = pin
+            }
+
+            try {
+                // 1) India Postal API
+                try {
+                    const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, {
+                        signal: ctrl.signal,
+                        mode: 'cors',
+                    })
+                    const json = await res.json()
+                    const d = Array.isArray(json) ? json[0] : null
+
+                    if (d?.Status === 'Success' && d?.PostOffice?.length) {
+                        const po = d.PostOffice[0]
+
+                        // ✅ map for your vendor form
+                        const district = po?.District || ''
+                        const city = po?.Block || po?.Division || po?.Name || district || ''
+                        const state = po?.State || ''
+
+                        setSuccess(city, district, state)
+                        return
+                    }
+
+                    throw new Error('Postal API returned no result')
+                } catch {
+                    // 2) Fallback: Zippopotam
+                    const res2 = await fetch(`https://api.zippopotam.us/IN/${pin}`, {
+                        signal: ctrl.signal,
+                        mode: 'cors',
+                    })
+                    if (!res2.ok) throw new Error('Zippopotam not ok')
+                    const j2 = await res2.json()
+                    const place = j2?.places?.[0]
+                    const city = place?.['place name'] || ''
+                    const state = place?.state || ''
+                    setSuccess(city, city, state) // district unknown here → set same as city
+                }
+            } catch (e: any) {
+                if (e?.name === 'AbortError') return
+                setPinStatus('error')
+                setPinStatusMsg('Could not fetch details. Please fill manually.')
+                lastPinRef.current = null
+            }
+        }, 350)
+
+        return () => {
+            ctrl.abort()
+            clearTimeout(timeout)
+        }
+        // only depend on pincode
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [values.postalCode])
+
+    if (pinStatus === 'idle') return null
+
+    return (
+        <div className='mt-1 text-[11px]'>
+            {pinStatus === 'loading' ? (
+                <span className='opacity-70'>{pinStatusMsg}</span>
+            ) : pinStatus === 'success' ? (
+                <span className='text-emerald-700'>{pinStatusMsg}</span>
+            ) : (
+                <span className='text-red-600'>{pinStatusMsg}</span>
+            )}
+        </div>
+    )
+}
+
 export default function MasterControl() {
     const [tab, setTab] = useState<ActiveTab>('indent')
 
@@ -177,7 +293,6 @@ export default function MasterControl() {
         indentTypeUpdateId?: string | null
     }>({})
 
-    const [lastItemCode, setLastItemCode] = useState('')
     const [indentTypes, setIndentTypes] = useState<IndentTypeRow[]>([])
 
     // ✅ inline edit states
@@ -186,33 +301,11 @@ export default function MasterControl() {
 
     const tabs = useMemo(
         () => [
-            { key: 'indent' as const, label: 'Indent Master' },
+            { key: 'indent' as const, label: 'Material Master' },
             { key: 'vendor' as const, label: 'Vendor Master' },
         ],
         [],
     )
-
-    useEffect(() => {
-        const fetchLastItemCode = async () => {
-            try {
-                const response = await ApiService.fetchData<{ lastItemCode: string }>({
-                    method: 'get',
-                    url: '/indent/last-item-code',
-                })
-                setLastItemCode(response.data.lastItemCode)
-            } catch (error) {
-                console.error('Failed to fetch last item code:', error)
-            }
-        }
-
-        fetchLastItemCode()
-    }, [])
-
-    const generateItemCode = useCallback(() => {
-        const numericPart = lastItemCode?.slice(2) || '00000000'
-        const incrementedNumber = (parseInt(numericPart, 10) + 1).toString().padStart(8, '0')
-        return `IC${incrementedNumber}`
-    }, [lastItemCode])
 
     const fetchIndentTypes = useCallback(async () => {
         setLoading((p) => ({ ...p, indentTypeFetch: true }))
@@ -233,50 +326,34 @@ export default function MasterControl() {
         fetchIndentTypes()
     }, [fetchIndentTypes])
 
-    const handleCreateItem = useCallback(
-        async (values: ItemMasterFormValues, { resetForm }: FormikHelpers<ItemMasterFormValues>) => {
-            setLoading((p) => ({ ...p, item: true }))
-            try {
-                const itemCode = values.itemCode?.trim() || generateItemCode()
-
-                const payload = {
-                    itemCode,
-                    itemDescription: values.itemDescription?.trim(),
-                    techSpec: values.techSpec?.trim(),
-                    make: values.make?.trim(),
-                    unitOfMeasure: values.unitOfMeasure?.trim(),
-                }
-
-                if (!payload.itemDescription) throw new Error('Item description is required')
-                if (!payload.unitOfMeasure) throw new Error('Unit is required')
-
-                await ApiService.fetchData({
-                    method: 'post',
-                    url: ADD_ITEM_URL,
-                    data: payload,
-                })
-
-                showAlert('Item added successfully.')
-                resetForm()
-
-                // refresh last item code
-                try {
-                    const response = await ApiService.fetchData<{ lastItemCode: string }>({
-                        method: 'get',
-                        url: '/indent/last-item-code',
-                    })
-                    setLastItemCode(response.data.lastItemCode)
-                } catch (e) {
-                    console.error('Failed to refresh last item code:', e)
-                }
-            } catch (err: any) {
-                showError(err?.response?.data?.message || err?.message || 'Failed to add item.')
-            } finally {
-                setLoading((p) => ({ ...p, item: false }))
+    /** ✅ Item create: no itemCode in payload (backend must generate) */
+    const handleCreateItem = useCallback(async (values: ItemMasterFormValues, { resetForm }: FormikHelpers<ItemMasterFormValues>) => {
+        setLoading((p) => ({ ...p, item: true }))
+        try {
+            const payload = {
+                itemDescription: values.itemDescription?.trim(),
+                techSpec: values.techSpec?.trim(),
+                make: values.make?.trim(),
+                unitOfMeasure: values.unitOfMeasure?.trim(),
             }
-        },
-        [generateItemCode],
-    )
+
+            if (!payload.itemDescription) throw new Error('Item description is required')
+            if (!payload.unitOfMeasure) throw new Error('Unit is required')
+
+            await ApiService.fetchData({
+                method: 'post',
+                url: ADD_ITEM_URL,
+                data: payload,
+            })
+
+            showAlert('Item added successfully.')
+            resetForm()
+        } catch (err: any) {
+            showError(err?.response?.data?.message || err?.message || 'Failed to add item.')
+        } finally {
+            setLoading((p) => ({ ...p, item: false }))
+        }
+    }, [])
 
     const handleCreateIndentType = useCallback(
         async (values: IndentTypeFormValues, { resetForm }: FormikHelpers<IndentTypeFormValues>) => {
@@ -369,9 +446,10 @@ export default function MasterControl() {
             .toLowerCase()
 
         if (!s) return ''
-        return s.replace(/\b\w/g, (c) => c.toUpperCase()) // Title Case
+        return s.replace(/\b\w/g, (c) => c.toUpperCase())
     }
 
+    /** ✅ Vendor create: companyCode removed from payload (backend generates CN00001...) */
     const handleCreateVendor = useCallback(async (values: VendorFormValues, { resetForm }: FormikHelpers<VendorFormValues>) => {
         setLoading((p) => ({ ...p, vendor: true }))
         try {
@@ -386,7 +464,7 @@ export default function MasterControl() {
                 panNumber: values.panNumber?.trim() || undefined,
                 gstin: values.gstin?.trim() || undefined,
                 msme: values.msme?.trim() || undefined,
-                companyCode: values.companyCode?.trim() || undefined,
+                // ✅ companyCode removed
                 region: values.region?.trim() || undefined,
                 languageKey: values.languageKey?.trim() || undefined,
                 contactPerson: (values.contactPerson || [])
@@ -446,7 +524,7 @@ export default function MasterControl() {
             {tab === 'indent' && (
                 <Card>
                     <CardBody>
-                        <SectionHeader title='Add Item' subtitle='Item Code is auto-generated based on the last code.' right={<Badge>ICxxxxxxxx</Badge>} />
+                        <SectionHeader title='Add Item' subtitle='Item Code is generated by backend.' right={<Badge>Auto itemCode</Badge>} />
 
                         <div className='mt-5'>
                             <Formik
@@ -457,16 +535,13 @@ export default function MasterControl() {
                                     const errors: Partial<Record<keyof ItemMasterFormValues, string>> = {}
                                     if (!values.itemDescription?.trim()) errors.itemDescription = 'Required'
                                     if (!values.unitOfMeasure?.trim()) errors.unitOfMeasure = 'Required'
+                                    if (!values.make?.trim()) errors.make = 'Required'
                                     return errors
                                 }}>
                                 {({ values, setFieldValue, errors, touched, isValid, dirty }) => (
                                     <Form>
                                         <FormContainer>
                                             <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                                                <FormItem label='Item Code' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Input size='sm' disabled value={values.itemCode || generateItemCode()} />
-                                                </FormItem>
-
                                                 <FormItem
                                                     asterisk
                                                     label='Unit'
@@ -509,8 +584,9 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem asterisk label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
                                                     <Field
+                                                        required
                                                         name='make'
                                                         as={Input}
                                                         size='sm'
@@ -531,7 +607,7 @@ export default function MasterControl() {
                             </Formik>
                         </div>
 
-                        {/* ✅ INDENT TYPE CREATION + UPDATE */}
+                        {/* INDENT TYPE CREATION + UPDATE (unchanged) */}
                         <div className='mt-10 border-t border-gray-200 pt-6'>
                             <SectionHeader
                                 title='Indent Types'
@@ -555,20 +631,14 @@ export default function MasterControl() {
                                     <Formik
                                         initialValues={initialIndentTypeValues}
                                         onSubmit={(vals, helpers) => {
-                                            // ✅ hard safety: if label blank, auto-fill from code at submit time
                                             const safeCode = normalizeIndentTypeCode(vals.code)
                                             const safeLabel = String(vals.label || '').trim() || codeToLabel(safeCode)
-
                                             return handleCreateIndentType({ ...vals, code: safeCode, label: safeLabel }, helpers)
                                         }}
                                         validate={(v) => {
                                             const errors: Partial<Record<keyof IndentTypeFormValues, string>> = {}
-
                                             const codeNorm = normalizeIndentTypeCode(v.code)
                                             if (!codeNorm) errors.code = 'Required'
-
-                                            // ✅ label not strictly required now because we auto-fill
-                                            // But if user cleared it manually, we still allow submit because submit will auto-fill
                                             return errors
                                         }}>
                                         {({ values, setFieldValue, errors, touched, isValid, dirty }) => {
@@ -590,12 +660,8 @@ export default function MasterControl() {
                                                                     placeholder='STANDARD'
                                                                     onChange={(e) => {
                                                                         const raw = e.target.value
-
-                                                                        // 1) keep code in sync (raw while typing)
                                                                         setFieldValue('code', raw)
 
-                                                                        // 2) auto-fill label live ONLY if label is empty
-                                                                        //    or label currently matches the previous auto generated label
                                                                         const currentLabel = String(values.label || '').trim()
                                                                         if (
                                                                             !currentLabel ||
@@ -608,7 +674,6 @@ export default function MasterControl() {
                                                                         const norm = normalizeIndentTypeCode(values.code)
                                                                         setFieldValue('code', norm)
 
-                                                                        // ✅ on blur, ensure label is not empty
                                                                         const currentLabel = String(values.label || '').trim()
                                                                         if (!currentLabel) setFieldValue('label', codeToLabel(norm))
                                                                     }}
@@ -625,10 +690,7 @@ export default function MasterControl() {
                                                                     size='sm'
                                                                     value={values.label}
                                                                     placeholder='Standard'
-                                                                    onChange={(e) => {
-                                                                        // ✅ user can still edit label if they want
-                                                                        setFieldValue('label', e.target.value)
-                                                                    }}
+                                                                    onChange={(e) => setFieldValue('label', e.target.value)}
                                                                 />
                                                                 <div className='mt-1 text-[11px] opacity-60'>
                                                                     Label auto-fills from code. You can edit if needed.
@@ -850,8 +912,8 @@ export default function MasterControl() {
                     <CardBody>
                         <SectionHeader
                             title='Create Vendor'
-                            subtitle='Vendor Code is auto-generated by backend (VNDxxxx).'
-                            right={<Badge>Auto vendorCode</Badge>}
+                            subtitle='Vendor Code + Company Code are generated by backend.'
+                            right={<Badge>Auto codes</Badge>}
                         />
 
                         <div className='mt-5'>
@@ -868,10 +930,6 @@ export default function MasterControl() {
                                     <Form>
                                         <FormContainer>
                                             <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                                                <FormItem label='Vendor Code' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Input size='sm' disabled value='Auto-generated (VNDxxxx)' />
-                                                </FormItem>
-
                                                 <FormItem
                                                     asterisk
                                                     label='Vendor Name'
@@ -898,13 +956,23 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Company Code' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem label='Postal Code' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={values.postalCode || ''}
+                                                        placeholder='6-digit PIN'
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('postalCode', e.target.value)}
+                                                    />
+                                                    <VendorPostalLookupHint />
+                                                </FormItem>
+
+                                                <FormItem label='Street' labelClass='text-xs !mb-1' className='mb-2.5 md:col-span-2'>
                                                     <Field
-                                                        name='companyCode'
+                                                        name='street'
                                                         as={Input}
                                                         size='sm'
-                                                        value={values.companyCode}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('companyCode', e.target.value)}
+                                                        value={values.street}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('street', e.target.value)}
                                                     />
                                                 </FormItem>
 
@@ -928,57 +996,7 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Street' labelClass='text-xs !mb-1' className='mb-2.5 md:col-span-2'>
-                                                    <Field
-                                                        name='street'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.street}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('street', e.target.value)}
-                                                    />
-                                                </FormItem>
-
-                                                <FormItem label='Postal Code' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        name='postalCode'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.postalCode}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('postalCode', e.target.value)}
-                                                    />
-                                                </FormItem>
-
-                                                <FormItem label='PAN Number' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        name='panNumber'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.panNumber}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('panNumber', e.target.value)}
-                                                    />
-                                                </FormItem>
-
-                                                <FormItem label='GSTIN' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        name='gstin'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.gstin}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('gstin', e.target.value)}
-                                                    />
-                                                </FormItem>
-
-                                                <FormItem label='MSME' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        name='msme'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.msme}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('msme', e.target.value)}
-                                                    />
-                                                </FormItem>
-
-                                                <FormItem label='Region' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem label='Region (State)' labelClass='text-xs !mb-1' className='mb-2.5'>
                                                     <Field
                                                         name='region'
                                                         as={Input}
@@ -995,6 +1013,38 @@ export default function MasterControl() {
                                                         size='sm'
                                                         value={values.languageKey}
                                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('languageKey', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem asterisk label='PAN Number' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                    <Field
+                                                        name='panNumber'
+                                                        as={Input}
+                                                        size='sm'
+                                                        value={values.panNumber}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('panNumber', e.target.value)}
+                                                        required
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem asterisk label='GSTIN' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                    <Field
+                                                        name='gstin'
+                                                        as={Input}
+                                                        size='sm'
+                                                        value={values.gstin}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('gstin', e.target.value)}
+                                                        required
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='MSME' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                    <Field
+                                                        name='msme'
+                                                        as={Input}
+                                                        size='sm'
+                                                        value={values.msme}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('msme', e.target.value)}
                                                     />
                                                 </FormItem>
                                             </div>

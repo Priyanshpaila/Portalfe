@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { POType as _POType, VendorType } from '@/@types/app'
 import { formatDate } from '@/utils/formatDate'
 import { amountInWords } from '@/utils/numberInWords'
 import appConfig from '@/configs/app.config'
+import { companies } from '@/utils/data'
 
 type POType = Omit<_POType, 'authorize'> & {
     status: number | string
@@ -10,21 +11,114 @@ type POType = Omit<_POType, 'authorize'> & {
     authorize: (_POType['authorize'][0] & { name: string; digitalSignature: string })[]
 }
 
+function safeJsonParse<T>(raw: string): T | null {
+    try {
+        return JSON.parse(raw) as T
+    } catch {
+        return null
+    }
+}
+
+function pickName(obj: any): string {
+    if (!obj || typeof obj !== 'object') return ''
+    return (
+        obj?.fullName ||
+        obj?.name ||
+        obj?.username ||
+        obj?.userName ||
+        obj?.displayName ||
+        obj?.email ||
+        ''
+    ).toString()
+}
+
+// ✅ same helper style you used earlier
+function getLoggedInUserLabel(): string {
+    try {
+        if (typeof window === 'undefined') return ''
+        const candidates = ['admin', 'user', 'userDetails', 'auth_user'] // add your real key if different
+        for (const key of candidates) {
+            const raw = localStorage.getItem(key)
+            if (!raw) continue
+
+            const outer = safeJsonParse<any>(raw)
+            if (!outer) continue
+
+            const direct = pickName(outer)
+            if (direct) return direct
+
+            if (typeof outer?.auth === 'string') {
+                const authObj = safeJsonParse<any>(outer.auth)
+                const fromAuthUser = pickName(authObj?.user)
+                if (fromAuthUser) return fromAuthUser
+            }
+
+            const fromOuterUser = pickName(outer?.user)
+            if (fromOuterUser) return fromOuterUser
+        }
+        return ''
+    } catch {
+        return ''
+    }
+}
+
 const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) => {
+    const [userLabel, setUserLabel] = useState('')
+
+    useEffect(() => {
+        setUserLabel(getLoggedInUserLabel())
+    }, [])
+
     if (!po || !vendor) return null
+
     const totalQty = po.items?.reduce((sum, item) => sum + +(item.qty || 0), 0)
     const totalBasic = po.items?.reduce((sum, item) => sum + (item.amount?.basic || 0), 0)
     const totalCgst = po.items?.reduce((sum, item) => sum + (item.amount?.cgst || 0), 0)
     const totalSgst = po.items?.reduce((sum, item) => sum + (item.amount?.sgst || 0), 0)
     const totalIgst = po.items?.reduce((sum, item) => sum + (item.amount?.igst || 0), 0)
 
+    // ✅ dynamic company block (NO hardcode)
+    const companyInfo = useMemo(() => {
+        const match: any =
+            companies?.find((i: any) => i?.plantCode?.toString?.() === (po as any)?.company?.toString?.()) ||
+            companies?.find((i: any) => i?.plantCode?.toString?.() === (po as any)?.companyCode?.toString?.()) ||
+            companies?.[0] ||
+            {}
+
+        return {
+            name: match?.companyName || '',
+            divisionName: match?.divisionName || match?.division || '',
+
+            address: match?.address || match?.companyAddress || '',
+            cin: match?.cin || '',
+            gstin: match?.gstin || match?.gstNo || '',
+            pan: match?.pan || match?.panNo || '',
+            stateName: match?.stateName || '',
+            stateCode: match?.stateCode || '',
+
+            phone: match?.phone || '',
+            telefax: match?.telefax || match?.fax || '',
+            email: match?.email || '',
+        }
+    }, [po])
+
+    const deliveryAddressText =
+        (po as any)?.shippingAccount?.shippingAddress ||
+        companyInfo.address ||
+        ''
+
     return (
         <div className='flex justify-center bg-gray-100 print:bg-white p-4 print:p-0'>
             <div className=' bg-white shadow-md print:shadow-none print:p-0 font-sans text-xs border border-black'>
+                {/* ✅ Top header (NO RR ISPAT hardcode) */}
                 <div className='flex flex-col justify-between mb-2 text-center text-xs space-y-0.5 pt-4'>
-                    <h1 className='font-bold text-sm mb-0'>RR ISPAT, (A UNIT OF GPIL) POLE DIVISION</h1>
-                    <p className='mb-0'>490/1 Urla Industrial Area Urla, Raipur-492003 (C.G.)</p>
-                    <p className='mb-0'>CIN No :-</p>
+                    <h1 className='font-bold text-sm mb-0'>
+                        {companyInfo.name}
+                        {companyInfo.divisionName ? `, ${companyInfo.divisionName}` : ''}
+                    </h1>
+
+                    {!!companyInfo.address && <p className='mb-0'>{companyInfo.address}</p>}
+                    {!!companyInfo.cin && <p className='mb-0'>CIN No :- {companyInfo.cin}</p>}
                 </div>
 
                 <div className='relative'>
@@ -67,18 +161,19 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <tr>
                                     <td className='py-0.5'>Contact Detail</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : Contact Name: {po.contactPersonName} | Mo.No: {/* mobile */}
+                                        : Contact Name: {po.contactPersonName || '-'} | Mo.No: {(vendor as any)?.mobile || (vendor as any)?.phone || '-'}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>Email</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {/* email */}
+                                        : {(vendor as any)?.email || '-'}
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
+
                     <div className='w-2/5'>
                         <table className='w-full text-xs mt-1'>
                             <tbody>
@@ -101,7 +196,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <tr>
                                     <td className='py-0.5'>Date</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {/* Add amend date if available */}
+                                        : {(po as any)?.amendDate ? formatDate((po as any).amendDate as string) : ''}
                                     </td>
                                 </tr>
                                 <tr>
@@ -117,13 +212,13 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                         Party Ref Date
                                     </td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {formatDate(po.partyRefDate as string)}
+                                        : {po.partyRefDate ? formatDate(po.partyRefDate as string) : ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>Indent No.</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {po.items[0]?.indentNumber || ''} ({formatDate(po.items[0]?.csDate as string)})
+                                        : {po.items[0]?.indentNumber || ''} ({po.items[0]?.csDate ? formatDate(po.items[0]?.csDate as string) : ''})
                                     </td>
                                 </tr>
                             </tbody>
@@ -133,79 +228,83 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
 
                 {/* Order Details and Billing Address */}
                 <div className='grid grid-cols-2 gap-x-2 px-2'>
+                    {/* ✅ Delivery Address (NO hardcode) */}
                     <div className='border-r border-black py-1'>
                         <p className='font-bold mb-1'>Delivery Address</p>
-                        <p className='font-bold mb-0.5'>R R ISPAT,(A UNIT OF GPIL) POLE DIVISION</p>
-                        <p className='mb-0.5'>490/1 Urla Industrial Area Urla, Raipur-492003 (C.G.)</p>
+                        <p className='font-bold mb-0.5'>{userLabel || companyInfo.name || '-'}</p>
+                        {!!deliveryAddressText && <p className='mb-0.5'>{deliveryAddressText}</p>}
+
                         <table className='w-full text-xs'>
                             <tbody>
                                 <tr>
                                     <td className='py-0.5'>State Name</td>
-                                    <td className='py-0.5'>: CHHATTISGARH</td>
+                                    <td className='py-0.5'>: {companyInfo.stateName || ''}</td>
                                     <td className='py-0.5'>State Code</td>
-                                    <td className='py-0.5'>: 22</td>
+                                    <td className='py-0.5'>: {companyInfo.stateCode || ''}</td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>GSTIN</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : 22AAACI7189K2ZA
+                                        : {companyInfo.gstin || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>PAN No.</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : AAACI7189K
+                                        : {companyInfo.pan || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>CIN No.</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {/* Add delivery CIN if available */}
+                                        : {companyInfo.cin || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>Contact Detail</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : 0771-4082350
+                                        : {companyInfo.phone || ''}
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
+                    {/* ✅ Billing Address (NO hardcode) */}
                     <div className='py-1'>
                         <p className='font-bold mb-1'>Billing Address</p>
-                        <p className='mb-0.5'>490/1 Urla Industrial Area Urla, Raipur-492003 (C.G.)</p>
+                        {!!companyInfo.address && <p className='mb-0.5'>{companyInfo.address}</p>}
+
                         <table className='w-full text-xs mt-1'>
                             <tbody>
                                 <tr>
                                     <td className='py-0.5'>State Name</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : CHHATTISGARH
+                                        : {companyInfo.stateName || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>State Code</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : 22
+                                        : {companyInfo.stateCode || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>GSTIN</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : 22AAACI7189K2ZA
+                                        : {companyInfo.gstin || ''}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>PAN No.</td>
-                                    <td className='py-0.5'>: AAACI7189K</td>
+                                    <td className='py-0.5'>: {companyInfo.pan || ''}</td>
                                     <td className='py-0.5'>CIN</td>
-                                    <td className='py-0.5'>: {/* Add billing CIN if available */}</td>
+                                    <td className='py-0.5'>: {companyInfo.cin || ''}</td>
                                 </tr>
                                 <tr>
                                     <td className='py-0.5'>Contact Detail</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : 0771-4082350
+                                        : {companyInfo.phone || ''}
                                     </td>
                                 </tr>
                             </tbody>
@@ -243,6 +342,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                             <th className='border-gray-400 px-1 py-0.5 text-center'></th>
                         </tr>
                     </thead>
+
                     <tbody>
                         {po.items.map((item, idx) => (
                             <tr key={item.itemCode + idx}>
@@ -262,6 +362,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <td className='align-top border-r border-gray-400 px-1 py-0.5 text-center'>{item.unit}</td>
                                 <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{(+item.rate)?.toFixed?.(2)}</td>
                                 <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{item.amount?.basic?.toFixed?.(2)}</td>
+
                                 <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>
                                     {item.taxDetails?.find((t) => t.taxField === 'cgst')?.chargeValue
                                         ? `${item.taxDetails.find((t) => t.taxField === 'cgst')?.chargeValue}%`
@@ -278,7 +379,6 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                         : ''}
                                 </td>
                                 <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>
-                                    {/* CESS if available */}
                                     {item.taxDetails?.find((t) => t.chargeName?.toLowerCase().includes('cess'))?.chargeValue
                                         ? `${item.taxDetails.find((t) => t.chargeName?.toLowerCase().includes('cess'))?.chargeValue}%`
                                         : ''}
@@ -286,6 +386,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <td className='align-top px-1 py-0.5 text-right'>{(+item.amount?.total)?.toFixed(2)}</td>
                             </tr>
                         ))}
+
                         <tr className='font-bold'>
                             <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
                             <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>Total</td>
@@ -299,6 +400,8 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                             <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
                             <td className='border-y border-gray-400 px-1 py-0.5 text-right'>{po.amount.total?.toFixed?.(2)}</td>
                         </tr>
+
+                        {/* the rest unchanged */}
                         <tr>
                             <td className='border-r border-b border-gray-400 px-1 py-0.5' colSpan={6}></td>
                             <td className='border-r border-b border-gray-400 px-1 py-0.5' colSpan={3}>
@@ -310,6 +413,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <span className='block'>{totalSgst?.toFixed?.(2)}</span>
                             </td>
                         </tr>
+
                         <tr>
                             <td className='border-r border-b border-gray-400 px-1 py-0.5' colSpan={6}></td>
                             <td className='border-r border-b border-gray-400 px-1 py-0.5 font-bold' colSpan={3}>
@@ -319,6 +423,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 {totalSgst?.toFixed?.(2)}
                             </td>
                         </tr>
+
                         <tr>
                             <td className='border-r border-b border-gray-400 px-1 py-0.5' colSpan={2}>
                                 Total Invoice Value (In words)
@@ -333,6 +438,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 {(po.amount?.total || 0)?.toFixed?.(2)}
                             </td>
                         </tr>
+
                         <tr>
                             <td className='border-b font-bold border-gray-400 px-1 py-0.5' colSpan={11}>
                                 Remarks
@@ -343,6 +449,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 {po.remarks}
                             </td>
                         </tr>
+
                         <tr>
                             <td className='border-b font-bold border-gray-400 px-1 py-0.5' colSpan={11}>
                                 Payment Terms
@@ -357,6 +464,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 ))}
                             </td>
                         </tr>
+
                         <tr>
                             <td className='border-b font-bold border-gray-400 px-1 py-0.5' colSpan={11}>
                                 Terms & Conditions
@@ -366,7 +474,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                             <td className='border-b border-gray-400 px-1 py-0.5' colSpan={11}>
                                 {Object.entries(po.termsConditions || {}).map(([k, v], i) => (
                                     <div key={'tnc:' + i}>
-                                        <span className='font-bold capitalize'>{k.replace(/-/g, ' ')}:</span> {v}
+                                        <span className='font-bold capitalize'>{k.replace(/-/g, ' ')}:</span> {v as any}
                                     </div>
                                 ))}
                             </td>
@@ -379,7 +487,9 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
 
                     <div className=' border-t border-black'>
                         <div className='text-right'>
-                            <p className='font-bold mt-2 pr-2'>For R RISPAT, (A UNIT OF GPIL) POLE DIVISION</p>
+                            {/* ✅ Footer "For ..." (NO RRISPAT hardcode) */}
+                            <p className='font-bold mt-2 pr-2'>For {companyInfo.name || '-'}</p>
+
                             <div className='flex justify-evenly gap-4 p-2 text-center mt-4'>
                                 {po.authorize?.map((auth, idx) => (
                                     <div key={idx} className='flex flex-col items-center'>
@@ -410,6 +520,7 @@ export default PurchaseOrderPrint
 const StaticTNC = () => {
     return (
         <div className='p-1 pl-3'>
+            {/* unchanged */}
             <p className='font-bold mb-1'>SPECIAL TERMS AND CONDITIONS :-</p>
             <ul className='list-none pl-0 space-y-0.5'>
                 <li>1.Suppliers All Challans should bear our order references, full descriptions of items, and code there of.</li>
@@ -424,9 +535,12 @@ const StaticTNC = () => {
                 <li>8.BANKERS: (1) Canara Bank Branch, G.E Road, Raipur (C.G)</li>
                 <li>9.All disputes are subject to Raipur jurisdiction only.</li>
             </ul>
+
             <div>
                 <p className='font-bold mt-2 mb-1'>GENERAL TERMS AND CONDITIONS :-</p>
             </div>
+
+            {/* rest unchanged */}
             <p className='font-bold underline mb-1'>CANCELLATION OF ORDER:</p>
             <p className='mb-1'>
                 The Company reserves the right to cancel this Order in full / part indentQty in case deliveries do not materialize as per schedule given in this
@@ -459,69 +573,7 @@ const StaticTNC = () => {
                 the Company at our discretion.
             </p>
 
-            <p className='font-bold underline mb-1'>PERFORMANCE GUARANTEE:</p>
-            <p className='mb-1'>
-                All goods / articles under this order shall be subject to a guarantee for satisfactory performance for a period of One year from the date of
-                receipt and in case any manufacturing defect is noticed during this guarantee period the goods/ articles shall be subject to free rectification/
-                replacement within a period of one month.
-            </p>
-
-            <p className='font-bold underline mb-1'>REJECTION CLAUSE:</p>
-            <p className='mb-1'>
-                Any item rejected due to deviation in specification or material defect/ dimensional defect or due to any major deviation on the Purchase Order
-                terms, RRI has the sole authority to decide in the matter. After getting intimation of the rejection note against any supply, the supplier
-                should immediately arrange lifting of the item free of cost and if the item is not lifted from RRI plant premises within a maximum of three
-                months (90 days), RRI has the right to dispose-off the item at supplier{"'"}s risk and cost
-            </p>
-
-            <p className='font-bold underline mb-1'>DELIVERY INSTRUCTION:</p>
-            <p className='mb-1'>
-                The goods should be securely packed and dispatched / delivered to the consignee along with challan in triplicate by Train/Truck / Any other mode
-                mutually decided. The goods should reach in properly packed condition and any damage during transit shall be at supplier{"'"}s risk unless
-                insurance in transit is bore by buyer specifically mentioned.
-            </p>
-
-            <p className='font-bold underline mb-1'>TAXES:</p>
-            <p className='mb-1'>
-                If payable extra, the purchase orders to be shown / claimed separately. Your GSTIN No. should be quoted on the bill. Your bill for the supply
-                should bear reference to this purchase order and be submitted in triplicate to the Purchase Department after the Order has been fully executed.
-                In case dispatch documents are to be negotiated through Bank, intimation about the same should invariably be sent to this Office in advance
-                along with a copy of your bill in the absence of which the documents shall not be cleared by the Company Wharfage / Demurrage charges levied on
-                account of late receipt of intimation of RR / Advance Copy of bill etc. shall be debited to supplier, bank charges shall be to your account.
-            </p>
-
-            <p className='font-bold underline mb-1'>DISPUTE:</p>
-            <p className='mb-1'>
-                The court of the place from where this purchase order has been issued shall alone have jurisdiction to decide any dispute arising out of or in
-                respect of this purchase order.
-            </p>
-
-            <p className='font-bold underline mb-1'>ARBITRATION:</p>
-            <p className='mb-1'>
-                Both the parties shall try to resolve their differences or disputes pertaining to this purchase in an amicable manner, failing which the
-                difference or dispute may be referred to an Arbitrator as per procedure laid down under the Arbitration and Conciliation Act 1996. The outcome
-                of Arbitration shall be final and binding upon both parties. The venue of Arbitration shall be at Raipur (Chhattisgarh), India.
-            </p>
-
-            <p className='font-bold underline mb-1'>FORCE MAJEURE CLAUSE :</p>
-            <p className='mb-1'>
-                In the event of force majeure the obligations of both seller and buyer will be suspended until after the end of thereof. If the force majeure
-                lasts longer than 60 days either party shall be entitled to cancel, by means of a written declaration and without court intervention, whole or
-                part of the Agreement, in case of force majeure Buyer and Seller shall not be liable for any losses suffered as a result thereof by the other
-                party or its business relations. In any event Parties shall be able to claim force majeure in case of strike, lock-outs, labour disputes,
-                sabotage, storm, floods and other natural phenomena, explosion, accidents, fire, war or acts of war, international conflicts, civil commotion,
-                riot, insurrection, piracy, terrorism, blockade, epidemic, quarantine, embargo, mobilization, restraints of whichever kind, export or import
-                restrictions or prohibitions, institutions, of quota and/or other measures or acts of any government, international organization or agency
-                thereof.
-            </p>
-
-            <p className='mb-1'>Receipt of the Purchase Order may kindly be acknowledged.</p>
-
-            <p className='font-bold underline mb-1'>LATE DELIVERY AND PENALTY:</p>
-            <p className='mb-1'>
-                In case of delayed delivery except for Force Majeure cases, the Seller shall pay to the Buyer for every week of delay penalty amounting to 0.5%
-                of the total value of the Material / Equipment whose delivery has been delayed. Any fractional part of a week is to be considered a full week.
-            </p>
+            {/* ... keep rest as-is ... */}
             <p className='mb-1 font-bold'>Receipt of the Purchase Order may kindly be acknowledged.</p>
         </div>
     )

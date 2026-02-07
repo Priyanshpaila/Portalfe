@@ -27,7 +27,7 @@ export default function POAuthorize() {
     const { signOut } = useAuth()
     const user = useAppSelector((state) => state.auth.user)
     const [po, setPO] = useState<_POType>()
-    const [vendor, setVendor] = useState<VendorType>()
+    const [vendor, setVendor] = useState<VendorType | undefined>()
     const [indents, setIndents] = useState<IndentType[]>([])
     const [signOutPrompt, setSignOutPrompt] = useState(false)
     const [data, setData] = useState<{
@@ -72,7 +72,7 @@ export default function POAuthorize() {
                         },
                     })
 
-                    setVendor(vendorResponse.data)
+                    setVendor(vendorResponse.data?.[0])
                 }
 
                 if (poResponse.data.items?.length) {
@@ -339,19 +339,19 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                     <b>{i.itemDescription}</b>
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Qty</b> : {i.qty?.toFixed(3)} {i.unit}
+                                    <b>Qty</b> : {Number(i.qty)?.toFixed(3)} {i.unit}
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Rate</b> : {i.rate?.toFixed(2)}
+                                    <b>Rate</b> : {Number(i.rate)?.toFixed(2)}
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
                                     <b>Basic</b> : {i.amount?.taxable?.toFixed(2)}
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
-                                    <b>CGST</b> : {(((i.amount.cgst / i.amount.taxable) * 100) / 2).toFixed(2)} %
+                                    <b>CGST</b> : {(((i.amount.cgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
-                                    <b>SGST</b> : {(((i.amount.sgst / i.amount.taxable) * 100) / 2).toFixed(2)} %
+                                    <b>SGST</b> : {(((i.amount.sgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
                                 </td>
                                 <td className='pt-2 pr-1.5 text-right'>
                                     <b>Net Amt</b> : {i.amount.total?.toFixed(2)}
@@ -476,7 +476,7 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                     <td className='border-b pb-2 pr-2'>{i.requestedBy}</td>
                                     <td className='border-b pb-2 pr-2'>{i.documentType}</td>
                                     <td className='border-b pb-2 pr-2 text-right'>
-                                        PO Qty: {po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty?.toFixed(3)}
+                                        PO Qty: {(+(po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0))?.toFixed(3)}
                                     </td>
                                 </tr>
                             </React.Fragment>

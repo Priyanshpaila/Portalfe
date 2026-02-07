@@ -103,6 +103,7 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
             try {
                 setLoading(true)
                 const response = await ApiService.fetchData<ApiDataType[]>({ method: 'GET', url: '/cs/quotations' })
+                console.log(response + "quotation received");
                 setData(response.data)
                 setList(buildRowList(response.data))
             } catch (error) {

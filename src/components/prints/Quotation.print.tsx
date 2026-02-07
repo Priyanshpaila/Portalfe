@@ -1,28 +1,103 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { QuotationType } from '@/@types/app'
 import { CHARGE_TYPES, companies } from '@/utils/data'
 import { formatDate } from '@/utils/formatDate'
 import { amountInWords } from '@/utils/numberInWords'
 
-const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; vendorName: string }) => {
-    const companyInfo = {
-        name: companies.find((i) => i.plantCode === quotation?.companyCode)?.companyName,
-        address: '490/1 Urla Industrial Area, Urla, CHHATTISGARH, INDIA',
-        phone: '0771-4082350',
-        telefax: '0771-4082452',
-        email: 'purchase@rrispat.com',
+function safeJsonParse<T>(raw: string): T | null {
+    try {
+        return JSON.parse(raw) as T
+    } catch {
+        return null
     }
+}
+
+function pickName(obj: any): string {
+    if (!obj || typeof obj !== 'object') return ''
+    return (
+        obj?.fullName ||
+        obj?.name ||
+        obj?.username ||
+        obj?.userName ||
+        obj?.displayName ||
+        obj?.email ||
+        ''
+    ).toString()
+}
+
+function getLoggedInUserLabel(): string {
+    try {
+        if (typeof window === 'undefined') return ''
+        const candidates = ['admin', 'user', 'userDetails', 'auth_user'] // ✅ add your real key if different
+        for (const key of candidates) {
+            const raw = localStorage.getItem(key)
+            if (!raw) continue
+
+            const outer = safeJsonParse<any>(raw)
+            if (!outer) continue
+
+            const direct = pickName(outer)
+            if (direct) return direct
+
+            if (typeof outer?.auth === 'string') {
+                const authObj = safeJsonParse<any>(outer.auth)
+                const fromAuthUser = pickName(authObj?.user)
+                if (fromAuthUser) return fromAuthUser
+            }
+
+            const fromOuterUser = pickName(outer?.user)
+            if (fromOuterUser) return fromOuterUser
+        }
+        return ''
+    } catch {
+        return ''
+    }
+}
+
+const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; vendorName: string }) => {
+    const [userLabel, setUserLabel] = useState('')
+
+    useEffect(() => {
+        setUserLabel(getLoggedInUserLabel())
+    }, [])
+
+    const companyInfo = useMemo(() => {
+        const match = companies?.find((i: any) => i?.plantCode === quotation?.companyCode) || companies?.[0] || {}
+        return {
+            name: match?.companyName || '',
+    
+            email: match?.email || '',
+        }
+    }, [quotation?.companyCode])
+
+    const printedAt = useMemo(() => {
+        const d = new Date()
+        const dd = String(d.getDate()).padStart(2, '0')
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const yyyy = d.getFullYear()
+        let hh = d.getHours()
+        const min = String(d.getMinutes()).padStart(2, '0')
+        const ampm = hh >= 12 ? 'PM' : 'AM'
+        hh = hh % 12
+        hh = hh ? hh : 12
+        return `${dd}/${mm}/${yyyy} ${String(hh).padStart(2, '0')}:${min} ${ampm}`
+    }, [])
 
     return (
         <div>
             <div className='max-w-3xl mx-auto text-gray-800 border border-black text-xs'>
-                {/* Company Info */}
+                {/* ✅ Header (NO hardcoded address) */}
                 <div className='text-center border-b p-1 border-b-black'>
                     <h1 className='text-lg font-bold'>{companyInfo.name}</h1>
-                    <p>{companyInfo.address}</p>
-                    <p>
-                        Phone: {companyInfo.phone} Telefax: {companyInfo.telefax} Email: {companyInfo.email}
-                    </p>
+
+                    {/* only show contact line if exists */}
+                    {(companyInfo.phone || companyInfo.telefax || companyInfo.email) && (
+                        <p>
+                            {companyInfo.phone ? `Phone: ${companyInfo.phone} ` : ''}
+                            {companyInfo.telefax ? `Telefax: ${companyInfo.telefax} ` : ''}
+                            {companyInfo.email ? `Email: ${companyInfo.email}` : ''}
+                        </p>
+                    )}
                 </div>
 
                 {/* Title */}
@@ -34,60 +109,56 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
 
                 {/* Info */}
                 <div className='flex'>
+                    {/* ✅ Party Name block (NO hardcoded RR Ispat) */}
                     <div className='flex-1 border-y border-r border-black p-[2px]'>
                         <div>
-                            <span>
-                                <b>Party Name</b>
-                            </span>
+                            <b>Party Name</b>
                         </div>
-                        <div>
-                            <span>M/s</span>
-                        </div>
+                        <div>M/s</div>
+
                         <table className='ml-6'>
                             <tbody>
                                 <tr>
                                     <td colSpan={3}>
-                                        <span className='font-bold'>R.R.ISPAT ( A UNIT OF GODAWARI POWER & ISPAT LTD.)</span>
+                                        <span className='font-bold'>{userLabel || '-'}</span>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td colSpan={3}>
-                                        <span>490/1 Urla Industrial Area,Urla</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Email</td>
-                                    <td>:</td>
-                                    <td>purchase@rrispat.com</td>
-                                </tr>
-                                <tr>
-                                    <td>Phone</td>
-                                    <td>:</td>
-                                    <td>0771-4082350</td>
-                                </tr>
-                                <tr>
-                                    <td>Fax</td>
-                                    <td>:</td>
-                                    <td>0771-4082452</td>
-                                </tr>
-                                <tr>
-                                    <td>Website</td>
-                                    <td>:</td>
-                                    <td>vendor.rrispatconsoul.in</td>
-                                </tr>
-                                <tr>
-                                    <td>GST No.</td>
-                                    <td>:</td>
-                                    <td>22AAACI7189K2ZA</td>
-                                </tr>
-                                <tr>
-                                    <td>State Code</td>
-                                    <td>:</td>
-                                    <td></td>
-                                </tr>
+
+                                {/* If you still want to show something like contact details, use quotation fields (not hardcoded) */}
+                                {quotation?.contactEmail && (
+                                    <tr>
+                                        <td>Email</td>
+                                        <td>:</td>
+                                        <td>{quotation.contactEmail}</td>
+                                    </tr>
+                                )}
+                                {quotation?.contactNumber && (
+                                    <tr>
+                                        <td>Phone</td>
+                                        <td>:</td>
+                                        <td>{quotation.contactNumber}</td>
+                                    </tr>
+                                )}
+
+                                {/* Optional: if you have GST/state inside quotation, show it here */}
+                                {(quotation as any)?.gstNo && (
+                                    <tr>
+                                        <td>GST No.</td>
+                                        <td>:</td>
+                                        <td>{(quotation as any).gstNo}</td>
+                                    </tr>
+                                )}
+                                {(quotation as any)?.stateCode && (
+                                    <tr>
+                                        <td>State Code</td>
+                                        <td>:</td>
+                                        <td>{(quotation as any).stateCode}</td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
+
                     <div className='flex-1 border-y border-black'>
                         <table>
                             <tbody>
@@ -120,6 +191,7 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                                 </tr>
                             </tbody>
                         </table>
+
                         <div className='flex border-t border-black'>
                             <table>
                                 <tbody>
@@ -150,16 +222,13 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
 
                 <div className='flex justify-evenly'>
                     <div>
-                        <span>Party Contact Person :</span>
-                        <span>{quotation?.contactPersonName}</span>
+                        <span>Party Contact Person :</span> <span>{quotation?.contactPersonName}</span>
                     </div>
                     <div>
-                        <span>Email :</span>
-                        <span>{quotation?.contactEmail}</span>
+                        <span>Email :</span> <span>{quotation?.contactEmail}</span>
                     </div>
                     <div>
-                        <span>Contact No. :</span>
-                        <span>{quotation?.contactNumber}</span>
+                        <span>Contact No. :</span> <span>{quotation?.contactNumber}</span>
                     </div>
                 </div>
 
@@ -180,7 +249,7 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                         </thead>
                         <tbody>
                             {quotation?.items?.map((item, idx) => (
-                                <tr key={item.itemCode}>
+                                <tr key={`${item.itemCode}-${idx}`}>
                                     <td className='border border-l-transparent border-black p-[2px] text-center'>{idx + 1}</td>
                                     <td className='border border-black p-[2px]'>{item.itemDescription}</td>
                                     <td className='border border-black p-[2px]'>{item.unit}</td>
@@ -211,12 +280,13 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                                     <div className='flex'>
                                         <span className='px-[2px] block'>{term}</span>
                                         <span className='px-[2px]'>:</span>
-                                        <span className='px-[2px] w-full'>{quotation?.termsConditions[term]}</span>
+                                        <span className='px-[2px] w-full'>{(quotation as any)?.termsConditions?.[term]}</span>
                                     </div>
                                 </li>
                             ))}
                         </ul>
                     </div>
+
                     <div className='flex border-l border-black w-3/5'>
                         <table className='w-full h-fit'>
                             <thead>
@@ -230,8 +300,8 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                                 {Object.entries(quotation?.charges || {}).map(([key, value], index) => (
                                     <tr key={index}>
                                         <td className='px-[2px] border-t border-r border-black'>{CHARGE_TYPES.find((i) => i.value === key)?.label}</td>
-                                        <td className='px-[2px] border-t border-r border-black'>{value?.description}</td>
-                                        <td className='px-[2px] border-t border-black text-right'>{value?.amount}</td>
+                                        <td className='px-[2px] border-t border-r border-black'>{(value as any)?.description}</td>
+                                        <td className='px-[2px] border-t border-black text-right'>{(value as any)?.amount}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -252,10 +322,10 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                     </div>
                 </div>
 
-                {/* Footer */}
+                {/* Footer (NO hardcoded RR Ispat) */}
                 <div>
                     <div className='p-[2px]'>
-                        <p className='text-right font-bold'>For, R.R. Ispat (A unit of GPIL)</p>
+                        {!!companyInfo.name && <p className='text-right font-bold'>For, {companyInfo.name}</p>}
                     </div>
                     <div className='pt-8 pb-1 px-[2px]'>
                         <p className='uppercase text-sm'>(Authorized Signature)</p>
@@ -266,8 +336,9 @@ const QuotationPrint = ({ quotation, vendorName }: { quotation: QuotationType; v
                         <span>HOD Sign</span>
                     </div>
                 </div>
+
                 <div className='p-[2px] flex justify-between'>
-                    <span>23/05/2025 07:30 PM</span>
+                    <span>{printedAt}</span>
                     <span>Page 1/1</span>
                 </div>
             </div>

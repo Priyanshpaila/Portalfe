@@ -9,6 +9,7 @@ import { FormikHelpers } from 'formik'
 import { useEffect, useState } from 'react'
 import { BiSolidCheckSquare, BiSolidXSquare } from 'react-icons/bi'
 import { MdAdd } from 'react-icons/md'
+import { AxiosError } from 'axios'
 
 const { Tr, Th, Td, THead, TBody } = Table
 
@@ -101,8 +102,9 @@ export default function Authorize({
             else showAlert((approvalStatus ? 'Approved' : 'Rejected') + ' purchase order successfully.')
         } catch (error) {
             const message = 'Failed to update approval status. Please contact support.'
-            if (error?.response?.status === 500) showError(message)
-            else showError(error?.response?.data?.message || message)
+            const axiosError = error as AxiosError
+            if (axiosError?.response?.status === 500) showError(message)
+            else showError((axiosError?.response?.data as any)?.message || message)
         }
         setFlags({})
     }
