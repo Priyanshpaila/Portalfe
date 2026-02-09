@@ -876,7 +876,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Priority'>
+                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Priority'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='shippingAccount[priority]'
@@ -885,6 +885,7 @@ export default function PurchaseOrder() {
                                                     size={'xs'}
                                                     value={priorities.find((i) => i.value === values?.shippingAccount?.priority) || null}
                                                     onChange={(option: OptionType) => setFieldValue('shippingAccount[priority]', option.value)}
+                                                    required
                                                 />
                                             </FormItem>
                                         </div>

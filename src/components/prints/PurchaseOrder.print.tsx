@@ -21,22 +21,13 @@ function safeJsonParse<T>(raw: string): T | null {
 
 function pickName(obj: any): string {
     if (!obj || typeof obj !== 'object') return ''
-    return (
-        obj?.fullName ||
-        obj?.name ||
-        obj?.username ||
-        obj?.userName ||
-        obj?.displayName ||
-        obj?.email ||
-        ''
-    ).toString()
+    return (obj?.fullName || obj?.name || obj?.username || obj?.userName || obj?.displayName || obj?.email || '').toString()
 }
 
-// ✅ same helper style you used earlier
 function getLoggedInUserLabel(): string {
     try {
         if (typeof window === 'undefined') return ''
-        const candidates = ['admin', 'user', 'userDetails', 'auth_user'] // add your real key if different
+        const candidates = ['admin', 'user', 'userDetails', 'auth_user']
         for (const key of candidates) {
             const raw = localStorage.getItem(key)
             if (!raw) continue
@@ -62,23 +53,31 @@ function getLoggedInUserLabel(): string {
     }
 }
 
+const EMPTY_COMPANY = {
+    name: '',
+    divisionName: '',
+    address: '',
+    cin: '',
+    gstin: '',
+    pan: '',
+    stateName: '',
+    stateCode: '',
+    phone: '',
+    telefax: '',
+    email: '',
+}
+
 const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) => {
+    // ✅ hooks MUST be called unconditionally, before any early return
     const [userLabel, setUserLabel] = useState('')
 
     useEffect(() => {
         setUserLabel(getLoggedInUserLabel())
     }, [])
 
-    if (!po || !vendor) return null
-
-    const totalQty = po.items?.reduce((sum, item) => sum + +(item.qty || 0), 0)
-    const totalBasic = po.items?.reduce((sum, item) => sum + (item.amount?.basic || 0), 0)
-    const totalCgst = po.items?.reduce((sum, item) => sum + (item.amount?.cgst || 0), 0)
-    const totalSgst = po.items?.reduce((sum, item) => sum + (item.amount?.sgst || 0), 0)
-    const totalIgst = po.items?.reduce((sum, item) => sum + (item.amount?.igst || 0), 0)
-
-    // ✅ dynamic company block (NO hardcode)
     const companyInfo = useMemo(() => {
+        if (!po) return EMPTY_COMPANY
+
         const match: any =
             companies?.find((i: any) => i?.plantCode?.toString?.() === (po as any)?.company?.toString?.()) ||
             companies?.find((i: any) => i?.plantCode?.toString?.() === (po as any)?.companyCode?.toString?.()) ||
@@ -88,29 +87,37 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
         return {
             name: match?.companyName || '',
             divisionName: match?.divisionName || match?.division || '',
-
             address: match?.address || match?.companyAddress || '',
             cin: match?.cin || '',
             gstin: match?.gstin || match?.gstNo || '',
             pan: match?.pan || match?.panNo || '',
             stateName: match?.stateName || '',
             stateCode: match?.stateCode || '',
-
             phone: match?.phone || '',
             telefax: match?.telefax || match?.fax || '',
             email: match?.email || '',
         }
     }, [po])
 
-    const deliveryAddressText =
-        (po as any)?.shippingAccount?.shippingAddress ||
-        companyInfo.address ||
-        ''
+    const deliveryAddressText = useMemo(() => {
+        if (!po) return ''
+        return (po as any)?.shippingAccount?.shippingAddress || companyInfo.address || ''
+    }, [po, companyInfo.address])
+
+    // ✅ after hooks are declared, you can safely early return
+    if (!po || !vendor) return null
+
+    const items = po.items || []
+    const totalQty = items.reduce((sum, item) => sum + +(item.qty || 0), 0)
+    const totalBasic = items.reduce((sum, item) => sum + (item.amount?.basic || 0), 0)
+    const totalCgst = items.reduce((sum, item) => sum + (item.amount?.cgst || 0), 0)
+    const totalSgst = items.reduce((sum, item) => sum + (item.amount?.sgst || 0), 0)
+    const totalIgst = items.reduce((sum, item) => sum + (item.amount?.igst || 0), 0)
 
     return (
         <div className='flex justify-center bg-gray-100 print:bg-white p-4 print:p-0'>
             <div className=' bg-white shadow-md print:shadow-none print:p-0 font-sans text-xs border border-black'>
-                {/* ✅ Top header (NO RR ISPAT hardcode) */}
+                {/* ✅ Top header */}
                 <div className='flex flex-col justify-between mb-2 text-center text-xs space-y-0.5 pt-4'>
                     <h1 className='font-bold text-sm mb-0'>
                         {companyInfo.name}
@@ -218,7 +225,7 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                                 <tr>
                                     <td className='py-0.5'>Indent No.</td>
                                     <td className='py-0.5' colSpan={3}>
-                                        : {po.items[0]?.indentNumber || ''} ({po.items[0]?.csDate ? formatDate(po.items[0]?.csDate as string) : ''})
+                                        : {items?.[0]?.indentNumber || ''} ({items?.[0]?.csDate ? formatDate(items[0].csDate as string) : ''})
                                     </td>
                                 </tr>
                             </tbody>
@@ -228,7 +235,6 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
 
                 {/* Order Details and Billing Address */}
                 <div className='grid grid-cols-2 gap-x-2 px-2'>
-                    {/* ✅ Delivery Address (NO hardcode) */}
                     <div className='border-r border-black py-1'>
                         <p className='font-bold mb-1'>Delivery Address</p>
                         <p className='font-bold mb-0.5'>{userLabel || companyInfo.name || '-'}</p>
@@ -270,7 +276,6 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
                         </table>
                     </div>
 
-                    {/* ✅ Billing Address (NO hardcode) */}
                     <div className='py-1'>
                         <p className='font-bold mb-1'>Billing Address</p>
                         {!!companyInfo.address && <p className='mb-0.5'>{companyInfo.address}</p>}
@@ -487,7 +492,6 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
 
                     <div className=' border-t border-black'>
                         <div className='text-right'>
-                            {/* ✅ Footer "For ..." (NO RRISPAT hardcode) */}
                             <p className='font-bold mt-2 pr-2'>For {companyInfo.name || '-'}</p>
 
                             <div className='flex justify-evenly gap-4 p-2 text-center mt-4'>
