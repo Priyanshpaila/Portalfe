@@ -8,22 +8,25 @@ import mockServer from './mock'
 import appConfig from '@/configs/app.config'
 import './locales'
 
+// ✅ add this
+import SubscriptionGate from '@/components/subscription/SubscriptionGate'
+
 const environment = process.env.NODE_ENV
 
-/**
- * Set enableMock(Default false) to true at configs/app.config.js
- * If you wish to enable mock api
- */
 if (environment !== 'production' && appConfig.enableMock) {
     mockServer({ environment })
 }
+
 function App() {
     return (
         <Provider store={store}>
             <PersistGate loading={null} persistor={persistor}>
                 <BrowserRouter>
                     <Theme>
-                        <Layout />
+                        {/* ✅ login -> subscription layer -> main app */}
+                        <SubscriptionGate>
+                            <Layout />
+                        </SubscriptionGate>
                     </Theme>
                 </BrowserRouter>
             </PersistGate>

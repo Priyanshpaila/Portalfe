@@ -14,15 +14,19 @@ const BaseService = axios.create({
 
 BaseService.interceptors.request.use(
     (config) => {
-        const rawPersistData = localStorage.getItem(PERSIST_STORE_NAME)
-        const persistData = deepParseJson(rawPersistData)
+        // ensure headers object exists
+        config.headers = config.headers || {}
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawPersistData = localStorage.getItem(PERSIST_STORE_NAME)
+        const persistData = deepParseJson(rawPersistData) || {}
+
+        // this should work for your "admin" persist too if deepParseJson deep-parses strings
+        // but keep it safe with optional chaining
         let accessToken = (persistData as any).auth.session.token
 
         if (!accessToken) {
             const { auth } = store.getState()
-            accessToken = auth.session.token
+            accessToken = auth?.session?.token
         }
 
         if (accessToken) {
@@ -31,9 +35,7 @@ BaseService.interceptors.request.use(
 
         return config
     },
-    (error) => {
-        return Promise.reject(error)
-    },
+    (error) => Promise.reject(error),
 )
 
 BaseService.interceptors.response.use(
@@ -41,6 +43,15 @@ BaseService.interceptors.response.use(
     (error) => {
         const { response } = error
 
+        // ✅ subscription expired / required
+        if (response?.status === 402 && response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+            // fire a global event that UI can listen to (no redux changes needed)
+            window.dispatchEvent(
+                new CustomEvent('subscription-required', { detail: response.data }),
+            )
+        }
+
+        // ✅ auth expired
         if (response && unauthorizedCode.includes(response.status)) {
             store.dispatch(signOutSuccess())
         }
