@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import BillingService from '@/services/BillingService'
 import SubscribeView from './SubscribeView'
+import { Spinner } from '../ui'
 
 type Props = { children: React.ReactNode }
 
@@ -48,7 +49,13 @@ export default function SubscriptionGate({ children }: Props) {
 
     if (shouldBypass) return <>{children}</>
 
-    if (checking) return <div className="p-6">Checking subscription...</div>
+    if (checking) {
+        return (
+            <div className='min-h-screen w-full flex items-center justify-center p-6'>
+                <Spinner />
+            </div>
+        )
+    }
 
     if (!active) {
         return <SubscribeView onSuccess={refresh} />
