@@ -1343,9 +1343,9 @@ export default function ProfilePage() {
                             <div className='mt-1 text-sm text-gray-600 dark:text-gray-300'>For best security:</div>
 
                             <div className='mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-200'>
-                                <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>
+                                {/* <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>
                                     • Minimum <span className='font-bold'>6 characters</span>
-                                </div>
+                                </div> */}
                                 <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>• Avoid sharing your password with anyone</div>
                                 <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>• Use a mix of letters & numbers if possible</div>
                             </div>
