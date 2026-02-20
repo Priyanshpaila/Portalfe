@@ -83,6 +83,25 @@ type VendorProfile = {
     contactPerson?: VendorContactPerson[]
 }
 
+type Subscription = {
+    _id?: string
+    userId?: string
+    plan?: string
+    status?: string
+    seats?: number
+    firmLimit?: number
+    startAt?: string
+    endAt?: string
+    orderId?: string
+    paymentId?: string
+    signature?: any
+    amount?: number
+    currency?: string
+    notes?: any
+    createdAt?: string
+    updatedAt?: string
+}
+
 type UserMe = {
     _id?: string
     name?: string
@@ -122,7 +141,7 @@ type ProfilePayload = {
     type?: 'vendor' | 'firm_employee' | 'firm_root'
     profile?: UserMe
     firmRoot?: any
-    subscription?: any
+    subscription?: Subscription | any
     stats?: any
 }
 
@@ -266,6 +285,8 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
  * Tries both mount paths:
  * - /users (as per your router comments)
  * - /user  (your logs show /api/user/...)
+ *
+ * NOTE: you currently use only /user. Keep it as-is.
  */
 const USER_BASES = ['/user'] as const
 
@@ -347,6 +368,60 @@ export default function ProfilePage() {
 
     const canEditCompany = viewerType === 'firm'
     const canEditVendor = viewerType === 'vendor'
+
+    const subscription: Subscription | null = useMemo(() => {
+        const sub = (profileMeta?.subscription ?? null) as any
+        return sub && typeof sub === 'object' ? (sub as Subscription) : null
+    }, [profileMeta])
+
+    function cap(s?: string | null) {
+        const v = String(s || '').trim()
+        if (!v) return ''
+        return v.charAt(0).toUpperCase() + v.slice(1)
+    }
+
+    function fmtDate(iso?: string | null) {
+        if (!iso) return '—'
+        const d = new Date(iso)
+        if (Number.isNaN(d.getTime())) return '—'
+        return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+    }
+
+    function daysLeft(endAt?: string | null) {
+        if (!endAt) return null
+        const end = new Date(endAt).getTime()
+        if (!Number.isFinite(end)) return null
+        const diff = end - Date.now()
+        return Math.ceil(diff / (1000 * 60 * 60 * 24))
+    }
+
+    function money(amount?: number, currency?: string) {
+        if (amount == null || !Number.isFinite(Number(amount))) return '—'
+        const cur = String(currency || '').toUpperCase() || 'INR'
+
+        // Razorpay amounts are typically in smallest unit (paise for INR)
+        const isLikelyMinorUnit = cur === 'INR' || cur === 'USD' || cur === 'EUR' || cur === 'GBP'
+        const value = isLikelyMinorUnit ? Number(amount) / 100 : Number(amount)
+
+        try {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: cur,
+                maximumFractionDigits: 2,
+            }).format(value)
+        } catch {
+            return `${value} ${cur}`
+        }
+    }
+
+    const subscriptionPillValue = useMemo(() => {
+        if (!subscription) return '—'
+        const p = cap(subscription.plan)
+        const st = cap(subscription.status)
+        const d = daysLeft(subscription.endAt)
+        const left = typeof d === 'number' ? (d < 0 ? 'Expired' : `${d}d left`) : ''
+        return [p || 'Plan', st || 'Status', left].filter(Boolean).join(' • ')
+    }, [subscription])
 
     async function copyText(label: string, value?: string) {
         const v = String(value || '').trim()
@@ -493,7 +568,7 @@ export default function ProfilePage() {
         const confirm = String(pwd.confirm || '')
 
         if (!oldPassword || !newPassword) return toast.error('Old password and new password are required')
-        if (newPassword.length < 1) return toast.error('New password must be at least 6 characters')
+        if (newPassword.length < 6) return toast.error('New password must be at least 6 characters')
         if (newPassword !== confirm) return toast.error('New password and confirm password do not match')
 
         setPwdLoading(true)
@@ -551,10 +626,6 @@ export default function ProfilePage() {
                 : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-800',
         )
 
-    // --------------------
-    // Everything below is unchanged UI
-    // --------------------
-
     if (loading) {
         return (
             <div className='p-4 sm:p-6'>
@@ -604,6 +675,19 @@ export default function ProfilePage() {
                                             <HiOutlineBadgeCheck className='text-base' />
                                             {typeLabel}
                                         </span>
+
+                                        {subscription?.status ? (
+                                            <span
+                                                className={clsx(
+                                                    'inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full',
+                                                    String(subscription.status).toLowerCase() === 'active'
+                                                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200'
+                                                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',
+                                                )}>
+                                                <HiOutlineBadgeCheck className='text-base' />
+                                                {cap(subscription.status) || 'Status'}
+                                            </span>
+                                        ) : null}
                                     </div>
 
                                     <div className='mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-300'>
@@ -646,6 +730,11 @@ export default function ProfilePage() {
                                 label={viewerType === 'vendor' ? 'Vendor Code' : 'Account Type'}
                                 value={viewerType === 'vendor' ? form.vendorCode || '—' : typeLabel}
                             />
+                            <StatPill
+                                icon={<HiOutlineBadgeCheck className='text-base' />}
+                                label='Subscription'
+                                value={subscriptionPillValue || '—'}
+                            />
                         </div>
 
                         {/* QUICK ACTIONS */}
@@ -667,6 +756,28 @@ export default function ProfilePage() {
                                     className='hover:bg-slate-100 dark:hover:bg-gray-800'
                                     onClick={() => copyText('Vendor Code', form.vendorCode)}>
                                     Copy Vendor Code
+                                </Button>
+                            ) : null}
+
+                            {subscription?.orderId ? (
+                                <Button
+                                    size='sm'
+                                    variant='plain'
+                                    icon={<HiOutlineClipboardCopy />}
+                                    className='hover:bg-slate-100 dark:hover:bg-gray-800'
+                                    onClick={() => copyText('Order ID', subscription.orderId)}>
+                                    Copy Order ID
+                                </Button>
+                            ) : null}
+
+                            {subscription?.paymentId ? (
+                                <Button
+                                    size='sm'
+                                    variant='plain'
+                                    icon={<HiOutlineClipboardCopy />}
+                                    className='hover:bg-slate-100 dark:hover:bg-gray-800'
+                                    onClick={() => copyText('Payment ID', subscription.paymentId)}>
+                                    Copy Payment ID
                                 </Button>
                             ) : null}
                         </div>
@@ -774,6 +885,9 @@ export default function ProfilePage() {
                                     <li>
                                         • Use the <span className='font-semibold'>Security</span> tab to change your password.
                                     </li>
+                                    <li>
+                                        • Subscription details are shown in <span className='font-semibold'>Summary</span>.
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -787,6 +901,119 @@ export default function ProfilePage() {
                                 <div className='rounded-2xl border border-gray-200 dark:border-gray-700 p-4'>
                                     <div className='text-xs font-semibold text-gray-500 dark:text-gray-400'>Account Type</div>
                                     <div className='mt-1 text-sm font-extrabold text-gray-900 dark:text-gray-100'>{typeLabel}</div>
+                                </div>
+
+                                {/* ✅ Subscription Details */}
+                                <div className='rounded-2xl border border-gray-200 dark:border-gray-700 p-4'>
+                                    <div className='flex items-start justify-between gap-2'>
+                                        <div>
+                                            <div className='text-xs font-semibold text-gray-500 dark:text-gray-400'>Subscription</div>
+                                            <div className='mt-1 text-sm font-extrabold text-gray-900 dark:text-gray-100'>
+                                                {subscription?.plan ? cap(subscription.plan) : '—'}
+                                            </div>
+                                        </div>
+
+                                        {subscription?.status ? (
+                                            <span
+                                                className={clsx(
+                                                    'text-xs font-semibold px-3 py-1 rounded-full',
+                                                    String(subscription.status).toLowerCase() === 'active'
+                                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                                                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',
+                                                )}>
+                                                {cap(subscription.status)}
+                                            </span>
+                                        ) : null}
+                                    </div>
+
+                                    <div className='mt-3 grid grid-cols-1 gap-2 text-sm'>
+                                        <div className='flex items-center justify-between gap-2'>
+                                            <span className='text-gray-600 dark:text-gray-300'>Amount</span>
+                                            <span className='font-extrabold text-gray-900 dark:text-gray-100'>
+                                                {money(subscription?.amount, subscription?.currency)}
+                                            </span>
+                                        </div>
+
+                                        <div className='flex items-center justify-between gap-2'>
+                                            <span className='text-gray-600 dark:text-gray-300'>Start</span>
+                                            <span className='font-semibold text-gray-900 dark:text-gray-100'>{fmtDate(subscription?.startAt)}</span>
+                                        </div>
+
+                                        <div className='flex items-center justify-between gap-2'>
+                                            <span className='text-gray-600 dark:text-gray-300'>End</span>
+                                            <span className='font-semibold text-gray-900 dark:text-gray-100'>{fmtDate(subscription?.endAt)}</span>
+                                        </div>
+
+                                        {typeof daysLeft(subscription?.endAt) === 'number' ? (
+                                            <div className='flex items-center justify-between gap-2'>
+                                                <span className='text-gray-600 dark:text-gray-300'>Remaining</span>
+                                                <span
+                                                    className={clsx(
+                                                        'font-extrabold',
+                                                        (daysLeft(subscription?.endAt) as number) < 0
+                                                            ? 'text-red-600 dark:text-red-400'
+                                                            : 'text-gray-900 dark:text-gray-100',
+                                                    )}>
+                                                    {(daysLeft(subscription?.endAt) as number) < 0
+                                                        ? 'Expired'
+                                                        : `${daysLeft(subscription?.endAt)} days`}
+                                                </span>
+                                            </div>
+                                        ) : null}
+
+                                        {subscription?.seats != null || subscription?.firmLimit != null ? (
+                                            <div className='pt-2 mt-1 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-2'>
+                                                <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-2'>
+                                                    <div className='text-[11px] font-semibold text-gray-500 dark:text-gray-400'>Seats</div>
+                                                    <div className='text-sm font-extrabold text-gray-900 dark:text-gray-100'>
+                                                        {String(subscription?.seats ?? '—')}
+                                                    </div>
+                                                </div>
+                                                <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-2'>
+                                                    <div className='text-[11px] font-semibold text-gray-500 dark:text-gray-400'>Firm Limit</div>
+                                                    <div className='text-sm font-extrabold text-gray-900 dark:text-gray-100'>
+                                                        {String(subscription?.firmLimit ?? '—')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : null}
+
+                                        {subscription?.orderId ? (
+                                            <div className='pt-2 mt-1 border-t border-gray-200 dark:border-gray-700'>
+                                                <div className='flex items-center justify-between gap-2'>
+                                                    <span className='text-gray-600 dark:text-gray-300'>Order ID</span>
+                                                    <button
+                                                        type='button'
+                                                        className='inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:underline'
+                                                        onClick={() => copyText('Order ID', subscription.orderId)}>
+                                                        <HiOutlineClipboardCopy className='text-base' />
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                                <div className='mt-1 text-xs font-mono text-gray-700 dark:text-gray-200 break-all'>
+                                                    {subscription.orderId}
+                                                </div>
+                                            </div>
+                                        ) : null}
+
+                                        {subscription?.paymentId ? (
+                                            <div className='pt-2 mt-1 border-t border-gray-200 dark:border-gray-700'>
+                                                <div className='flex items-center justify-between gap-2'>
+                                                    <span className='text-gray-600 dark:text-gray-300'>Payment ID</span>
+                                                    <button
+                                                        type='button'
+                                                        className='inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:underline'
+                                                        onClick={() => copyText('Payment ID', subscription.paymentId)}>
+                                                        <HiOutlineClipboardCopy className='text-base' />
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                                <div className='mt-1 text-xs font-mono text-gray-700 dark:text-gray-200 break-all'>
+                                                    {subscription.paymentId}
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
 
                                 {viewerType === 'firm' ? (
@@ -1343,9 +1570,9 @@ export default function ProfilePage() {
                             <div className='mt-1 text-sm text-gray-600 dark:text-gray-300'>For best security:</div>
 
                             <div className='mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-200'>
-                                {/* <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>
+                                <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>
                                     • Minimum <span className='font-bold'>6 characters</span>
-                                </div> */}
+                                </div>
                                 <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>• Avoid sharing your password with anyone</div>
                                 <div className='rounded-xl border border-gray-200 dark:border-gray-700 p-3'>• Use a mix of letters & numbers if possible</div>
                             </div>
