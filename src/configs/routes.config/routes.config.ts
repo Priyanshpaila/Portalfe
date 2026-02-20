@@ -21,6 +21,13 @@ export const protectedRoutes = [
         authority: [],
     },
     {
+        key: 'user.profile',
+        path: '/profile',
+        component: lazy(() => import('@/views/profile/ProfilePage')),
+        authority: [],
+    },
+
+    {
         key: 'forms.rfq',
         path: '/rfq',
         component: lazy(() => import('@/views/forms/RFQ')),
@@ -88,19 +95,18 @@ export const protectedRoutes = [
         component: lazy(() => import('@/views/security/AccessControl')),
         authority: [PERMISSIONS.ACCESS_CONTROL],
     },
-        {
+    {
         key: 'security.master-control',
         path: '/master-control',
         component: lazy(() => import('@/views/security/MasterControl')),
         authority: [PERMISSIONS.MASTER_CONTROL],
     },
-        {
+    {
         key: 'security.approve-vendor',
         path: '/approve-vendor',
         component: lazy(() => import('@/views/security/ApproveVendor')),
         authority: [PERMISSIONS.APPROVE_VENDOR],
     },
-
 
     {
         key: 'page.po-authorize',
