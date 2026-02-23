@@ -26,6 +26,19 @@ export const protectedRoutes = [
         component: lazy(() => import('@/views/profile/ProfilePage')),
         authority: [],
     },
+    {
+        key: 'user.billing',
+        path: '/billing',
+        component: lazy(() => import('@/views/billing/BillingPage')),
+        authority: [],
+    },
+
+        {
+        key: 'user.connection',
+        path: '/connection',
+        component: lazy(() => import('@/views/connection/ConnectionsPage')),
+        authority: [],
+    },
 
     {
         key: 'forms.rfq',

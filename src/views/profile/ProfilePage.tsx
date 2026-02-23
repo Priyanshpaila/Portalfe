@@ -27,6 +27,7 @@ import Avatar from '@/components/ui/Avatar'
 import { Button } from '@/components/ui'
 import ApiService from '@/services/ApiService'
 import { useAppSelector } from '@/store'
+import FirmEmployeesManager from '@/components/profile/FirmEmployeesManager'
 
 type VendorContactPerson = {
     name?: string
@@ -730,11 +731,7 @@ export default function ProfilePage() {
                                 label={viewerType === 'vendor' ? 'Vendor Code' : 'Account Type'}
                                 value={viewerType === 'vendor' ? form.vendorCode || '—' : typeLabel}
                             />
-                            <StatPill
-                                icon={<HiOutlineBadgeCheck className='text-base' />}
-                                label='Subscription'
-                                value={subscriptionPillValue || '—'}
-                            />
+                            <StatPill icon={<HiOutlineBadgeCheck className='text-base' />} label='Subscription' value={subscriptionPillValue || '—'} />
                         </div>
 
                         {/* QUICK ACTIONS */}
@@ -954,9 +951,7 @@ export default function ProfilePage() {
                                                             ? 'text-red-600 dark:text-red-400'
                                                             : 'text-gray-900 dark:text-gray-100',
                                                     )}>
-                                                    {(daysLeft(subscription?.endAt) as number) < 0
-                                                        ? 'Expired'
-                                                        : `${daysLeft(subscription?.endAt)} days`}
+                                                    {(daysLeft(subscription?.endAt) as number) < 0 ? 'Expired' : `${daysLeft(subscription?.endAt)} days`}
                                                 </span>
                                             </div>
                                         ) : null}
@@ -990,9 +985,7 @@ export default function ProfilePage() {
                                                         Copy
                                                     </button>
                                                 </div>
-                                                <div className='mt-1 text-xs font-mono text-gray-700 dark:text-gray-200 break-all'>
-                                                    {subscription.orderId}
-                                                </div>
+                                                <div className='mt-1 text-xs font-mono text-gray-700 dark:text-gray-200 break-all'>{subscription.orderId}</div>
                                             </div>
                                         ) : null}
 
@@ -1183,6 +1176,15 @@ export default function ProfilePage() {
                                         />
                                         <div />
                                     </div>
+                                </div>
+                                <div className='lg:col-span-2'>
+                                    <FirmEmployeesManager
+                                        seatsAllowed={Number(subscription?.seats ?? 0) || null}
+                                        onChanged={() => {
+                                            // refresh profile + subscription + stats after employee creation
+                                            loadMe()
+                                        }}
+                                    />
                                 </div>
                             </div>
                         ) : null}

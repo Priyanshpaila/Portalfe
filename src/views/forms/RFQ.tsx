@@ -22,6 +22,7 @@ import classNames from 'classnames'
 import useQuery from '@/utils/hooks/useQuery'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { Loading } from '@/components/shared'
+import { UserApi } from '@/services/user.api'
 
 const { Tr, Th, Td, THead, TBody } = Table
 
@@ -126,7 +127,7 @@ const initialValues: RFQType = {
 
 const tabs = ['General Information', 'Indents', 'Terms & Conditions', 'Vendor Details', 'Attachments']
 
-let fileIndex: number
+let fileIndex: number = -1
 
 function pad5(n: number) {
     return String(n).padStart(5, '0')
@@ -175,6 +176,20 @@ function getLoggedInUserLabel() {
         return ''
     } catch {
         return ''
+    }
+}
+
+export async function getLoggedInUser(): Promise<any | null> {
+    try {
+        const res = await UserApi.getMe()
+        const raw = (res as any)?.data ?? res
+
+        // your API returns user directly (as you showed)
+        if (raw && typeof raw === 'object') return raw
+
+        return null
+    } catch {
+        return null
     }
 }
 
@@ -271,6 +286,31 @@ export default function RFQ() {
     const [indentTypeOptions, setIndentTypeOptions] = useState<{ label: string; value: string }[]>(DEFAULT_INDENT_TYPE_OPTIONS)
     const [indentTypeLoading, setIndentTypeLoading] = useState(false)
 
+    const [meUser, setMeUser] = useState<any | null>(null)
+
+    useEffect(() => {
+        ;(async () => {
+            const u = await getLoggedInUser() // your function that calls UserApi.getMe()
+            setMeUser(u)
+        })()
+    }, [])
+
+    const meCompanyName = useMemo(() => String(meUser?.company?.name || '').trim(), [meUser])
+    function normCompany(v: any) {
+        return String(v || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+    }
+
+    const companyFilteredIndents = useMemo(() => {
+        const my = normCompany(meCompanyName)
+        const list = Array.isArray(indents) ? indents : []
+        if (!my) return list // if company is missing, don't filter (safe fallback)
+        return list.filter((i: any) => normCompany(i?.company) === my)
+    }, [indents, meCompanyName])
+    const mePersonName = useMemo(() => String(meUser?.name || '').trim(), [meUser])
+
     const [flags, setFlags] = useState<{
         loading?: boolean
         deleting?: boolean
@@ -305,7 +345,7 @@ export default function RFQ() {
                         method: 'get',
                         url: '/rfq/rfqNumber',
                     })
-                    setFormValues({ ...initialValues, rfqNumber: rfqResponse?.data?.rfqNumber })
+                    setFormValues({ ...initialValues, rfqNumber: (rfqResponse as any)?.data?.rfqNumber })
                 } catch (error) {
                     console.error(error)
                 }
@@ -326,7 +366,7 @@ export default function RFQ() {
                     url: '/rfq',
                     params: { rfqNumber },
                 })
-                setFormValues(rfqResponse.data)
+                setFormValues((rfqResponse as any).data)
             } catch (error) {
                 console.error(error)
             }
@@ -344,7 +384,7 @@ export default function RFQ() {
                         url: INDENT_TYPE_LIST_URL,
                     })
 
-                    const rows: IndentTypeMasterRow[] = typeResp?.data?.data || typeResp?.data || []
+                    const rows: IndentTypeMasterRow[] = (typeResp as any)?.data?.data || (typeResp as any)?.data || []
                     const opts = buildIndentTypeOptions(rows)
                     setIndentTypeOptions(opts?.length ? opts : DEFAULT_INDENT_TYPE_OPTIONS)
                 } catch (e) {
@@ -367,7 +407,7 @@ export default function RFQ() {
                     params: { page: 1, pageSize: 500 },
                 })
 
-                const raw = indentResponse?.data?.data || []
+                const raw = (indentResponse as any)?.data?.data || []
                 const normalized: IndentType[] = raw.map((d: any) => ({
                     ...d,
                     id: d?.id || d?._id,
@@ -378,11 +418,14 @@ export default function RFQ() {
 
                 setIndents(normalized)
 
-                const vendorResponse = await ApiService.fetchData<VendorType[]>({
+                const vendorResponse = await ApiService.fetchData<any>({
                     method: 'get',
                     url: '/vendor/list',
                 })
-                setVendors(vendorResponse.data)
+
+                const vRaw = (vendorResponse as any)?.data
+                const vList: VendorType[] = Array.isArray(vRaw) ? vRaw : Array.isArray(vRaw?.data) ? vRaw.data : []
+                setVendors(vList)
             } catch (error) {
                 console.error(error)
                 setIndentTypeLoading(false)
@@ -400,7 +443,7 @@ export default function RFQ() {
         else if (tab === tabs[4]) invokeFileInput()
     }
 
-    const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setValues: FormikHelpers<RFQFormValues>['setValues']) => {
+    const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setValues: ((values: any, shouldValidate?: boolean) => any) | any) => {
         let _file = e.target.files?.[0]
         if (!_file) return
 
@@ -409,7 +452,7 @@ export default function RFQ() {
 
         const index = fileIndex
         if (index >= 0) {
-            setValues((prev) => ({
+            setValues((prev: any) => ({
                 ...prev,
                 file: prev.file
                     ?.slice(0, index)
@@ -426,7 +469,7 @@ export default function RFQ() {
             }))
             fileIndex = -1
         } else {
-            setValues((prev) => ({
+            setValues((prev: any) => ({
                 ...prev,
                 file: (prev.file || [])?.concat(_file),
                 attachments: (prev.attachments || []).concat({
@@ -447,16 +490,16 @@ export default function RFQ() {
         try {
             const formData = new FormData()
             formData.append('data', JSON.stringify(values))
-            if (values?.file && values?.file?.length > 0) for (const i of values.file) formData.append('file', i)
+            if (values?.file && values?.file?.length > 0) for (const i of values.file as any) formData.append('file', i)
 
             const response = await ApiService.fetchData<{ errorMessage?: string }, FormData>({
                 method: !rfqNumber ? 'POST' : 'PUT',
-                url: '/rfq' + (!rfqNumber ? '' : `/${formValues?._id}`),
+                url: '/rfq' + (!rfqNumber ? '' : `/${(formValues as any)?._id}`),
                 headers: { 'Content-Type': 'multipart/form-data' },
                 data: formData,
             })
 
-            if (response?.data?.errorMessage) showWarning(response?.data?.errorMessage)
+            if ((response as any)?.data?.errorMessage) showWarning((response as any)?.data?.errorMessage)
             else showAlert(`RFQ ${values.status === 1 ? 'submitted' : 'saved'} successfully`)
 
             navigate('/rfqs')
@@ -472,9 +515,9 @@ export default function RFQ() {
         try {
             const response = await ApiService.fetchData<{ success: true }>({
                 method: 'delete',
-                url: '/rfq/' + formValues?._id,
+                url: '/rfq/' + (formValues as any)?._id,
             })
-            if (response.data.success) {
+            if ((response as any)?.data?.success) {
                 setFlags((prev) => ({ ...prev, deleting: false, deleteDialog: false }))
                 showAlert(`RFQ ${rfqNumber} has been deleted successfully.`)
                 navigate('/rfqs')
@@ -524,18 +567,18 @@ export default function RFQ() {
                     enableReinitialize={true}
                     initialValues={{
                         ...(formValues as any),
-                        dueDate: formValues.dueDate ? new Date(formValues.dueDate as any) : null,
-                        rfqDate: formValues.rfqDate ? new Date(formValues.rfqDate as any) : null,
+                        dueDate: (formValues as any).dueDate ? new Date((formValues as any).dueDate as any) : null,
+                        rfqDate: (formValues as any).rfqDate ? new Date((formValues as any).rfqDate as any) : null,
                     }}
                     onSubmit={handleSubmit}>
                     {(form) => {
                         const { values, setFieldValue: _setFieldValue, setValues: _setValues } = form
 
-                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async () => {}
-                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async () => {}
+                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async (_v: any, _s?: boolean) => {}
+                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async (_f: any, _v: any, _s?: boolean) => {}
 
-                        const setValues: FormikHelpers<RFQFormValues>['setValues'] = allowEdit ? _setValues : noopSetValues
-                        const setFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = allowEdit ? _setFieldValue : noopSetFieldValue
+                        const setValues: FormikHelpers<RFQFormValues>['setValues'] = allowEdit ? (_setValues as any) : noopSetValues
+                        const setFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = allowEdit ? (_setFieldValue as any) : noopSetFieldValue
 
                         const openIndentMetaDialog = (indent: IndentType, mode: 'select' | 'edit' = 'select') => {
                             // ✅ NO FRONTEND AUTO-GEN: keep empty if missing; server will generate
@@ -611,12 +654,12 @@ export default function RFQ() {
 
                                 const resp = await ApiService.fetchData<any>({
                                     method: 'put',
-                                    url: `/indent/add-item/${indent.id}`,
+                                    url: `/indent/add-item/${(indent as any).id}`,
                                     data: payload,
                                 })
 
-                                const updated = resp?.data?.data || resp?.data || {}
-                                const updatedId = String(updated.id || updated._id || indent.id)
+                                const updated = (resp as any)?.data?.data || (resp as any)?.data || {}
+                                const updatedId = String(updated.id || updated._id || (indent as any).id)
 
                                 // ✅ safety: ensure server generated values
                                 const serverIndentNo = String(updated?.indentNumber ?? '').trim()
@@ -635,17 +678,17 @@ export default function RFQ() {
                                     ),
                                 )
 
-                                const isCurrentlySelected = Boolean(indentSelection[String(indent.id)])
+                                const isCurrentlySelected = Boolean(indentSelection[String((indent as any).id)])
 
                                 // ✅ select only in select-mode
                                 if (indentMeta.mode === 'select') {
-                                    setIndentSelection((prev) => ({ ...prev, [String(indent.id)]: true }))
+                                    setIndentSelection((prev) => ({ ...prev, [String((indent as any).id)]: true }))
                                 }
 
                                 const shouldTouchItems = indentMeta.mode === 'select' || isCurrentlySelected
 
                                 if (shouldTouchItems) {
-                                    setValues((prev) => {
+                                    setValues((prev: any) => {
                                         const existing = prev.items || []
                                         const newItem = indentToItem({ ...(indent as any), ...updated }, meta)
 
@@ -673,7 +716,7 @@ export default function RFQ() {
                         return (
                             <>
                                 <Form className={classNames('px-1', 'mt-3', allowEdit ? null : 'prevent-edit')}>
-                                    <input hidden type='file' id='file-input' onChange={(e) => onFileSelect(e, setValues)} />
+                                    <input hidden type='file' id='file-input' onChange={(e) => onFileSelect(e, setValues as any)} />
 
                                     <FormContainer className='text-xs'>
                                         <Tabs variant='underline' value={tab} onChange={setTab}>
@@ -708,7 +751,7 @@ export default function RFQ() {
                                                                 variant='solid'
                                                                 size='xs'
                                                                 icon={<MdOutlineSave />}
-                                                                onClick={() => handleSave(values)}>
+                                                                onClick={() => handleSave(values as any)}>
                                                                 Save
                                                             </Button>
 
@@ -723,7 +766,7 @@ export default function RFQ() {
                                                         </>
                                                     )}
 
-                                                    {formValues?._id && (
+                                                    {(formValues as any)?._id && (
                                                         <Button
                                                             type='button'
                                                             variant='solid'
@@ -746,7 +789,7 @@ export default function RFQ() {
                                                             name='rfqNumber'
                                                             component={Input}
                                                             size={'xs'}
-                                                            value={values.rfqNumber}
+                                                            value={(values as any).rfqNumber}
                                                             onChange={() => null}
                                                         />
                                                     </FormItem>
@@ -758,7 +801,7 @@ export default function RFQ() {
                                                             component={DatePicker}
                                                             inputFormat='DD/MM/YYYY'
                                                             size={'xs'}
-                                                            value={values.rfqDate || null}
+                                                            value={(values as any).rfqDate || null}
                                                             onChange={() => null}
                                                         />
                                                     </FormItem>
@@ -771,7 +814,7 @@ export default function RFQ() {
                                                             inputFormat='DD/MM/YYYY hh:mm a'
                                                             clearable={false}
                                                             size={'xs'}
-                                                            value={values.dueDate || null}
+                                                            value={(values as any).dueDate || null}
                                                             onChange={(newDate: Date) => setFieldValue('dueDate', newDate)}
                                                         />
                                                     </FormItem>
@@ -784,7 +827,7 @@ export default function RFQ() {
                                                             name='contactPersonName'
                                                             component={Input}
                                                             size={'xs'}
-                                                            value={values.contactPersonName}
+                                                            value={(values as any).contactPersonName}
                                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                         />
                                                     </FormItem>
@@ -797,7 +840,7 @@ export default function RFQ() {
                                                             name='contactNumber'
                                                             component={Input}
                                                             size={'xs'}
-                                                            value={values.contactNumber}
+                                                            value={(values as any).contactNumber}
                                                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
                                                                 e.target.value?.length <= 10 ? setFieldValue(e.target.name, e.target.value) : null
                                                             }
@@ -812,7 +855,7 @@ export default function RFQ() {
                                                             name='contactEmail'
                                                             component={Input}
                                                             size={'xs'}
-                                                            value={values.contactEmail}
+                                                            value={(values as any).contactEmail}
                                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                         />
                                                     </FormItem>
@@ -827,7 +870,7 @@ export default function RFQ() {
                                                         name='remarks'
                                                         component={Input}
                                                         size={'xs'}
-                                                        value={values.remarks}
+                                                        value={(values as any).remarks}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
@@ -836,7 +879,7 @@ export default function RFQ() {
                                             <TabContent value={tabs[1]}>
                                                 <Indents
                                                     className='h-[45vh] overflow-auto'
-                                                    indents={indents || []}
+                                                    indents={companyFilteredIndents}
                                                     disabled={!allowEdit}
                                                     selection={indentSelection}
                                                     onEditIndent={handleEditIndent}
@@ -844,12 +887,12 @@ export default function RFQ() {
                                                         // ✅ Unselect all
                                                         if (!selectionFlag) {
                                                             setIndentSelection({})
-                                                            setValues((prev) => ({ ...prev, items: [] }))
+                                                            setValues((prev: any) => ({ ...prev, items: [] }))
                                                             return
                                                         }
 
-                                                        // ✅ Select all only if ALL are complete
-                                                        const incomplete = (indents || []).filter((i: any) => !isIndentComplete(i))
+                                                        // ✅ Select all only if ALL VISIBLE indents are complete
+                                                        const incomplete = (companyFilteredIndents || []).filter((i: any) => !isIndentComplete(i))
                                                         if (incomplete.length) {
                                                             showWarning(
                                                                 `${incomplete.length} indents are missing required details. Please fill them first (select one-by-one).`,
@@ -857,21 +900,21 @@ export default function RFQ() {
                                                             return
                                                         }
 
-                                                        // ✅ mark all selected
+                                                        // ✅ mark all visible selected
                                                         const map: Record<string, boolean> = {}
-                                                        for (const i of indents || []) {
+                                                        for (const i of companyFilteredIndents || []) {
                                                             const id = indentId(i)
                                                             if (id) map[id] = true
                                                         }
                                                         setIndentSelection(map)
 
-                                                        // ✅ add items for all indents (no duplicates)
-                                                        setValues((prev) => {
+                                                        // ✅ add items for all visible indents (no duplicates)
+                                                        setValues((prev: any) => {
                                                             const existing = prev.items || []
                                                             const keys = new Set(existing.map(itemKey))
                                                             const nextItems = [...existing]
 
-                                                            for (const i of indents || []) {
+                                                            for (const i of companyFilteredIndents || []) {
                                                                 const meta = buildMetaFromIndent(i, loggedInName)
                                                                 const it = indentToItem(i, meta)
                                                                 const k = itemKey(it)
@@ -888,11 +931,10 @@ export default function RFQ() {
 
                                                         // ✅ selecting single row
                                                         if (selectionFlag) {
-                                                            // if complete -> select directly (no modal)
                                                             if (isIndentComplete(val)) {
                                                                 setIndentSelection((prev) => ({ ...prev, [id]: true }))
 
-                                                                setValues((prev) => {
+                                                                setValues((prev: any) => {
                                                                     const existing = prev.items || []
                                                                     const keys = new Set(existing.map(itemKey))
 
@@ -906,15 +948,14 @@ export default function RFQ() {
                                                                 return
                                                             }
 
-                                                            // otherwise -> open modal
                                                             openIndentMetaDialog(val, 'select')
                                                             return
                                                         }
 
-                                                        // ✅ unselect -> remove immediately (no modal)
+                                                        // ✅ unselect -> remove immediately
                                                         setIndentSelection((prev) => ({ ...prev, [id]: false }))
 
-                                                        setValues((prev) => {
+                                                        setValues((prev: any) => {
                                                             const existing = prev.items || []
                                                             const removeIndentNumber = String(val?.indentNumber ?? '').trim()
                                                             const removeItemCode = String(val?.itemCode ?? '').trim()
@@ -942,11 +983,11 @@ export default function RFQ() {
                                                             </Tr>
                                                         </THead>
                                                         <TBody>
-                                                            {termsConditionsOptions.map(({ value: key }) => (
+                                                            {termsConditionsOptions.map(({ value: key }: any) => (
                                                                 <Tr key={key}>
                                                                     <Td className='border-r border-r-slate-400/80 whitespace-nowrap'>
                                                                         <div className='flex items-center gap-2'>
-                                                                            <span>{termsConditionsOptions.find((i) => i.value === key)?.label}</span>
+                                                                            <span>{termsConditionsOptions.find((i: any) => i.value === key)?.label}</span>
                                                                         </div>
                                                                     </Td>
                                                                     <Td className='py-0'>
@@ -956,8 +997,8 @@ export default function RFQ() {
                                                                             name={`termsConditions.${key}`}
                                                                             className='border-none !p-0 ring-0 outline-0 m-0'
                                                                             placeholder='Terms & Conditions'
-                                                                            value={(values.termsConditions as any)[key]}
-                                                                            onChange={(e) => setFieldValue(e.target.name, e.target.value)}
+                                                                            value={((values as any).termsConditions || {})[key]}
+                                                                            onChange={(e: any) => setFieldValue(e.target.name, e.target.value)}
                                                                         />
                                                                     </Td>
                                                                 </Tr>
@@ -979,20 +1020,30 @@ export default function RFQ() {
                                                                 <Th>Email</Th>
                                                                 <Th>Status</Th>
                                                                 <Th>Preview</Th>
-                                                                {values.status === 0 && <Th></Th>}
+                                                                {(values as any).status === 0 && <Th></Th>}
                                                             </Tr>
                                                         </THead>
                                                         <TBody>
-                                                            {values.vendors?.map((i, index) => (
-                                                                <Tr key={i.vendorCode}>
+                                                            {(values as any).vendors?.map((i: any, index: number) => (
+                                                                <Tr key={i.vendorCode || index}>
                                                                     <Td>{index + 1}</Td>
                                                                     <Td>{i.name}</Td>
                                                                     <Td>{i.location}</Td>
-                                                                    <Td>{i.contactPerson.name}</Td>
-                                                                    <Td>{i.contactPerson.email}</Td>
+                                                                    <Td>
+                                                                        {(Array.isArray(i?.contactPerson)
+                                                                            ? i?.contactPerson?.[0]?.name
+                                                                            : i?.contactPerson?.name) || '-'}
+                                                                    </Td>
+                                                                    <Td>
+                                                                        {(Array.isArray(i?.contactPerson)
+                                                                            ? i?.contactPerson?.[0]?.email
+                                                                            : i?.contactPerson?.email) ||
+                                                                            i?.email ||
+                                                                            '-'}
+                                                                    </Td>
                                                                     <Td>Pending</Td>
                                                                     <Td></Td>
-                                                                    {values.status === 0 && (
+                                                                    {(values as any).status === 0 && (
                                                                         <Td>
                                                                             <Button
                                                                                 type='button'
@@ -1001,10 +1052,12 @@ export default function RFQ() {
                                                                                 size='xs'
                                                                                 icon={<MdClose className='size-4' />}
                                                                                 onClick={() =>
-                                                                                    setValues((prev) => ({
+                                                                                    setValues((prev: any) => ({
                                                                                         ...prev,
                                                                                         vendors:
-                                                                                            prev?.vendors?.filter((_i) => _i.vendorCode !== i.vendorCode) || [],
+                                                                                            prev?.vendors?.filter(
+                                                                                                (_i: any) => _i.vendorCode !== i.vendorCode,
+                                                                                            ) || [],
                                                                                     }))
                                                                                 }
                                                                             />
@@ -1020,33 +1073,35 @@ export default function RFQ() {
                                             <TabContent value={tabs[4]}>
                                                 <div className='flex gap-2 h-[45vh] overflow-auto'>
                                                     <AttachmentsTable
-                                                        id={values._id || 'uploaded'}
+                                                        id={(values as any)._id || 'uploaded'}
                                                         info='Uploaded'
                                                         isSmall={true}
-                                                        attachments={values.attachments || []}
+                                                        attachments={(values as any).attachments || []}
                                                     />
                                                     <AttachmentsTable
-                                                        id={values._id || 'selected'}
+                                                        id={(values as any)._id || 'selected'}
                                                         info='Selected'
                                                         isEditable={true}
                                                         isDisabled={!allowEdit}
-                                                        attachments={values.attachments || []}
-                                                        setValues={setValues}
+                                                        attachments={(values as any).attachments || []}
+                                                        setValues={setValues as any}
                                                     />
                                                 </div>
                                             </TabContent>
                                         </Tabs>
 
                                         <div className='max-h-[35vh] overflow-auto mt-2'>
-                                            <RFQItemsTable isEditable={allowEdit} items={values.items || []} setFieldValue={setFieldValue} />
+                                            <RFQItemsTable isEditable={allowEdit} items={(values as any).items || []} setFieldValue={setFieldValue as any} />
                                         </div>
                                     </FormContainer>
 
                                     <VendorModal
                                         isOpen={Boolean(flags?.vendorModal)}
-                                        vendors={vendors?.filter((i) => !values.vendors?.some((v) => v.vendorCode === i.vendorCode))}
+                                        vendors={(Array.isArray(vendors) ? vendors : []).filter(
+                                            (i: any) => !((values as any).vendors || []).some((v: any) => v.vendorCode === i.vendorCode),
+                                        )}
                                         addVendor={(vendor, shouldClose) => {
-                                            setValues((prev) => ({
+                                            setValues((prev: any) => ({
                                                 ...prev,
                                                 vendors: (prev.vendors || [])?.concat([vendor]),
                                             }))
@@ -1065,6 +1120,8 @@ export default function RFQ() {
                                     onSubmit={saveIndentMeta}
                                     indentTypeOptions={indentTypeOptions}
                                     indentTypeLoading={indentTypeLoading}
+                                    meCompanyName={meCompanyName}
+                                    mePersonName={mePersonName}
                                 />
                             </>
                         )
@@ -1098,6 +1155,8 @@ const IndentMetaDialog = ({
     onSubmit,
     indentTypeOptions,
     indentTypeLoading,
+    meCompanyName,
+    mePersonName,
 }: {
     open: boolean
     loading: boolean
@@ -1107,9 +1166,9 @@ const IndentMetaDialog = ({
     onSubmit: (values: IndentMetaValues, helpers: FormikHelpers<IndentMetaValues>) => Promise<void>
     indentTypeOptions: { label: string; value: string }[]
     indentTypeLoading?: boolean
+    meCompanyName: string
+    mePersonName: string
 }) => {
-    const loggedInName = useMemo(() => getLoggedInUserLabel(), [])
-
     const toNum = (x: any) => {
         const n = Number(String(x ?? '').trim())
         return Number.isFinite(n) ? n : NaN
@@ -1123,7 +1182,8 @@ const IndentMetaDialog = ({
         const defaultIndentType = indentTypeOptions?.[0]?.value || 'STANDARD'
 
         const base: IndentMetaValues = initialValues || {
-            company: (indent as any)?.company || '',
+            // ✅ default company from ME.company.name if indent/company missing
+            company: String((indent as any)?.company || '').trim() || meCompanyName || '',
             indentNumber: String((indent as any)?.indentNumber ?? '').trim() || '',
             indentDate: (indent as any)?.documentDate ? new Date((indent as any).documentDate) : new Date(),
             lineNumber: (() => {
@@ -1131,7 +1191,8 @@ const IndentMetaDialog = ({
                 return ln ? pad5(parseInt(ln, 10) || 0) : ''
             })(),
             costCenter: (indent as any)?.costCenter || '',
-            requestedBy: (indent as any)?.requestedBy || '',
+            // ✅ default requestedBy from ME.name if indent/requestedBy missing
+            requestedBy: String((indent as any)?.requestedBy || '').trim() || mePersonName || '',
             indentType: String((indent as any)?.documentType ?? '').trim() || defaultIndentType,
 
             itemDescription: (indent as any)?.itemDescription || '',
@@ -1149,20 +1210,23 @@ const IndentMetaDialog = ({
 
         return {
             ...base,
-            company: base.company?.trim() ? base.company : loggedInName,
-            // ✅ backend-generated: keep empty if missing
+
+            // ✅ final fallback defaults
+            company: base.company?.trim() ? base.company : meCompanyName,
+            requestedBy: base.requestedBy?.trim() ? base.requestedBy : mePersonName,
+
+            // backend-generated: keep empty if missing
             indentNumber: String(base.indentNumber ?? '').trim(),
             lineNumber: (() => {
                 const ln = digitsOnly5(String(base.lineNumber ?? ''))
                 return ln ? pad5(parseInt(ln, 10) || 0) : ''
             })(),
-            requestedBy: base.requestedBy?.trim() ? base.requestedBy : loggedInName,
 
             indentQty: String((base as any).indentQty ?? '0'),
             preRFQQty: String((base as any).preRFQQty ?? '0'),
             prePOQty: String((base as any).prePOQty ?? '0'),
         }
-    }, [initialValues, indent, loggedInName, indentTypeOptions])
+    }, [initialValues, indent, indentTypeOptions, meCompanyName, mePersonName])
 
     return (
         <Dialog isOpen={open} onClose={onClose} width={760}>
@@ -1170,7 +1234,7 @@ const IndentMetaDialog = ({
                 <div className='pb-3'>
                     <h6 className='text-xl font-semibold'>Indent Details</h6>
                     <div className='mt-1 text-xs opacity-80'>
-                        <b>{indent?.itemCode}</b> — {(indent as any)?.itemDescription}
+                        <b>{(indent as any)?.itemCode}</b> — {(indent as any)?.itemDescription}
                     </div>
                 </div>
 
@@ -1181,14 +1245,11 @@ const IndentMetaDialog = ({
                         const errors: Partial<Record<keyof IndentMetaValues, any>> = {}
 
                         if (!v.company?.trim()) errors.company = 'Required'
-                        // ✅ indentNumber NOT required (server-generated)
                         if (!v.indentDate) errors.indentDate = 'Required'
                         if (!v.costCenter?.trim()) errors.costCenter = 'Required'
                         if (!v.requestedBy?.trim()) errors.requestedBy = 'Required'
                         if (!v.indentType?.trim()) errors.indentType = 'Required'
 
-                        // ✅ lineNumber NOT required (server-generated)
-                        // If present, must be 5 digits (existing SAP values etc.)
                         const ln = digitsOnly5(v.lineNumber)
                         if (v.lineNumber?.trim() && (!ln || ln.length !== 5)) errors.lineNumber = 'Line number must be 5 digits'
 
@@ -1228,13 +1289,12 @@ const IndentMetaDialog = ({
                                                 errorMessage={errors.company}>
                                                 <Input
                                                     size='sm'
-                                                    disabled={Boolean(loggedInName)}
+                                                    disabled={Boolean(meCompanyName)} // ✅ lock when ME has company
                                                     value={values.company}
                                                     onChange={(e) => setFieldValue('company', e.target.value)}
                                                 />
                                             </FormItem>
 
-                                            {/* ✅ readonly, backend-generated */}
                                             <FormItem label='Indent Number (auto)' labelClass='text-xs !mb-1' className='mb-2.5'>
                                                 <Input size='sm' disabled value={values.indentNumber || ''} placeholder='Auto-generated by server' />
                                             </FormItem>
@@ -1254,7 +1314,6 @@ const IndentMetaDialog = ({
                                                 />
                                             </FormItem>
 
-                                            {/* ✅ readonly, backend-generated */}
                                             <FormItem
                                                 label='Line Number (auto)'
                                                 labelClass='text-xs !mb-1'
@@ -1283,7 +1342,7 @@ const IndentMetaDialog = ({
                                                 errorMessage={errors.requestedBy}>
                                                 <Input
                                                     size='sm'
-                                                    disabled={Boolean(loggedInName)}
+                                                    disabled={Boolean(mePersonName)} // ✅ lock when ME has name
                                                     value={values.requestedBy}
                                                     onChange={(e) => setFieldValue('requestedBy', e.target.value)}
                                                 />
@@ -1300,7 +1359,7 @@ const IndentMetaDialog = ({
                                                     size='sm'
                                                     options={safeOpts}
                                                     value={safeOpts.find((o) => o.value === values.indentType)}
-                                                    onChange={(opt) => setFieldValue('indentType', opt?.value)}
+                                                    onChange={(opt: any) => setFieldValue('indentType', opt?.value)}
                                                 />
                                                 {indentTypeLoading ? <div className='mt-1 text-[11px] opacity-70'>Loading indent types…</div> : null}
                                             </FormItem>

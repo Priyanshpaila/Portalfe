@@ -17,7 +17,21 @@ type RoleFormValues = {
     status: number
 }
 
-type UserType = _UserType & { roleName?: string }
+type CompanyFields = {
+    name: string
+    industry: string
+    gstin: string
+    pan: string
+    phone: string
+    website: string
+    addressLine1: string
+    addressLine2: string
+    city: string
+    state: string
+    pincode: string
+}
+
+type UserType = _UserType & { roleName?: string; company?: Partial<CompanyFields> }
 type EditDialogType = 'user' | 'role' | 'vendor' | null
 
 export default function AccessControl() {
@@ -68,10 +82,23 @@ export default function AccessControl() {
             setActionLoading(true)
             try {
                 const formData = new FormData()
-                Object.entries(values).forEach(([key, value]) => {
-                    if (value !== undefined && value !== null) {
-                        formData.append(key, value as string | Blob)
+
+                Object.entries(values as any).forEach(([key, value]) => {
+                    if (value === undefined || value === null) return
+
+                    // ✅ send nested company correctly
+                    if (key === 'company' && typeof value === 'object' && !(value instanceof Blob)) {
+                        formData.append('company', JSON.stringify(value))
+                        return
                     }
+
+                    // ✅ for any other nested objects/arrays (safe)
+                    if (typeof value === 'object' && !(value instanceof Blob)) {
+                        formData.append(key, JSON.stringify(value))
+                        return
+                    }
+
+                    formData.append(key, value as any)
                 })
 
                 if (editDialogType === 'user' && editData && (editData as UserType)._id) {
@@ -88,6 +115,9 @@ export default function AccessControl() {
                     await ApiService.fetchData({
                         method: 'post',
                         url: '/user',
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                        },
                         data: formData,
                     })
                     showAlert('User added successfully.')
@@ -197,6 +227,7 @@ export default function AccessControl() {
                     Add User
                 </Button>
             </div>
+
             <Table compact className='text-xs relative' containerClassName='max-h-[80vh] overflow-auto relative my-2'>
                 <THead className='sticky top-0'>
                     <Tr>
@@ -272,6 +303,7 @@ export default function AccessControl() {
                     Add Role
                 </Button>
             </div>
+
             <Table compact className='text-xs relative' containerClassName='max-h-[80vh] overflow-auto relative my-2'>
                 <THead className='sticky top-0'>
                     <Tr>
@@ -375,8 +407,23 @@ const initialUserValues: UserType = {
     name: '',
     username: '',
     password: '',
+    email: '',
     role: '',
     status: 1,
+
+    company: {
+        name: '',
+        industry: '',
+        gstin: '',
+        pan: '',
+        phone: '',
+        website: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        state: '',
+        pincode: '',
+    },
 }
 
 type UserDialogProps = {
@@ -389,58 +436,63 @@ type UserDialogProps = {
 }
 
 const AddUserDialog: React.FC<UserDialogProps> = ({ open, onClose, onSubmit, roles, initialValues, loading }) => (
-    <Dialog isOpen={open} onClose={onClose}>
-        <h6 className='mb-4 text-xl'>
-            {initialValues._id ? 'Edit' : 'Add'} {initialValues.vendorCode ? 'Vendor' : 'User'}
-        </h6>
-        <Formik enableReinitialize initialValues={initialValues} onSubmit={onSubmit}>
-            {({ values, setFieldValue }) => (
-                <Form>
-                    <FormContainer>
-                        <div>
-                            <div className='flex gap-2 items-end'>
-                                <FormItem asterisk label='Company Name' labelClass='text-xs !mb-1' className='mb-2.5 flex-1'>
-                                    <Field
-                                        name='name'
-                                        as={Input}
-                                        size='sm'
-                                        value={values.name}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('name', e.target.value)}
-                                    />
-                                </FormItem>
-                                <FormItem
-                                    asterisk
-                                    label={`Username${initialValues?.vendorCode ? ' / Vendor Code' : ''}`}
-                                    labelClass='text-xs !mb-1'
-                                    className='mb-2.5 flex-1'>
-                                    <Field
-                                        disabled={initialValues?.vendorCode}
-                                        name='username'
-                                        as={Input}
-                                        size='sm'
-                                        value={values.username}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('username', e.target.value)}
-                                    />
-                                </FormItem>
-                            </div>
-                            {!values._id && (
-                                <FormItem asterisk label='Password' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                    <Field
-                                        name='password'
-                                        type='password'
-                                        as={Input}
-                                        size='sm'
-                                        value={values.password}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('password', e.target.value)}
-                                    />
-                                </FormItem>
-                            )}
-                            <div className='flex gap-2 items-end'>
-                                <FormItem
-                                    asterisk
-                                    label={`${initialValues?.vendorCode ? 'Vendor ' : ''}Email`}
-                                    labelClass='text-xs !mb-1'
-                                    className='mb-2.5 flex-1'>
+    <Dialog isOpen={open} onClose={onClose} width={900}>
+        <div className='flex max-h-[85vh] flex-col'>
+            {/* Header */}
+            <div className='mb-4'>
+                <h6 className='text-xl font-semibold'>
+                    {initialValues._id ? 'Edit' : 'Add'} {initialValues.vendorCode ? 'Vendor' : 'User'}
+                </h6>
+            </div>
+
+            <Formik enableReinitialize initialValues={initialValues} onSubmit={onSubmit}>
+                {({ values, setFieldValue }) => (
+                    <Form className='min-h-0 flex flex-col'>
+                        {/* Scrollable content */}
+                        <div className='flex-1 min-h-0 overflow-y-auto pr-1'>
+                            <FormContainer>
+                                {/* Basic fields */}
+                                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                                    <FormItem asterisk label='Name' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                        <Field
+                                            name='name'
+                                            as={Input}
+                                            size='sm'
+                                            value={values.name}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('name', e.target.value)}
+                                        />
+                                    </FormItem>
+
+                                    <FormItem
+                                        asterisk
+                                        label={`Username${initialValues?.vendorCode ? ' / Vendor Code' : ''}`}
+                                        labelClass='text-xs !mb-1'
+                                        className='mb-2.5'>
+                                        <Field
+                                            disabled={initialValues?.vendorCode}
+                                            name='username'
+                                            as={Input}
+                                            size='sm'
+                                            value={values.username}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('username', e.target.value)}
+                                        />
+                                    </FormItem>
+                                </div>
+
+                                {!values._id && (
+                                    <FormItem asterisk label='Password' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                        <Field
+                                            name='password'
+                                            type='password'
+                                            as={Input}
+                                            size='sm'
+                                            value={(values as any).password}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('password', e.target.value)}
+                                        />
+                                    </FormItem>
+                                )}
+
+                                <FormItem asterisk label={`${initialValues?.vendorCode ? 'Vendor ' : ''}Email`} labelClass='text-xs !mb-1' className='mb-2.5'>
                                     <Field
                                         name='email'
                                         type='email'
@@ -450,66 +502,174 @@ const AddUserDialog: React.FC<UserDialogProps> = ({ open, onClose, onSubmit, rol
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('email', e.target.value)}
                                     />
                                 </FormItem>
-                            </div>
-                            {!initialValues.vendorCode && (
-                                <>
-                                    <FormItem asterisk label='Role' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                        <Select
-                                            getOptionLabel={(o) => o.name}
-                                            getOptionValue={(o) => o._id || ''}
-                                            placeholder='Select Role'
-                                            size='sm'
-                                            options={roles}
-                                            value={roles.find((i) => i._id === values.role)}
-                                            onChange={(val) => setFieldValue('role', val?._id)}
-                                        />
-                                    </FormItem>
-                                    <FormItem label='Status' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                        <Select
-                                            size='sm'
-                                            value={statusOptions.find((i) => i.value === values.status)}
-                                            options={statusOptions}
-                                            onChange={(val) => setFieldValue('status', val?.value)}
-                                        />
-                                    </FormItem>
-                                    {values.role && roles.find((i) => i._id === values.role)?.permissions.includes(PERMISSIONS.AUTHORIZE_PO) && (
-                                        <FormItem asterisk label='Signature File' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                            <label>
-                                                <input
-                                                    type='file'
-                                                    hidden={true}
-                                                    accept={'image/*'}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('digitalSignature', e.target.files?.[0])}
-                                                />
-                                                <Input
+
+                                {!initialValues.vendorCode && (
+                                    <>
+                                        {/* Role + Status */}
+                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                                            <FormItem asterisk label='Role' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Select
+                                                    getOptionLabel={(o) => o.name}
+                                                    getOptionValue={(o) => o._id || ''}
+                                                    placeholder='Select Role'
                                                     size='sm'
-                                                    prefix={<MdOutlineImage size={18} />}
-                                                    type='text'
-                                                    className='pointer-events-none'
-                                                    value={
-                                                        (typeof values.digitalSignature === 'object'
-                                                            ? values.digitalSignature?.name
-                                                            : values.digitalSignature) || 'No file selected'
-                                                    }
+                                                    options={roles}
+                                                    value={roles.find((i) => i._id === values.role)}
+                                                    onChange={(val) => setFieldValue('role', val?._id)}
                                                 />
-                                            </label>
-                                        </FormItem>
-                                    )}
-                                </>
-                            )}
+                                            </FormItem>
+
+                                            <FormItem label='Status' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Select
+                                                    size='sm'
+                                                    value={statusOptions.find((i) => i.value === values.status)}
+                                                    options={statusOptions}
+                                                    onChange={(val) => setFieldValue('status', val?.value)}
+                                                />
+                                            </FormItem>
+                                        </div>
+
+                                        {/* Signature */}
+                                        {values.role && roles.find((i) => i._id === values.role)?.permissions.includes(PERMISSIONS.AUTHORIZE_PO) && (
+                                            <FormItem asterisk label='Signature File' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <label>
+                                                    <input
+                                                        type='file'
+                                                        hidden
+                                                        accept='image/*'
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('digitalSignature', e.target.files?.[0])}
+                                                    />
+                                                    <Input
+                                                        size='sm'
+                                                        prefix={<MdOutlineImage size={18} />}
+                                                        type='text'
+                                                        className='pointer-events-none'
+                                                        value={
+                                                            (typeof (values as any).digitalSignature === 'object'
+                                                                ? (values as any).digitalSignature?.name
+                                                                : (values as any).digitalSignature) || 'No file selected'
+                                                        }
+                                                    />
+                                                </label>
+                                            </FormItem>
+                                        )}
+
+                                        {/* Company Details */}
+                                        <div className='mt-2 rounded-xl border border-gray-200 dark:border-gray-700 p-4'>
+                                            <div className='text-sm font-bold text-gray-900 dark:text-gray-100 mb-3'>Company Details</div>
+
+                                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                                <FormItem asterisk label='Company Name' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.name || ''}
+                                                        onChange={(e) => setFieldValue('company.name', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='Industry' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.industry || ''}
+                                                        onChange={(e) => setFieldValue('company.industry', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='GSTIN' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.gstin || ''}
+                                                        onChange={(e) => setFieldValue('company.gstin', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='PAN' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.pan || ''}
+                                                        onChange={(e) => setFieldValue('company.pan', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='Phone' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.phone || ''}
+                                                        onChange={(e) => setFieldValue('company.phone', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='Website' labelClass='text-xs !mb-1' className='mb-0'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.website || ''}
+                                                        onChange={(e) => setFieldValue('company.website', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='Address Line 1' labelClass='text-xs !mb-1' className='mb-0 sm:col-span-2'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.addressLine1 || ''}
+                                                        onChange={(e) => setFieldValue('company.addressLine1', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem label='Address Line 2' labelClass='text-xs !mb-1' className='mb-0 sm:col-span-2'>
+                                                    <Input
+                                                        size='sm'
+                                                        value={(values as any)?.company?.addressLine2 || ''}
+                                                        onChange={(e) => setFieldValue('company.addressLine2', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 sm:col-span-2'>
+                                                    <FormItem label='City' labelClass='text-xs !mb-1' className='mb-0'>
+                                                        <Input
+                                                            size='sm'
+                                                            value={(values as any)?.company?.city || ''}
+                                                            onChange={(e) => setFieldValue('company.city', e.target.value)}
+                                                        />
+                                                    </FormItem>
+
+                                                    <FormItem label='State' labelClass='text-xs !mb-1' className='mb-0'>
+                                                        <Input
+                                                            size='sm'
+                                                            value={(values as any)?.company?.state || ''}
+                                                            onChange={(e) => setFieldValue('company.state', e.target.value)}
+                                                        />
+                                                    </FormItem>
+
+                                                    <FormItem label='Pincode' labelClass='text-xs !mb-1' className='mb-0'>
+                                                        <Input
+                                                            size='sm'
+                                                            value={(values as any)?.company?.pincode || ''}
+                                                            onChange={(e) => setFieldValue('company.pincode', e.target.value)}
+                                                        />
+                                                    </FormItem>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </FormContainer>
                         </div>
-                        <div className='flex justify-end gap-2 mt-4'>
-                            <Button type='button' size='sm' variant='plain' disabled={loading} onClick={onClose}>
-                                Cancel
-                            </Button>
-                            <Button type='submit' size='sm' variant='solid' disabled={loading}>
-                                {loading ? <Spinner size={16} /> : 'Save'}
-                            </Button>
+
+                        {/* Sticky footer */}
+                        <div className='sticky bottom-0 mt-3 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur pt-3'>
+                            <div className='flex flex-col sm:flex-row justify-end gap-2'>
+                                <Button type='button' size='sm' variant='plain' disabled={loading} onClick={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button type='submit' size='sm' variant='solid' disabled={loading}>
+                                    {loading ? <Spinner size={16} /> : 'Save'}
+                                </Button>
+                            </div>
                         </div>
-                    </FormContainer>
-                </Form>
-            )}
-        </Formik>
+                    </Form>
+                )}
+            </Formik>
+        </div>
     </Dialog>
 )
 
@@ -549,6 +709,7 @@ const AddRoleDialog: React.FC<RoleDialogProps> = ({ open, onClose, onSubmit, ini
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('name', e.target.value)}
                                 />
                             </FormItem>
+
                             <FormItem label='Permissions' labelClass='text-xs !mb-1' className='mb-2.5 !max-h-auto !h-auto'>
                                 <Select
                                     isMulti
@@ -562,6 +723,7 @@ const AddRoleDialog: React.FC<RoleDialogProps> = ({ open, onClose, onSubmit, ini
                                     onChange={(valArr) => setFieldValue('permissions', valArr?.map((v) => v.value) || [])}
                                 />
                             </FormItem>
+
                             <FormItem label='Status' labelClass='text-xs !mb-1' className='mb-2.5'>
                                 <Select
                                     size='sm'
@@ -571,6 +733,7 @@ const AddRoleDialog: React.FC<RoleDialogProps> = ({ open, onClose, onSubmit, ini
                                 />
                             </FormItem>
                         </div>
+
                         <div className='flex justify-end gap-2 mt-4'>
                             <Button type='button' variant='plain' disabled={loading} onClick={onClose}>
                                 Cancel
