@@ -2,206 +2,251 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { RFQType } from '@/@types/app'
 import { companies } from '@/utils/data'
 import { formatDate } from '@/utils/formatDate'
+import { UserApi } from '@/services/user.api'
 
-function safeJsonParse<T>(raw: string): T | null {
+type MeCompany = {
+    name?: string
+    industry?: string
+    gstin?: string
+    pan?: string
+    phone?: string
+    website?: string
+    addressLine1?: string
+    addressLine2?: string
+    city?: string
+    state?: string
+    pincode?: string
+}
+
+type MeUser = {
+    _id?: string
+    name?: string
+    username?: string
+    email?: string
+    company?: MeCompany
+}
+
+function unwrapResponse<T = any>(res: any): T {
+    return (res?.data ?? res) as T
+}
+
+function joinAddress(parts: Array<any>) {
+    return parts
+        .map((x) => String(x || '').trim())
+        .filter(Boolean)
+        .join(', ')
+}
+
+function buildCompanyAddress(c?: MeCompany) {
+    return joinAddress([c?.addressLine1, c?.addressLine2, c?.city, c?.state, c?.pincode])
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
     try {
-        return JSON.parse(raw) as T
+        const res = await UserApi.getMe()
+        const raw = unwrapResponse<any>(res)
+        if (raw && typeof raw === 'object') return raw as MeUser
+        return null
     } catch {
         return null
     }
 }
 
-function pickName(obj: any): string {
-    if (!obj || typeof obj !== 'object') return ''
-    return (obj?.fullName || obj?.name || obj?.username || obj?.userName || obj?.displayName || obj?.email || '').toString()
-}
-
-function getLoggedInUserLabel(): string {
-    try {
-        if (typeof window === 'undefined') return ''
-        const candidates = ['admin', 'user', 'userDetails', 'auth_user']
-        for (const key of candidates) {
-            const raw = localStorage.getItem(key)
-            if (!raw) continue
-
-            const outer = safeJsonParse<any>(raw)
-            if (!outer) continue
-
-            const direct = pickName(outer)
-            if (direct) return direct
-
-            if (typeof outer?.auth === 'string') {
-                const authObj = safeJsonParse<any>(outer.auth)
-                const fromAuthUser = pickName(authObj?.user)
-                if (fromAuthUser) return fromAuthUser
-            }
-
-            const fromOuterUser = pickName(outer?.user)
-            if (fromOuterUser) return fromOuterUser
-        }
-        return ''
-    } catch {
-        return ''
-    }
-}
-
 const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
-    const [userLabel, setUserLabel] = useState('')
+    const [meUser, setMeUser] = useState<MeUser | null>(null)
 
     useEffect(() => {
-        setUserLabel(getLoggedInUserLabel())
+        ;(async () => {
+            const u = await fetchMeUser()
+            setMeUser(u)
+        })()
     }, [])
 
-    // Resolve company info dynamically (no hardcoded RR Ispat)
-    const companyInfo = useMemo(() => {
-        // Try to match by whatever your RFQ stores (plantCode / company name / etc.)
-        const companyMatch =
+    const meCompany = meUser?.company || {}
+    const meCompanyName = String(meCompany?.name || '').trim()
+    const meCompanyAddress = buildCompanyAddress(meCompany)
+    const meCompanyPhone = String(meCompany?.phone || '').trim()
+    const meCompanyGstin = String(meCompany?.gstin || '').trim()
+    const meCompanyPan = String(meCompany?.pan || '').trim()
+    const meEmail = String(meUser?.email || '').trim()
+
+    const masterMatch = useMemo(() => {
+        return (
             companies?.find((c: any) => c?.plantCode?.toString() === (rfq as any)?.company?.toString()) ||
             companies?.find((c: any) => c?.companyName?.toString() === (rfq as any)?.company?.toString()) ||
             companies?.find((c: any) => c?.companyName?.toString() === (rfq as any)?.companyName?.toString()) ||
             companies?.[0] ||
             {}
-
-        return {
-            name: companyMatch?.companyName || (rfq as any)?.companyName || (rfq as any)?.company || '',
-
-            email: companyMatch?.email || '',
-        }
+        )
     }, [rfq])
 
+    const companyInfo = useMemo(() => {
+        return {
+            name: meCompanyName || masterMatch?.companyName || (rfq as any)?.companyName || (rfq as any)?.company || '',
+            address: meCompanyAddress || masterMatch?.address || masterMatch?.companyAddress || '',
+            gstin: meCompanyGstin || masterMatch?.gstin || masterMatch?.gstNo || '',
+            pan: meCompanyPan || masterMatch?.pan || masterMatch?.panNo || '',
+            phone: meCompanyPhone || masterMatch?.phone || '',
+            email: meEmail || masterMatch?.email || '',
+        }
+    }, [meCompanyName, meCompanyAddress, meCompanyGstin, meCompanyPan, meCompanyPhone, meEmail, masterMatch, rfq])
+
+    // safe (hooks already executed)
+    if (!rfq) return null
+
     return (
-        <div>
-            <div className='max-w-3xl mx-auto text-gray-800 border border-black text-sm'>
+        <div className="bg-gray-100 print:bg-white p-4 print:p-0">
+            <div className="max-w-[820px] mx-auto bg-white border border-black text-[11px] leading-[1.35] shadow-sm print:shadow-none">
                 {/* Header */}
-                <div className='text-center border-b px-1 py-3 border-b-black relative'>
-                    <h1 className='text-lg font-bold'>{companyInfo.name}</h1>
+                <div className="border-b border-black px-3 py-2 relative text-center">
+                    <div className="text-[16px] font-extrabold uppercase tracking-wide">{companyInfo.name || '—'}</div>
 
-                    {/* ✅ Replacing ADDRESS with Logged-in User */}
-                    <p className='font-bold text-2xl'>{userLabel || ''}</p>
+                    {companyInfo.address ? <div className="mt-0.5 text-[11px]">{companyInfo.address}</div> : null}
 
-                    {/* Show contact line only if any exist */}
-                    {companyInfo.email && <p>{companyInfo.email ? `Email: ${companyInfo.email}` : ''}</p>}
+                    <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10.5px]">
+                        {companyInfo.phone ? <span>Phone: {companyInfo.phone}</span> : null}
+                        {companyInfo.email ? <span>Email: {companyInfo.email}</span> : null}
+                        {companyInfo.gstin ? <span>GSTIN: {companyInfo.gstin}</span> : null}
+                        {companyInfo.pan ? <span>PAN: {companyInfo.pan}</span> : null}
+                    </div>
 
-                    <img src='/img/logo/logo-title.png' className='absolute left-0 top-1/2 -translate-y-1/2' width={140} alt='logo' />
+                    <img
+                        src="/img/logo/logo-title.png"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 print:hidden"
+                        width={120}
+                        alt="logo"
+                    />
+
+                    <div className="mt-2 flex justify-center">
+                        <div className="px-6 py-1 border border-black font-bold text-[14px] tracking-wide">
+                            REQUEST FOR QUOTATION
+                        </div>
+                    </div>
                 </div>
 
-                {/* Title */}
-                <div className='font-semibold p-2'>
-                    <span className='text-lg font-bold block border border-black w-fit m-auto px-4' style={{ boxShadow: '5px 5px' }}>
-                        Request For Quotation
-                    </span>
-                </div>
-
-                {/* Info */}
-                <div className='flex'>
-                    <div className='flex-1 border-y border-r border-black'>
-                        <table>
+                {/* RFQ meta */}
+                <div className="grid grid-cols-2 border-b border-black">
+                    <div className="border-r border-black p-3 break-inside-avoid">
+                        <div className="font-bold uppercase text-[11px] tracking-wide mb-1">Enquiry Details</div>
+                        <table className="w-full">
                             <tbody>
                                 <tr>
-                                    <td className='p-[2px] font-bold'>Enquiry No.</td>
-                                    <td className='p-[2px]'>:</td>
-                                    <td className='p-[2px]'>{rfq?.rfqNumber}</td>
+                                    <td className="w-[110px] font-semibold">Enquiry No.</td>
+                                    <td className="px-1">:</td>
+                                    <td className="font-bold">{rfq?.rfqNumber || '—'}</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">Enquiry Date</td>
+                                    <td className="px-1">:</td>
+                                    <td>{rfq?.rfqDate ? formatDate(rfq.rfqDate as any) : '—'}</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">Due Date</td>
+                                    <td className="px-1">:</td>
+                                    <td>{rfq?.dueDate ? formatDate(rfq.dueDate as any) : '—'}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div className='flex-1 border-y border-black'>
-                        <table>
+
+                    <div className="p-3 break-inside-avoid">
+                        <div className="font-bold uppercase text-[11px] tracking-wide mb-1">Contact Details</div>
+                        <table className="w-full">
                             <tbody>
                                 <tr>
-                                    <td className='p-[2px] font-bold'>Enquiry Date</td>
-                                    <td className='p-[2px]'>:</td>
-                                    <td className='p-[2px]'>{formatDate(rfq?.rfqDate as string)}</td>
+                                    <td className="w-[110px] font-semibold">Contact Person</td>
+                                    <td className="px-1">:</td>
+                                    <td>{(rfq as any)?.contactPersonName || '—'}</td>
                                 </tr>
                                 <tr>
-                                    <td className='p-[2px] font-bold'>Due Date</td>
-                                    <td className='p-[2px]'>:</td>
-                                    <td className='p-[2px]'>{formatDate(rfq?.dueDate as string)}</td>
+                                    <td className="font-semibold">Contact No.</td>
+                                    <td className="px-1">:</td>
+                                    <td>{(rfq as any)?.contactNumber || '—'}</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">Email</td>
+                                    <td className="px-1">:</td>
+                                    <td>{(rfq as any)?.contactEmail || '—'}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                {/* Item Table */}
-                <div>
-                    <span className='p-[2px] font-bold block mt-2'>Item Details</span>
-                    <table className='w-full border border-black '>
-                        <thead>
+                {/* Items */}
+                <div className="p-3 break-inside-avoid">
+                    <div className="font-bold uppercase text-[11px] tracking-wide mb-2">Item Details</div>
+
+                    <table className="w-full border border-black border-collapse table-fixed">
+                        <thead className="bg-gray-200">
                             <tr>
-                                <th className='border border-l-transparent border-black p-[2px]'>Sl No</th>
-                                <th className='border border-black p-[2px]'>Item Code</th>
-                                <th className='border border-black p-[2px]'>Description</th>
-                                <th className='border border-black p-[2px]'>Make</th>
-                                <th className='border border-black p-[2px]'>UOM</th>
-                                <th className='border border-r-transparent border-black p-[2px]'>Qty</th>
+                                <th className="border border-black px-1 py-1 w-[44px]">#</th>
+                                <th className="border border-black px-1 py-1 w-[120px]">Item Code</th>
+                                <th className="border border-black px-1 py-1">Description</th>
+                                <th className="border border-black px-1 py-1 w-[120px]">Make</th>
+                                <th className="border border-black px-1 py-1 w-[70px]">UOM</th>
+                                <th className="border border-black px-1 py-1 w-[80px] text-right">Qty</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {rfq?.items?.map((item, idx) => (
-                                <tr key={`${item.itemCode}-${idx}`}>
-                                    <td className='border border-l-transparent border-black p-[2px] text-center'>{idx + 1}</td>
-                                    <td className='border border-black p-[2px]'>{item.itemCode}</td>
-                                    <td className='border border-black p-[2px]'>{item.itemDescription}</td>
-                                    <td className='border border-black p-[2px] text-right'>{item.rfqMake}</td>
-                                    <td className='border border-black p-[2px]'>{item.unit}</td>
-                                    <td className='border border-r-transparent border-black p-[2px]'>{item.rfqQty}</td>
+                            {(rfq?.items || []).map((item: any, idx: number) => (
+                                <tr key={`${item.itemCode || 'item'}-${idx}`}>
+                                    <td className="border border-black px-1 py-1 text-center">{idx + 1}</td>
+                                    <td className="border border-black px-1 py-1 font-semibold">{item?.itemCode || '—'}</td>
+                                    <td className="border border-black px-1 py-1">{item?.itemDescription || '—'}</td>
+                                    <td className="border border-black px-1 py-1">{item?.rfqMake || '—'}</td>
+                                    <td className="border border-black px-1 py-1 text-center">{item?.unit || '—'}</td>
+                                    <td className="border border-black px-1 py-1 text-right">{item?.rfqQty ?? '—'}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                {/* Vendor Details */}
-                <div>
-                    <span className='p-[2px] font-bold block mt-2'>Vendor Details</span>
-                    <table className='w-full border border-black'>
-                        <thead>
-                            <tr className='whitespace-nowrap'>
-                                <th className='border border-l-transparent border-black p-[2px]'>Sl No</th>
-                                <th className='border border-black p-[2px]'>Vendor Name</th>
-                                <th className='border border-r-transparent border-black p-[2px]'>Vendor Address</th>
+                {/* Vendors */}
+                <div className="p-3 break-inside-avoid border-t border-black">
+                    <div className="font-bold uppercase text-[11px] tracking-wide mb-2">Vendor Details</div>
+
+                    <table className="w-full border border-black border-collapse table-fixed">
+                        <thead className="bg-gray-200">
+                            <tr>
+                                <th className="border border-black px-1 py-1 w-[44px]">#</th>
+                                <th className="border border-black px-1 py-1 w-[280px]">Vendor Name</th>
+                                <th className="border border-black px-1 py-1">Vendor Address / Contact</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {rfq?.vendors?.map((vendor, vi) => (
-                                <tr key={`${vendor.vendorCode}-${vi}`}>
-                                    <td className='border border-l-transparent border-black p-[2px] text-center'>{vi + 1}</td>
-                                    <td className='border border-black p-[2px] font-bold w-2/5 align-baseline'>{vendor.name}</td>
-                                    <td className='border border-r-transparent border-black p-[2px] w-3/5'>
-                                        <p>{vendor.location}</p>
-                                        <p>
-                                            Email: <span>{vendor?.contactPerson?.email}</span>
-                                        </p>
-                                    </td>
-                                </tr>
-                            ))}
+                            {(rfq?.vendors || []).map((v: any, vi: number) => {
+                                const email =
+                                    (Array.isArray(v?.contactPerson) ? v?.contactPerson?.[0]?.email : v?.contactPerson?.email) ||
+                                    v?.email ||
+                                    ''
+
+                                return (
+                                    <tr key={`${v.vendorCode || 'v'}-${vi}`}>
+                                        <td className="border border-black px-1 py-1 text-center">{vi + 1}</td>
+                                        <td className="border border-black px-1 py-1 font-semibold">
+                                            {v?.name || '—'} {v?.vendorCode ? `(${v.vendorCode})` : ''}
+                                        </td>
+                                        <td className="border border-black px-1 py-1">
+                                            <div>{v?.location || '—'}</div>
+                                            {email ? (
+                                                <div className="mt-0.5">
+                                                    <span className="font-semibold">Email:</span> {email}
+                                                </div>
+                                            ) : null}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
 
-                {/* Terms and Conditions */}
-                {/* <div>
-                    <span className='font-bold p-[2px]'>Terms & Conditions</span>
-                    <table className='w-full border-y border-black '>
-                        <tbody>
-                            {Object.keys(rfq?.termsConditions || {}).map((term, index) => (
-                                <tr key={index}>
-                                    <td className='px-[2px] whitespace-nowrap'>{term}</td>
-                                    <td className='px-[2px]'>:</td>
-                                    <td className='px-[2px] w-full'>{(rfq as any)?.termsConditions?.[term]}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div> */}
-
-                {/* Footer (no hardcoded RR Ispat) */}
-                <div className='p-[2px]'>
-                    {!!companyInfo.name && <p className='text-right'>For, {companyInfo.name}</p>}
-
-                    {/* ✅ Signatories removed as requested */}
-                    <div className='h-12' />
+                {/* Footer */}
+                <div className="border-t border-black px-3 py-2">
+                    <div className="text-right font-bold">For, {companyInfo.name || '—'}</div>
+                    <div className="h-10" />
                 </div>
             </div>
         </div>

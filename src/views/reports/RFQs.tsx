@@ -22,27 +22,119 @@ import { TnCDrawer } from '@/components/app/TermsAndConditions'
 import { showError } from '@/utils/hoc/showAlert'
 import { IoPrintOutline } from 'react-icons/io5'
 import TextAreaExtended from '@/components/app/TextAreaExtended'
+import { UserApi } from '@/services/user.api'
 
 const { Tr, Th, Td, THead, TBody } = Table
 
-type RFQType = Omit<_RFQType, 'status'> & { status: string | number; totalVendors: number }
+type RFQType = Omit<_RFQType, 'status'> & {
+    status: string | number
+    totalVendors: number
+    company?: string // ✅ NEW (from backend)
+}
 type dueDateModalState = Pick<RFQType, 'rfqNumber' | 'prevDueDates' | 'dueDate' | 'dueDateRemarks'> | null
+
+type MeCompany = { name?: string }
+type MeUser = { company?: MeCompany }
+
+function unwrapResponse<T = any>(res: any): T {
+    return (res?.data ?? res) as T
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
+    try {
+        const res = await UserApi.getMe()
+        const raw = unwrapResponse<any>(res)
+        if (raw && typeof raw === 'object') return raw as MeUser
+        return null
+    } catch {
+        return null
+    }
+}
+
+function normCompany(s: any) {
+    return String(s || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+}
+
+function mapRfqRow(i: any): RFQType {
+    return {
+        ...i,
+        company: String(i?.company || '').trim(),
+        rfqDate: formatDate(i.rfqDate as string),
+        dueDate: formatDate(i.dueDate as string),
+        createdAt: formatDate(i.createdAt as string),
+        submittedAt: formatDate(i.submittedAt as string),
+        status: i.status === 2 ? 'Completed' : i.status === 1 ? 'Authorized' : 'Initial',
+    }
+}
 
 export default function RFQs() {
     const user = useAppSelector((state) => state.auth.user)
-    const [data, setData] = useState<RFQType[]>([])
+
+    // ✅ keep raw list; we will filter by company for non-admin firm users
+    const [rawData, setRawData] = useState<RFQType[]>([])
     const [dueDateModal, setDueDateModal] = useState<dueDateModalState>(null)
+
+    // ✅ role check (admin + superadmin can see all)
+    const roleName = useMemo(() => {
+        const r: any = (user as any)?.role
+        return String(r?.name || r || '').toLowerCase()
+    }, [user])
+
+    const isAdminLike = useMemo(() => roleName === 'admin' || roleName === 'superadmin', [roleName])
+    const isVendor = useMemo(() => Boolean((user as any)?.vendorCode), [user])
+
+    // ✅ company name (prefer redux user.company.name, fallback to /user/me)
+    const [meCompanyName, setMeCompanyName] = useState<string>(() => {
+        return String((user as any)?.company?.name || '').trim()
+    })
+
+    useEffect(() => {
+        const fromStore = String((user as any)?.company?.name || '').trim()
+        if (fromStore && fromStore !== meCompanyName) setMeCompanyName(fromStore)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+
+    useEffect(() => {
+        if (isAdminLike) return
+        if (isVendor) return
+        if (meCompanyName) return
+
+        ;(async () => {
+            const me = await fetchMeUser()
+            const c = String(me?.company?.name || '').trim()
+            if (c) setMeCompanyName(c)
+        })()
+    }, [isAdminLike, isVendor, meCompanyName])
+
+    const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
+
+    // ✅ filter by company (firm root/employee only). Admin-like => no filter. Vendor => no filter.
+    const tableData = useMemo(() => {
+        if (!Array.isArray(rawData)) return []
+
+        if (isAdminLike) return rawData
+        if (isVendor) return rawData
+
+        // if company not ready yet, show all (avoid empty flash)
+        if (!meCompanyKey) return rawData
+
+        return rawData.filter((rfq) => normCompany((rfq as any)?.company) === meCompanyKey)
+    }, [rawData, isAdminLike, isVendor, meCompanyKey])
 
     const columns: ColumnDef<RFQType>[] = useMemo(() => {
         return [
             { header: '#', accessorKey: '', cell: ({ cell }) => cell.row.index + 1 },
+
             ...(user.vendorCode
                 ? [
                       {
                           id: 'add_quotation',
                           cell: ({ row }) => (
                               <Link to={`/quotation?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
-                                  <Button variant='twoTone' size='xs' icon={<HiOutlineDocumentAdd />} />
+                                  <Button variant="twoTone" size="xs" icon={<HiOutlineDocumentAdd />} />
                               </Link>
                           ),
                       },
@@ -53,24 +145,26 @@ export default function RFQs() {
                             id: 'edit_rfq',
                             cell: ({ row }) => (
                                 <Link to={`/rfq?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
-                                    <Button variant='twoTone' size='xs' icon={<MdOutlineEdit />} color='red' />
+                                    <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
                                 </Link>
                             ),
                         },
                     ]
                   : []),
+
             { header: 'RFQ Number', accessorKey: 'rfqNumber' },
             { header: 'RFQ Date', accessorKey: 'rfqDate' },
+
             {
                 header: 'Due Date',
                 accessorKey: 'dueDate',
                 cell: ({ row }) => (
-                    <div className='flex gap-2 items-center'>
+                    <div className="flex gap-2 items-center">
                         {row.original.dueDate as string}
                         {!user.vendorCode && user.authority?.includes(PERMISSIONS.MANAGE_RFQ) && (
                             <Button
-                                variant='twoTone'
-                                size='xs'
+                                variant="twoTone"
+                                size="xs"
                                 icon={<MdOutlineEdit size={16} />}
                                 onClick={() =>
                                     setDueDateModal({
@@ -85,10 +179,12 @@ export default function RFQs() {
                     </div>
                 ),
             },
+
             {
                 header: 'Preview',
                 cell: ({ row }) => <RFQPrintComponent rfq={row.original} />,
             },
+
             ...(!user.vendorCode
                 ? [
                       {
@@ -97,7 +193,8 @@ export default function RFQs() {
                           cell: ({ row }) => (
                               <Tag
                                   color={row.original.status === 'Completed' ? 'green' : row.original.status === 'Authorized' ? 'indigo' : 'amber'}
-                                  className='w-full justify-center'>
+                                  className="w-full justify-center"
+                              >
                                   {row.original.status}
                               </Tag>
                           ),
@@ -107,10 +204,10 @@ export default function RFQs() {
                           cell: ({ row }) => {
                               const isCompleted = row.original.quotations === row.original.totalVendors
                               return (
-                                  <div className='flex items-center justify-between gap-2'>
+                                  <div className="flex items-center justify-between gap-2">
                                       <span>
                                           <Tag
-                                              className='w-fit border-none p-0'
+                                              className="w-fit border-none p-0"
                                               prefix={
                                                   <span
                                                       className={classNames(
@@ -118,11 +215,13 @@ export default function RFQs() {
                                                           isCompleted ? 'bg-green-500 border-green-600' : 'bg-amber-500 border-amber-600/40',
                                                       )}
                                                   />
-                                              }>
+                                              }
+                                          >
                                               {isCompleted ? 'Quotations Received' : 'Pending'}
                                           </Tag>{' '}
                                           ({row.original.quotations + (row.original.regretVendors || 0)}/{row.original.totalVendors})
                                       </span>
+
                                       <VendorQuotationsDrawer rfqId={row.original._id as string} rfqNumber={row.original.rfqNumber} />
                                   </div>
                               )
@@ -141,20 +240,22 @@ export default function RFQs() {
             },
             {
                 header: 'Attachments',
-                cell: ({ row }) => <AttachmentsDrawer id={row.original._id as string} url={`/rfq/attachments/${row.original._id}`} title='RFQ Attachments' />,
+                cell: ({ row }) => <AttachmentsDrawer id={row.original._id as string} url={`/rfq/attachments/${row.original._id}`} title="RFQ Attachments" />,
             },
+
             ...(!user.vendorCode
                 ? [
                       { header: 'Created By', accessorKey: 'createdBy' },
                       { header: 'Created At', accessorKey: 'createdAt' },
-
                       { header: 'Authorized By', accessorKey: 'submittedBy' },
                       { header: 'Authorized At', accessorKey: 'submittedAt' },
                   ]
                 : []),
+
             { header: 'Contact Person Name', accessorKey: 'contactPersonName' },
             { header: 'Contact Number', accessorKey: 'contactNumber' },
             { header: 'Contact Email', accessorKey: 'contactEmail' },
+
             {
                 header: 'Remarks',
                 cell: ({ row }) => <TextAreaExtended title={'Remarks'} content={row.original.remarks} />,
@@ -165,10 +266,18 @@ export default function RFQs() {
     return (
         <>
             <CustomDataTable<RFQType>
-                title={user.vendorCode ? 'Pending RFQs' : 'RFQ Report'}
+                title={
+                    user.vendorCode
+                        ? 'Pending RFQs'
+                        : `RFQ Report${!isAdminLike && !isVendor && meCompanyName ? ` • ${meCompanyName}` : ''}`
+                }
                 filters={[
                     { label: 'RFQ Number', type: 'text', value: 'rfqNumber' },
                     { label: 'RFQ Date', type: 'date-range', value: 'rfqDate' },
+
+                    // ✅ OPTIONAL: company filter only for admin-like users
+                    ...(isAdminLike ? ([{ label: 'Company', type: 'text', value: 'company' }] as any[]) : []),
+
                     {
                         type: 'input-row',
                         fields: [
@@ -192,26 +301,17 @@ export default function RFQs() {
                 ]}
                 columns={columns}
                 fetchApi={'/rfq/list'}
-                data={data}
-                setData={(_data: RFQType[]) =>
-                    setData(
-                        _data?.map((i) => ({
-                            ...i,
-                            rfqDate: formatDate(i.rfqDate as string),
-                            dueDate: formatDate(i.dueDate as string),
-                            createdAt: formatDate(i.createdAt as string),
-                            submittedAt: formatDate(i.submittedAt as string),
-                            status: i.status === 2 ? 'Completed' : i.status === 1 ? 'Authorized' : 'Initial',
-                        })),
-                    )
-                }
+                data={tableData}
+                setData={(_data: RFQType[]) => setRawData((_data || []).map(mapRfqRow))}
             />
+
             <DueDateDialog
                 isOpen={Boolean(dueDateModal)}
                 rfqData={dueDateModal}
                 close={() => setDueDateModal(null)}
                 afterSubmit={(newDoc) => {
-                    setData((prev) => prev.map((i) => (i.rfqNumber === newDoc.rfqNumber ? newDoc : i)))
+                    const mapped = mapRfqRow(newDoc)
+                    setRawData((prev) => prev.map((i) => (i.rfqNumber === mapped.rfqNumber ? mapped : i)))
                     setDueDateModal(null)
                 }}
             />
@@ -251,10 +351,10 @@ const RFQPrintComponent = (props: { rfq: RFQType }) => {
 
     return (
         <>
-            <Button variant='twoTone' size='xs' icon={<IoPrintOutline />} loading={loading} onClick={handlePrint}>
+            <Button variant="twoTone" size="xs" icon={<IoPrintOutline />} loading={loading} onClick={handlePrint}>
                 RFQ
             </Button>
-            <div ref={rfqPreviewRef} className='hidden print:block'>
+            <div ref={rfqPreviewRef} className="hidden print:block">
                 <RFQPrint rfq={rfqData as RFQType} />
             </div>
         </>
@@ -301,22 +401,22 @@ function DueDateDialog({
         <Dialog isOpen={isOpen} closable={false}>
             <h5>Update Due Date — {rfqData?.rfqNumber}</h5>
             <form onSubmit={handleFormSubmit}>
-                <div className='mt-4 space-y-2'>
-                    <div className='flex items-end justify-between'>
+                <div className="mt-4 space-y-2">
+                    <div className="flex items-end justify-between">
                         <div>
-                            <span className='inline-block mb-1'>Due Date</span>
+                            <span className="inline-block mb-1">Due Date</span>
                             <DateTimepicker
-                                size='sm'
+                                size="sm"
                                 value={formState?.dueDate || null}
-                                placeholder='Pick date & time'
+                                placeholder="Pick date & time"
                                 onChange={(newDate) => setFormState((prev) => ({ ...prev, dueDate: newDate }))}
                             />
                         </div>
-                        <div className='flex gap-2 mt-2'>
-                            <Button type='submit' variant='solid' size='sm'>
+                        <div className="flex gap-2 mt-2">
+                            <Button type="submit" variant="solid" size="sm">
                                 Update
                             </Button>
-                            <Button type='button' variant='default' size='sm' onClick={close}>
+                            <Button type="button" variant="default" size="sm" onClick={close}>
                                 Cancel
                             </Button>
                         </div>
@@ -325,9 +425,9 @@ function DueDateDialog({
                         <Input
                             required
                             textArea
-                            placeholder='Remarks'
-                            className='resize-none max-h-auto h-15 min-h-auto p-1.5 px-2'
-                            size='sm'
+                            placeholder="Remarks"
+                            className="resize-none max-h-auto h-15 min-h-auto p-1.5 px-2"
+                            size="sm"
                             value={formState?.dueDateRemarks || ''}
                             onChange={(e) => setFormState((prev) => ({ ...prev, dueDateRemarks: e.target.value }))}
                         />
@@ -335,8 +435,8 @@ function DueDateDialog({
                 </div>
             </form>
 
-            <Table compact className='text-xs mt-2 relative' containerClassName='max-h-[40vh] overflow-auto relative'>
-                <THead className='sticky top-0'>
+            <Table compact className="text-xs mt-2 relative" containerClassName="max-h-[40vh] overflow-auto relative">
+                <THead className="sticky top-0">
                     <Tr>
                         <Th>#</Th>
                         <Th>Due Date</Th>

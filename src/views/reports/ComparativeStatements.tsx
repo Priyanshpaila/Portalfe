@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MdOutlineEdit } from 'react-icons/md'
 import classNames from 'classnames'
@@ -9,8 +9,37 @@ import { CSType as _CSType } from '@/@types/app'
 import { formatDate, formatDateTime } from '@/utils/formatDate'
 import { Button, Tag } from '@/components/ui'
 import { useAppSelector } from '@/store'
+import { UserApi } from '@/services/user.api'
 
-type CSType = Omit<_CSType, 'status'> & { status: number | string }
+type CSType = Omit<_CSType, 'status'> & {
+  status: number | string
+  company?: string // ✅ NEW (from backend)
+}
+
+type MeCompany = { name?: string }
+type MeUser = { company?: MeCompany }
+
+function unwrapResponse<T = any>(res: any): T {
+  return (res?.data ?? res) as T
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
+  try {
+    const res = await UserApi.getMe()
+    const raw = unwrapResponse<any>(res)
+    if (raw && typeof raw === 'object') return raw as MeUser
+    return null
+  } catch {
+    return null
+  }
+}
+
+function normCompany(s: any) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
 
 function getStatusMeta(status: string) {
   const s = String(status || '').toLowerCase()
@@ -21,7 +50,66 @@ function getStatusMeta(status: string) {
 
 export default function ComparativeStatements() {
   const user = useAppSelector((state) => state.auth.user)
-  const [data, setData] = useState<CSType[]>([])
+
+  // ✅ raw list from API; we will filter view by company
+  const [rawData, setRawData] = useState<CSType[]>([])
+
+  // ✅ resolve role
+  const roleName = useMemo(() => {
+    const r: any = (user as any)?.role
+    return String(r?.name || r || '').toLowerCase()
+  }, [user])
+
+  // ✅ treat both admin + superadmin as "can see all"
+  const isAdminLike = useMemo(() => {
+    return roleName === 'admin' || roleName === 'superadmin'
+  }, [roleName])
+
+  // ✅ vendors don't have a firm company context for filtering
+  const isVendor = useMemo(() => Boolean((user as any)?.vendorCode), [user])
+
+  // ✅ company name (prefer redux user.company.name, fallback to /user/me)
+  const [meCompanyName, setMeCompanyName] = useState<string>(() => {
+    return String((user as any)?.company?.name || '').trim()
+  })
+
+  // keep in sync if redux user changes
+  useEffect(() => {
+    const fromStore = String((user as any)?.company?.name || '').trim()
+    if (fromStore && fromStore !== meCompanyName) setMeCompanyName(fromStore)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  // fallback fetch if needed (only for non-admin firm users)
+  useEffect(() => {
+    if (isAdminLike) return
+    if (isVendor) return
+    if (meCompanyName) return
+
+    ;(async () => {
+      const me = await fetchMeUser()
+      const c = String(me?.company?.name || '').trim()
+      if (c) setMeCompanyName(c)
+    })()
+  }, [isAdminLike, isVendor, meCompanyName])
+
+  const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
+
+  // ✅ filtered view
+  const tableData = useMemo(() => {
+    if (!Array.isArray(rawData)) return []
+
+    // superadmin/admin => see all
+    if (isAdminLike) return rawData
+
+    // vendor => don't apply company filter here
+    if (isVendor) return rawData
+
+    // if company not ready yet => show all (prevents empty flash)
+    if (!meCompanyKey) return rawData
+
+    return rawData.filter((cs) => normCompany((cs as any)?.company) === meCompanyKey)
+  }, [rawData, isAdminLike, isVendor, meCompanyKey])
 
   const columns: ColumnDef<CSType>[] = useMemo(() => {
     return [
@@ -102,7 +190,7 @@ export default function ComparativeStatements() {
 
   return (
     <CustomDataTable<CSType>
-      title={'Comparative Statements'}
+      title={`Comparative Statements${!isAdminLike && meCompanyName ? ` • ${meCompanyName}` : ''}`}
       columns={columns}
       fetchApi={'/cs/list'}
       filters={[
@@ -127,12 +215,18 @@ export default function ComparativeStatements() {
             { label: 'Authorized', value: 'authorized' },
           ],
         },
+
+        // ✅ OPTIONAL: only show company filter for admin-like users (so they can filter across firms)
+        ...(isAdminLike ? [{ label: 'Company', type: 'text', value: 'company' } as any] : []),
       ]}
-      data={data}
+      data={tableData}
       setData={(_data: CSType[]) =>
-        setData(
-          _data.map((i) => ({
+        setRawData(
+          (_data || []).map((i) => ({
             ...i,
+            // ✅ keep company (for filtering)
+            company: (i as any)?.company || '',
+
             status: i.status === 2 ? 'Completed' : i.status === 1 ? 'Authorized' : 'Initial',
             csDate: formatDate(i.csDate as string),
             csValidity: formatDate(i.csValidity as string),

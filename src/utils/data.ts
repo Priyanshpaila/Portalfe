@@ -1,29 +1,21 @@
 import { ChargesType } from '@/@types/app'
 import ApiService from '@/services/ApiService'
 
-export const getIndentID = (values: { indentNumber?: string; itemCode?: string }) =>
-    values.indentNumber + ':' + values.itemCode
+export const getIndentID = (values: { indentNumber?: string; itemCode?: string }) => values.indentNumber + ':' + values.itemCode
 
 export const divisons = [{ label: 'RR Group', value: 'RR Group' }]
 
-// -----------------------------
-// ✅ Companies now come from API (Users)
-// - Admin: show all users
-// - Non-admin: show only self
-// - Admin check is done by calling GET /role/:id
-// - Local storage parsing matches your snippet pattern
-// -----------------------------
+/* =============================
+ * ✅ Company list from /user/me-or-all
+ * ============================= */
 
 export type CompanyRow = {
-    plantCode: string // used as Select value
+    plantCode: string // Select value (we will keep this = companyName)
     alias: string
     companyName: string
 
-    userId?: string
-    username?: string
-    email?: string
-    roleId?: string
-    roleName?: string
+    // optional debug/meta
+    firmRootUserId?: string
 }
 
 let COMPANIES_CACHE: CompanyRow[] | null = null
@@ -41,25 +33,31 @@ function safeString(x: any) {
     return String(x ?? '').trim()
 }
 
-function pickName(obj: any): string {
-    const name = obj?.name || obj?.fullName || obj?.username || obj?.email || ''
-    return safeString(name)
+/** vendor if vendorCode exists */
+function isVendorUser(u: any) {
+    return Boolean(safeString(u?.vendorCode))
+}
+
+/** firm employee if firmId exists and vendorCode is null */
+function isFirmEmployee(u: any) {
+    return !isVendorUser(u) && Boolean(u?.firmId)
+}
+
+/** firm root if firmId null and vendorCode null */
+function isFirmRoot(u: any) {
+    return !isVendorUser(u) && !u?.firmId
+}
+
+function normCompany(s: any) {
+    return String(s || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
 }
 
 function pickToken(obj: any): string | null {
-    const token =
-        obj?.token ||
-        obj?.accessToken ||
-        obj?.session?.token ||
-        obj?.session?.accessToken ||
-        obj?.auth?.token ||
-        obj?.auth?.session?.token
+    const token = obj?.token || obj?.accessToken || obj?.session?.token || obj?.session?.accessToken || obj?.auth?.token || obj?.auth?.session?.token
     return token ? safeString(token) : null
-}
-
-function pickRoleId(obj: any): string | null {
-    const role = obj?.role || obj?.user?.role || obj?.auth?.user?.role
-    return role ? safeString(role) : null
 }
 
 function b64UrlDecode(input: string) {
@@ -73,7 +71,6 @@ function decodeUserIdFromJwt(token: string): string | null {
         const parts = token.split('.')
         if (parts.length < 2) return null
         const payload = JSON.parse(b64UrlDecode(parts[1]))
-        // your JWT payload has: { userId: "..." }
         return payload?.userId ? String(payload.userId) : null
     } catch {
         return null
@@ -81,37 +78,7 @@ function decodeUserIdFromJwt(token: string): string | null {
 }
 
 /**
- * ✅ EXACT same localStorage scanning style you asked for
- */
-export function getLoggedInUserLabel() {
-    try {
-        const candidates = ['admin', 'user', 'userDetails', 'auth_user']
-        for (const key of candidates) {
-            const raw = localStorage.getItem(key)
-            if (!raw) continue
-            const outer = safeJsonParse<any>(raw)
-            if (!outer) continue
-
-            const direct = pickName(outer)
-            if (direct) return direct
-
-            if (typeof outer?.auth === 'string') {
-                const authObj = safeJsonParse<any>(outer.auth)
-                const fromAuthUser = pickName(authObj?.user)
-                if (fromAuthUser) return fromAuthUser
-            }
-
-            const fromOuterUser = pickName(outer?.user)
-            if (fromOuterUser) return fromOuterUser
-        }
-        return ''
-    } catch {
-        return ''
-    }
-}
-
-/**
- * ✅ Extract token + roleId + userId using the same candidate scan
+ * ✅ Extract token using your same localStorage scanning
  */
 export function getAuthFromLocalStorage(): {
     token: string | null
@@ -120,7 +87,6 @@ export function getAuthFromLocalStorage(): {
     localUser: any | null
 } {
     try {
-        // optional direct session_token support
         const directToken = localStorage.getItem('session_token')
         if (directToken) {
             const token = safeString(directToken)
@@ -140,45 +106,28 @@ export function getAuthFromLocalStorage(): {
             const outer = safeJsonParse<any>(raw)
             if (!outer) continue
 
-            // Case A: auth is a STRING (your case)
             if (typeof outer?.auth === 'string') {
                 const authObj = safeJsonParse<any>(outer.auth)
                 const token = pickToken(authObj)
-                const roleId = pickRoleId(authObj?.user)
                 const localUser = authObj?.user ?? null
                 if (token) {
                     return {
                         token,
-                        roleId: roleId || null,
+                        roleId: safeString(localUser?.role) || null,
                         userId: decodeUserIdFromJwt(token),
                         localUser,
                     }
                 }
             }
 
-            // Case B: token directly present
-            const token = pickToken(outer)
+            const token = pickToken(outer) || pickToken(outer?.user)
             if (token) {
-                const roleId = pickRoleId(outer?.user || outer)
                 const localUser = outer?.user ?? null
                 return {
                     token,
-                    roleId: roleId || null,
+                    roleId: safeString(localUser?.role) || safeString(outer?.role) || null,
                     userId: decodeUserIdFromJwt(token),
                     localUser,
-                }
-            }
-
-            // Case C: token inside outer.user
-            const token2 = pickToken(outer?.user)
-            if (token2) {
-                const roleId2 = pickRoleId(outer?.user)
-                const localUser2 = outer?.user ?? null
-                return {
-                    token: token2,
-                    roleId: roleId2 || null,
-                    userId: decodeUserIdFromJwt(token2),
-                    localUser: localUser2,
                 }
             }
         }
@@ -189,108 +138,85 @@ export function getAuthFromLocalStorage(): {
     }
 }
 
-function mapUserToCompany(u: any, roleName?: string): CompanyRow {
-    const userId = safeString(u?._id || u?.id)
-    const username = safeString(u?.username)
-    const name = safeString(u?.name || u?.fullName || username || u?.email || 'Unknown User')
-    const email = safeString(u?.email)
-    const roleId = safeString(typeof u?.role === 'string' ? u.role : u?.role?._id || u?.role?.id)
+function userToCompany(u: any): CompanyRow | null {
+    if (!u) return null
+    if (isVendorUser(u)) return null // ✅ exclude vendors
 
+    const companyName = safeString(u?.company?.name)
+    if (!companyName) return null
+
+    // ✅ PO.company is a string => best is to keep select value = companyName
     return {
-        plantCode: userId || username || name, // Select value
-        alias: username || name,
-        companyName: name, // shown in dropdown
-        userId,
-        username,
-        email,
-        roleId: roleId || undefined,
-        roleName: roleName || undefined,
+        plantCode: companyName,
+        alias: companyName,
+        companyName,
+        firmRootUserId: isFirmRoot(u) ? safeString(u?._id) : isFirmEmployee(u) ? safeString(u?.firmId) : undefined,
     }
 }
 
-/**
- * ✅ Admin check via GET /role/:id (as you requested)
- */
-async function getRoleNameById(roleId: string, token: string): Promise<string> {
-    try {
-        const resp = await ApiService.fetchData<any>({
-            method: 'get',
-            url: `/role/${roleId}`,
-            headers: { Authorization: `Bearer ${token}` },
-        })
-        return safeString(resp?.data?.name)
-    } catch (e) {
-        console.error('[getRoleNameById] failed:', e)
-        return ''
+/** ✅ Deduplicate by companyName, prefer firm root users when available */
+function dedupeCompanies(users: any[]): CompanyRow[] {
+    const map = new Map<string, { row: CompanyRow; weight: number }>()
+
+    for (const u of users || []) {
+        const row = userToCompany(u)
+        if (!row) continue
+
+        const key = normCompany(row.companyName)
+
+        // weight: firm_root highest, firm_employee next, others lowest
+        const weight = isFirmRoot(u) ? 3 : isFirmEmployee(u) ? 2 : 1
+
+        const prev = map.get(key)
+        if (!prev || weight > prev.weight) {
+            map.set(key, { row, weight })
+        }
     }
+
+    return Array.from(map.values())
+        .map((x) => x.row)
+        .sort((a, b) => a.companyName.localeCompare(b.companyName))
 }
 
 /**
- * ✅ Fetch "companies" (actually USERS) from backend
- * - Admin => GET /user (all users)
- * - Non-admin => GET /user/:userId (self)
- *
- * IMPORTANT:
- * - NO HARDCODED fallback now.
- * - If API fails, it returns [] so your UI won't show old hardcoded list.
+ * ✅ getCompanies():
+ * Calls backend resolver:
+ * GET /user/me-or-all
+ * - superadmin/admin: returns all users
+ * - non-admin: returns [self] with resolved company object
  */
 export async function getCompanies(force = false): Promise<CompanyRow[]> {
     if (force) {
         COMPANIES_CACHE = null
         COMPANIES_INFLIGHT = null
     }
-
     if (!force && COMPANIES_CACHE) return COMPANIES_CACHE
     if (!force && COMPANIES_INFLIGHT) return COMPANIES_INFLIGHT
 
     COMPANIES_INFLIGHT = (async () => {
-        const { token, roleId, userId, localUser } = getAuthFromLocalStorage()
+        const { token } = getAuthFromLocalStorage()
 
         if (!token) {
-            console.warn('[getCompanies] token missing in localStorage')
+            console.warn('[getCompanies] token missing')
             COMPANIES_CACHE = []
             return []
         }
 
-        // ✅ Determine admin by calling role API
-        const roleName = roleId ? await getRoleNameById(roleId, token) : ''
-        const isAdmin = roleName.toLowerCase() === 'admin'
-
         try {
-            if (isAdmin) {
-                const resp = await ApiService.fetchData<any[]>({
-                    method: 'get',
-                    url: '/user',
-                    headers: { Authorization: `Bearer ${token}` },
-                })
-                const users = resp?.data || []
-                const mapped = users.map((u) => mapUserToCompany(u, roleName))
-                COMPANIES_CACHE = mapped
-                return mapped
-            }
+            const resp = await ApiService.fetchData<any[]>({
+                method: 'get',
+                url: '/user/me-or-all',
+                headers: { Authorization: `Bearer ${token}` },
+            })
 
-            // non-admin => self
-            if (userId) {
-                const meResp = await ApiService.fetchData<any>({
-                    method: 'get',
-                    url: `/user/${userId}`,
-                    headers: { Authorization: `Bearer ${token}` },
-                })
-                const me = meResp?.data
-                const list = me ? [mapUserToCompany(me, roleName)] : []
-                COMPANIES_CACHE = list
-                return list
-            }
+            const users = Array.isArray(resp?.data) ? resp.data : []
 
-            // fallback: use localUser if available (still no hardcoded)
-            if (localUser) {
-                const list = [mapUserToCompany({ ...localUser, _id: localUser?._id || localUser?.id || '' }, roleName)]
-                COMPANIES_CACHE = list
-                return list
-            }
+            // ✅ admin/superadmin => many users => dedupe companies
+            // ✅ non-admin => usually single user => still works
+            const list = dedupeCompanies(users)
 
-            COMPANIES_CACHE = []
-            return []
+            COMPANIES_CACHE = list
+            return list
         } catch (err) {
             console.error('[getCompanies] failed:', err)
             COMPANIES_CACHE = []
@@ -308,13 +234,16 @@ export function clearCompaniesCache() {
     COMPANIES_INFLIGHT = null
 }
 
-// ⚠️ Keep export to avoid breaking older imports.
-// But it is intentionally empty now (no hardcoded list).
+/**
+ * ✅ IMPORTANT:
+ * Many old screens import `companies` directly.
+ * Keep it exported, but now it will be populated by getCompanies() in screens.
+ */
 export const companies: CompanyRow[] = []
 
-// -----------------------------
-// rest of your constants remain same (unchanged)
-// -----------------------------
+/* =============================
+ * rest of your constants unchanged
+ * ============================= */
 
 export const termsConditionsOptions = [
     { value: 'payment-term', label: 'PAYMENT TERM' },

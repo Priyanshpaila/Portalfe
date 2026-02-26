@@ -9,6 +9,8 @@ import { csTypes } from '@/utils/constants'
 import { companies, getIndentID } from '@/utils/data'
 import { formatDate } from '@/utils/formatDate'
 import { showError } from '@/utils/hoc/showAlert'
+import { useAppSelector } from '@/store'
+import { UserApi } from '@/services/user.api'
 
 const { Tr, Td } = Table
 
@@ -38,8 +40,67 @@ type Props = {
     onClose: () => void
 }
 
+type MeCompany = { name?: string }
+type MeUser = { company?: MeCompany }
+
+function unwrapResponse<T = any>(res: any): T {
+    return (res?.data ?? res) as T
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
+    try {
+        const res = await UserApi.getMe()
+        const raw = unwrapResponse<any>(res)
+        if (raw && typeof raw === 'object') return raw as MeUser
+        return null
+    } catch {
+        return null
+    }
+}
+
+function normCompany(s: any) {
+    return String(s || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+}
+
 export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
-    const [list, setList] = useState<RowType[]>([])
+    const user = useAppSelector((state) => state.auth.user)
+
+    const roleName = useMemo(() => {
+        const r: any = (user as any)?.role
+        return String(r?.name || r || '').toLowerCase()
+    }, [user])
+
+    const isAdminLike = useMemo(() => roleName === 'admin' || roleName === 'superadmin', [roleName])
+    const isVendor = useMemo(() => Boolean((user as any)?.vendorCode), [user])
+
+    // ✅ company name (prefer redux user.company.name, fallback to /user/me)
+    const [meCompanyName, setMeCompanyName] = useState<string>(() => String((user as any)?.company?.name || '').trim())
+
+    useEffect(() => {
+        const fromStore = String((user as any)?.company?.name || '').trim()
+        if (fromStore && fromStore !== meCompanyName) setMeCompanyName(fromStore)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+
+    useEffect(() => {
+        if (!isOpen) return
+        if (isAdminLike) return
+        if (isVendor) return
+        if (meCompanyName) return
+
+        ;(async () => {
+            const me = await fetchMeUser()
+            const c = String(me?.company?.name || '').trim()
+            if (c) setMeCompanyName(c)
+        })()
+    }, [isOpen, isAdminLike, isVendor, meCompanyName])
+
+    const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
+
+    const [rawList, setRawList] = useState<RowType[]>([])
     const [selected, setSelected] = useState<RowType | null>(null)
     const [data, setData] = useState<ApiDataType[]>([])
     const [loading, setLoading] = useState(false)
@@ -50,6 +111,7 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
 
         response.forEach(({ items, selection, ...cs }) => {
             const vendors = cs.vendors.filter((v) => selection?.some((s) => s.vendorCode === v.vendorCode))
+
             const companyWiseItems = items.reduce<Record<string, CSType['items']>>((acc, i) => {
                 acc[i.company] = [...(acc[i.company] || []), i]
                 return acc
@@ -95,7 +157,7 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
         if (!isOpen) {
             setSelected(null)
             setData([])
-            setList([])
+            setRawList([])
             return
         }
 
@@ -103,9 +165,8 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
             try {
                 setLoading(true)
                 const response = await ApiService.fetchData<ApiDataType[]>({ method: 'GET', url: '/cs/quotations' })
-                console.log(response + "quotation received");
                 setData(response.data)
-                setList(buildRowList(response.data))
+                setRawList(buildRowList(response.data))
             } catch (error) {
                 console.error(error)
                 showError('Failed to load quotations.')
@@ -116,6 +177,23 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
 
         fetchQuotations()
     }, [isOpen])
+
+    // ✅ filtered list for UI
+    const list = useMemo(() => {
+        if (!Array.isArray(rawList)) return []
+        if (isAdminLike || isVendor) return rawList
+        if (!meCompanyKey) return rawList // avoid empty flash until company loads
+
+        return rawList.filter((r) => normCompany(r.companyCode) === meCompanyKey)
+    }, [rawList, isAdminLike, isVendor, meCompanyKey])
+
+    // ✅ if selected row disappears due to filter, reset it
+    useEffect(() => {
+        if (!selected) return
+        const exists = list.some((r) => r.csNumber === selected.csNumber && r.quotationNumber === selected.quotationNumber && r.companyCode === selected.companyCode)
+        if (!exists) setSelected(null)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [list])
 
     const mergeTaxDetails = (items: ReturnType<typeof handleItemAmount>[]): ReturnType<typeof handleItemAmount>[] => {
         const taxMap: Record<string, TaxChargeType> = {}
@@ -240,7 +318,7 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
                     return (
                         <Radio
                             name='selected'
-                            checked={i.csNumber === selected?.csNumber && i.quotationNumber === selected?.quotationNumber}
+                            checked={i.csNumber === selected?.csNumber && i.quotationNumber === selected?.quotationNumber && i.companyCode === selected?.companyCode}
                             onChange={() => setSelected(i)}
                         />
                     )
@@ -261,7 +339,11 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
 
     return (
         <Dialog isOpen={isOpen} width={window.innerWidth * 0.8} onClose={onClose} onRequestClose={onClose}>
-            <h4 className='mb-4'>Select Documents</h4>
+            <h4 className='mb-4'>
+                Select Documents
+                {!isAdminLike && !isVendor && meCompanyName ? <span className="opacity-70"> • {meCompanyName}</span> : null}
+            </h4>
+
             <Loading loading={loading}>
                 <DataTable
                     className={'custom-data-table whitespace-nowrap h-[50vh]'}

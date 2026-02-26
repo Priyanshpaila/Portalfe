@@ -22,6 +22,7 @@ import { freightTypes, priorities } from '@/utils/constants'
 
 import { ConfirmDialog } from '@/components/shared'
 import { BiSolidCheckSquare, BiSolidXSquare } from 'react-icons/bi'
+import { UserApi } from '@/services/user.api'
 
 type POType = _POType & {
   status: number | string
@@ -33,6 +34,63 @@ type POType = _POType & {
   priority?: string
 }
 
+type MeCompany = {
+  name?: string
+  industry?: string
+  gstin?: string
+  pan?: string
+  phone?: string
+  website?: string
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  pincode?: string
+}
+
+type MeUser = {
+  _id?: string
+  name?: string
+  username?: string
+  email?: string
+  company?: MeCompany
+  firmId?: any
+  vendorCode?: any
+  role?: any
+}
+
+function unwrapResponse<T = any>(res: any): T {
+  return (res?.data ?? res) as T
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
+  try {
+    const res = await UserApi.getMe()
+    const raw = unwrapResponse<any>(res)
+    if (raw && typeof raw === 'object') return raw as MeUser
+    return null
+  } catch {
+    return null
+  }
+}
+
+function normCompany(s: any) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function resolvePoCompanyName(po: any): string {
+  const raw =
+    po?.company ??
+    po?.companyName ??
+    po?.companyCode ??
+    po?.shippingAccount?.company ??
+    ''
+  return String(raw || '').trim()
+}
+
 function normalizeVendorPayload(payload: any, vendorCode?: string): VendorType | undefined {
   if (!payload) return undefined
   if (Array.isArray(payload)) {
@@ -42,9 +100,7 @@ function normalizeVendorPayload(payload: any, vendorCode?: string): VendorType |
   return payload
 }
 
-/** ✅ SAME matching logic as Authorize.tsx:
- * users.some(i => i._id === row.user && i.username === loggedInUser.username)
- */
+/** ✅ SAME matching logic as Authorize.tsx */
 function isRowForLoggedInUser(row: any, users: UserType[], loggedInUser: any) {
   const rowUserId =
     typeof row?.user === 'object' && row?.user !== null ? row.user?._id : row?.user
@@ -54,13 +110,11 @@ function isRowForLoggedInUser(row: any, users: UserType[], loggedInUser: any) {
   )
 }
 
-/** ✅ Find my assigned level (even if previous level not approved) */
 function getMyAssignedAuthIndex(po: any, users: UserType[], loggedInUser: any) {
   const auth = po?.authorize || []
   return auth.findIndex((row: any) => isRowForLoggedInUser(row, users, loggedInUser))
 }
 
-/** ✅ Priority -> chip color mapping */
 function getPriorityChipMeta(priorityLabel?: string) {
   const key = String(priorityLabel || '').toLowerCase().trim()
   if (key.includes('urgent')) return { color: 'red', label: priorityLabel || 'Urgent' }
@@ -125,7 +179,30 @@ export default function PurchaseOrders() {
   const sheetRef = useRef<HTMLDivElement>(null)
   const user = useAppSelector((state) => state.auth.user)
 
-  const [data, setData] = useState<POType[]>([])
+  // ✅ store raw list; we will filter for table view
+  const [rawData, setRawData] = useState<POType[]>([])
+
+  // ✅ logged-in firm/company from /user/me
+  const [meUser, setMeUser] = useState<MeUser | null>(null)
+
+  useEffect(() => {
+    ;(async () => {
+      const u = await fetchMeUser()
+      setMeUser(u)
+    })()
+  }, [])
+
+  // ✅ privilege detection (admin/superadmin)
+  const roleName = useMemo(() => {
+    const r = (user as any)?.role
+    const name = typeof r === 'string' ? r : (r?.name || (user as any)?.roleName || '')
+    return String(name || '').toLowerCase().trim()
+  }, [user])
+
+  const isPrivileged = useMemo(() => roleName === 'admin' || roleName === 'superadmin', [roleName])
+
+  const meCompanyName = useMemo(() => String(meUser?.company?.name || '').trim(), [meUser])
+  const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
 
   /** ✅ load same users list as Authorize.tsx */
   const [users, setUsers] = useState<UserType[]>([])
@@ -177,7 +254,8 @@ export default function PurchaseOrders() {
         data: payload,
       })
 
-      setData((prev) =>
+      // ✅ update raw list
+      setRawData((prev) =>
         prev.map((r) => {
           if (String(r._id) !== String(po._id)) return r
 
@@ -206,6 +284,18 @@ export default function PurchaseOrders() {
     }
   }
 
+  // ✅ filter view by logged-in company ONLY for non-privileged users
+  const tableData = useMemo(() => {
+    if (!Array.isArray(rawData)) return []
+    if (isPrivileged) return rawData
+    if (!meCompanyKey) return rawData
+
+    return rawData.filter((po) => {
+      const poCompany = resolvePoCompanyName(po)
+      return normCompany(poCompany) === meCompanyKey
+    })
+  }, [rawData, meCompanyKey, isPrivileged])
+
   const columns: ColumnDef<POType>[] = useMemo(() => {
     return [
       { header: '#', accessorKey: '', cell: ({ cell }: { cell: any }) => cell.row.index + 1 },
@@ -223,7 +313,6 @@ export default function PurchaseOrders() {
           ]
         : []),
 
-      /** ✅ FIXED: show buttons like Authorize.tsx */
       ...(!user.vendorCode
         ? [
             {
@@ -240,7 +329,6 @@ export default function PurchaseOrders() {
 
                 const prevOk = myIdx === 0 ? true : Boolean(po.authorize?.[myIdx - 1]?.approvalStatus)
 
-                // SAME disable logic (plus optional readyForAuthorization)
                 const isActionDisabled =
                   !prevOk || Boolean(po.authorize?.[myIdx]?.approvalStatus) || !Boolean(po?.readyForAuthorization)
 
@@ -308,7 +396,6 @@ export default function PurchaseOrders() {
       },
       { header: 'PO Date', accessorKey: 'poDate' },
 
-      /** ✅ Priority chip */
       {
         header: 'Priority',
         accessorKey: 'priority',
@@ -364,10 +451,15 @@ export default function PurchaseOrders() {
     ]
   }, [user, users, usersLoading, actionFlags])
 
+  const title = useMemo(() => {
+    if (isPrivileged) return 'Purchase Orders'
+    return `Purchase Orders${meCompanyName ? ` • ${meCompanyName}` : ''}`
+  }, [isPrivileged, meCompanyName])
+
   return (
     <div ref={sheetRef}>
       <CustomDataTable<POType>
-        title="Purchase Orders"
+        title={title}
         columns={columns}
         fetchApi={'/po/list'}
         actions={[
@@ -412,12 +504,14 @@ export default function PurchaseOrders() {
             ],
           },
         ]}
-        data={data}
-        setData={(_data: POType[]) =>
-          setData(
-            _data?.map((i) => {
+        data={tableData}
+        setData={(_data: POType[]) => {
+          setRawData(
+            (_data || [])?.map((i) => {
               const progressCount = i.authorize.filter((_i: any) => _i.approvalStatus === 1).length
-              const sorted = (i.items || []).slice().sort((a: any, b: any) => new Date(a.schedule as string).getTime() - new Date(b.schedule as string).getTime())
+              const sorted = (i.items || [])
+                .slice()
+                .sort((a: any, b: any) => new Date(a.schedule as string).getTime() - new Date(b.schedule as string).getTime())
               const priorityLabel = priorities.find((p) => p.value === i?.shippingAccount?.priority)?.label || ''
 
               return {
@@ -428,14 +522,16 @@ export default function PurchaseOrders() {
                 scheduledDate: sorted?.[0]?.schedule ? formatDate(sorted[0].schedule as any) : '',
                 priority: priorityLabel,
                 authorizedBy:
-                  i.status === 0 ? '' : `${(i as any).authorizedBy} (${i.status === 1 ? 'Authorized' : i.status === 2 ? 'Rejected' : ''})`,
+                  i.status === 0
+                    ? ''
+                    : `${(i as any).authorizedBy} (${i.status === 1 ? 'Authorized' : i.status === 2 ? 'Rejected' : ''})`,
                 authorizedAt: i.status === 0 ? '' : formatDateTime((i as any).authorizedAt as string),
                 progressCount,
                 status: i.status === 2 ? 'Rejected' : progressCount === i.authorize.length ? 'Authorized' : 'Initial',
               }
             }),
           )
-        }
+        }}
       />
 
       <ConfirmDialog
@@ -449,7 +545,7 @@ export default function PurchaseOrders() {
         onCancel={() => setApprovalDialog(null)}
         onConfirm={() => {
           if (!approvalDialog) return
-          const po = data.find((p) => String(p._id) === String(approvalDialog.poId))
+          const po = tableData.find((p) => String(p._id) === String(approvalDialog.poId))
           if (!po) return showError('PO not found in table state.')
 
           if (approvalDialog.status === 2 && !approvalDialog.comment?.trim()?.length) {
