@@ -4,6 +4,7 @@ import ApiService from '@/services/ApiService'
 import { Field, Form, Formik, FormikHelpers, FieldArray, useFormikContext } from 'formik'
 import { showAlert, showError } from '@/utils/hoc/showAlert'
 import { MdEdit, MdSave, MdClose } from 'react-icons/md'
+import { UserApi } from '@/services/user.api'
 
 type ActiveTab = 'indent' | 'vendor'
 
@@ -13,6 +14,7 @@ type ItemMasterFormValues = {
     techSpec: string
     make: string
     unitOfMeasure: string
+    company: string
 }
 
 type VendorContactPerson = {
@@ -72,6 +74,30 @@ type IndentTypeRow = {
     isActive?: boolean
 }
 
+type MeCompany = {
+    name?: string
+}
+
+type MeUser = {
+    _id?: string
+    company?: MeCompany
+}
+
+function unwrapResponse<T = any>(res: any): T {
+    return (res?.data ?? res) as T
+}
+
+async function fetchMeUser(): Promise<MeUser | null> {
+    try {
+        const res = await UserApi.getMe()
+        const raw = unwrapResponse<any>(res)
+        if (raw && typeof raw === 'object') return raw as MeUser
+        return null
+    } catch {
+        return null
+    }
+}
+
 const ADD_ITEM_URL = '/indent/add-item'
 const ADD_VENDOR_URL = '/vendor'
 
@@ -85,6 +111,7 @@ const initialIndentValues: ItemMasterFormValues = {
     techSpec: '',
     make: '',
     unitOfMeasure: '',
+    company: '',
 }
 
 const initialIndentTypeValues: IndentTypeFormValues = {
@@ -299,6 +326,16 @@ export default function MasterControl() {
     const [editIndentTypeId, setEditIndentTypeId] = useState<string | null>(null)
     const [editIndentTypeDraft, setEditIndentTypeDraft] = useState<IndentTypeFormValues>(initialIndentTypeValues)
 
+    const [meCompanyName, setMeCompanyName] = useState<string>('')
+
+    useEffect(() => {
+        ;(async () => {
+            const me = await fetchMeUser()
+            const name = String(me?.company?.name || '').trim()
+            setMeCompanyName(name)
+        })()
+    }, [])
+
     const tabs = useMemo(
         () => [
             { key: 'indent' as const, label: 'Material Master' },
@@ -327,33 +364,40 @@ export default function MasterControl() {
     }, [fetchIndentTypes])
 
     /** ✅ Item create: no itemCode in payload (backend must generate) */
-    const handleCreateItem = useCallback(async (values: ItemMasterFormValues, { resetForm }: FormikHelpers<ItemMasterFormValues>) => {
-        setLoading((p) => ({ ...p, item: true }))
-        try {
-            const payload = {
-                itemDescription: values.itemDescription?.trim(),
-                techSpec: values.techSpec?.trim(),
-                make: values.make?.trim(),
-                unitOfMeasure: values.unitOfMeasure?.trim(),
+    const handleCreateItem = useCallback(
+        async (values: ItemMasterFormValues, { resetForm }: FormikHelpers<ItemMasterFormValues>) => {
+            setLoading((p) => ({ ...p, item: true }))
+            try {
+                const company = String(meCompanyName || '').trim()
+                if (!company) throw new Error('Company not found for logged-in user.')
+
+                const payload = {
+                    itemDescription: values.itemDescription?.trim(),
+                    techSpec: values.techSpec?.trim(),
+                    make: values.make?.trim(),
+                    unitOfMeasure: values.unitOfMeasure?.trim(),
+                    company, // ✅ send logged-in user's company
+                }
+
+                if (!payload.itemDescription) throw new Error('Item description is required')
+                if (!payload.unitOfMeasure) throw new Error('Unit is required')
+
+                await ApiService.fetchData({
+                    method: 'post',
+                    url: ADD_ITEM_URL,
+                    data: payload,
+                })
+
+                showAlert('Item added successfully.')
+                resetForm()
+            } catch (err: any) {
+                showError(err?.response?.data?.message || err?.message || 'Failed to add item.')
+            } finally {
+                setLoading((p) => ({ ...p, item: false }))
             }
-
-            if (!payload.itemDescription) throw new Error('Item description is required')
-            if (!payload.unitOfMeasure) throw new Error('Unit is required')
-
-            await ApiService.fetchData({
-                method: 'post',
-                url: ADD_ITEM_URL,
-                data: payload,
-            })
-
-            showAlert('Item added successfully.')
-            resetForm()
-        } catch (err: any) {
-            showError(err?.response?.data?.message || err?.message || 'Failed to add item.')
-        } finally {
-            setLoading((p) => ({ ...p, item: false }))
-        }
-    }, [])
+        },
+        [meCompanyName],
+    )
 
     const handleCreateIndentType = useCallback(
         async (values: IndentTypeFormValues, { resetForm }: FormikHelpers<IndentTypeFormValues>) => {
