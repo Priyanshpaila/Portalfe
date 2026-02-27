@@ -43,6 +43,7 @@ type IndentMetaValues = {
     itemDescription?: string
     techSpec?: string
     make?: string
+    hsnCode?: string
     documentNumber?: string
     materialNumber?: string
     storageLocation?: string
@@ -258,6 +259,7 @@ function buildMetaFromIndent(i: any, fallbackRequestedBy: string): Partial<Inden
         itemDescription: String(i?.itemDescription ?? '').trim(),
         techSpec: String(i?.techSpec ?? '').trim(),
         make: String(i?.make ?? '').trim(),
+        hsnCode: String(i?.hsnCode ?? '').trim(),
         documentNumber: String(i?.documentNumber ?? '').trim(),
         materialNumber: String(i?.materialNumber ?? '').trim(),
         storageLocation: String(i?.storageLocation ?? '').trim(),
@@ -598,6 +600,7 @@ export default function RFQ() {
                                 itemDescription: String((indent as any)?.itemDescription ?? '').trim(),
                                 techSpec: String((indent as any)?.techSpec ?? '').trim(),
                                 make: String((indent as any)?.make ?? '').trim(),
+                                hsnCode: String((indent as any)?.hsnCode ?? '').trim(),
                                 documentNumber: String((indent as any)?.documentNumber ?? '').trim(),
                                 materialNumber: String((indent as any)?.materialNumber ?? '').trim(),
                                 storageLocation: String((indent as any)?.storageLocation ?? '').trim(),
@@ -646,7 +649,7 @@ export default function RFQ() {
                                     costCenter: meta.costCenter?.trim(),
                                     requestedBy: meta.requestedBy?.trim(),
                                     documentType: meta.indentType,
-
+                                    hsnCode: String(meta.hsnCode || '').trim() || undefined,
                                     indentQty: toNum0Local(meta.indentQty),
                                     preRFQQty: toNum0Local(meta.preRFQQty),
                                     prePOQty: toNum0Local(meta.prePOQty),
@@ -1198,6 +1201,7 @@ const IndentMetaDialog = ({
             itemDescription: (indent as any)?.itemDescription || '',
             techSpec: (indent as any)?.techSpec || '',
             make: (indent as any)?.make || '',
+            hsnCode: (indent as any)?.hsnCode || '',
             documentNumber: (indent as any)?.documentNumber || '',
             materialNumber: (indent as any)?.materialNumber || '',
             storageLocation: (indent as any)?.storageLocation || '',
@@ -1378,6 +1382,10 @@ const IndentMetaDialog = ({
 
                                             <FormItem label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
                                                 <Input size='sm' value={values.make} onChange={(e) => setFieldValue('make', e.target.value)} />
+                                            </FormItem>
+
+                                            <FormItem label='HSN Code' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <Input size='sm' value={values.hsnCode || ''} onChange={(e) => setFieldValue('hsnCode', e.target.value)} />
                                             </FormItem>
 
                                             <div className='md:col-span-2 mt-1 rounded-lg border bg-gray-50 p-3'>

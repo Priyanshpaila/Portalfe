@@ -15,6 +15,7 @@ type ItemMasterFormValues = {
     make: string
     unitOfMeasure: string
     company: string
+    hsnCode: string
 }
 
 type VendorContactPerson = {
@@ -112,6 +113,7 @@ const initialIndentValues: ItemMasterFormValues = {
     make: '',
     unitOfMeasure: '',
     company: '',
+    hsnCode: '',
 }
 
 const initialIndentTypeValues: IndentTypeFormValues = {
@@ -376,7 +378,8 @@ export default function MasterControl() {
                     techSpec: values.techSpec?.trim(),
                     make: values.make?.trim(),
                     unitOfMeasure: values.unitOfMeasure?.trim(),
-                    company, // ✅ send logged-in user's company
+                    hsnCode: values.hsnCode?.trim(),
+                    company, //  send logged-in user's company
                 }
 
                 if (!payload.itemDescription) throw new Error('Item description is required')
@@ -580,6 +583,10 @@ export default function MasterControl() {
                                     if (!values.itemDescription?.trim()) errors.itemDescription = 'Required'
                                     if (!values.unitOfMeasure?.trim()) errors.unitOfMeasure = 'Required'
                                     if (!values.make?.trim()) errors.make = 'Required'
+                                    if (values.hsnCode?.trim()) {
+                                        const h = values.hsnCode.trim()
+                                        if (!/^\d{4,8}$/.test(h)) errors.hsnCode = 'Enter valid HSN (4–8 digits)'
+                                    }
                                     return errors
                                 }}>
                                 {({ values, setFieldValue, errors, touched, isValid, dirty }) => (
@@ -625,6 +632,21 @@ export default function MasterControl() {
                                                         size='sm'
                                                         value={values.techSpec}
                                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('techSpec', e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem
+                                                    label='HSN Code'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.hsnCode && errors.hsnCode)}
+                                                    errorMessage={errors.hsnCode}>
+                                                    <Field
+                                                        name='hsnCode'
+                                                        as={Input}
+                                                        size='sm'
+                                                        value={(values as any).hsnCode}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('hsnCode', e.target.value)}
                                                     />
                                                 </FormItem>
 
