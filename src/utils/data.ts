@@ -3,7 +3,7 @@ import ApiService from '@/services/ApiService'
 
 export const getIndentID = (values: { indentNumber?: string; itemCode?: string }) => values.indentNumber + ':' + values.itemCode
 
-export const divisons = [{ label: 'RR Group', value: 'RR Group' }]
+export const divisons = [{ label: '', value: '' }]
 
 /* =============================
  * ✅ Company list from /user/me-or-all

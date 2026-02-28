@@ -122,7 +122,7 @@ export default function PurchaseOrder() {
             try {
                 setCompanyLoading(true)
                 const list = await getCompanies(true) // force refresh once
-                
+
                 setCompanyOptions(list || [])
             } catch (e) {
                 console.error(e)
@@ -357,9 +357,10 @@ export default function PurchaseOrder() {
 
                 unit: val.unitOfMeasure || '',
                 make: val.make || '',
+                hsnCode: val.hsnCode || '',
                 techSpec: val.techSpec || '',
                 schedule: '',
-                hsnCode: '',
+
                 remarks: '',
             }
 
@@ -560,7 +561,7 @@ export default function PurchaseOrder() {
                                         </div>
 
                                         <div className='flex gap-2 items-end w-full mt-2'>
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Division'>
+                                            {/* <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Division'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='division'
@@ -571,7 +572,7 @@ export default function PurchaseOrder() {
                                                     value={divisons.find((i) => i.value === values.division)}
                                                     onChange={(option: OptionType) => setFieldValue('division', option.value)}
                                                 />
-                                            </FormItem>
+                                            </FormItem> */}
 
                                             <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
                                                 <Field

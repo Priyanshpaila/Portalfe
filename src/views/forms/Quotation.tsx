@@ -9,7 +9,16 @@ import TabList from '@/components/ui/Tabs/TabList'
 import TabNav from '@/components/ui/Tabs/TabNav'
 import { AttachmentsTable } from '@/components/app/Attachments'
 import useQuery from '@/utils/hooks/useQuery'
-import { IndentType, NegotiationType, OptionType, QuotationItemType, QuotationType, RFQItemType, RFQType, VendorType } from '@/@types/app'
+import {
+    IndentType,
+    NegotiationType,
+    OptionType,
+    QuotationItemType,
+    QuotationType,
+    RFQItemType,
+    RFQType,
+    VendorType,
+} from '@/@types/app'
 import ApiService from '@/services/ApiService'
 import { QuotationItemsTable } from '@/components/app/QuotationItems'
 import { freightTypes, paymentModes } from '@/utils/constants'
@@ -19,7 +28,7 @@ import { showAlert, showError } from '@/utils/hoc/showAlert'
 import { formatDateTime } from '@/utils/formatDate'
 import { ConfirmDialog, Loading } from '@/components/shared'
 import { clubItems, deClubItems } from '@/utils/clubItems'
-import { termsConditionsOptions } from '@/utils/data'
+import { termsConditionsOptions, getIndentID } from '@/utils/data' // ✅ NEW: getIndentID
 import { QuotationNegotiation } from '@/components/app/QuotationNegotiation'
 import { MdLabelImportant } from 'react-icons/md'
 
@@ -54,6 +63,7 @@ const initialValues: QuotationType = {
 }
 
 const tabs = ['General Information', 'Terms & Conditions', 'Attachments', 'Contact Us']
+
 export default function Quotation() {
     const user = useAppSelector((state) => state.auth.user)
     const navigate = useNavigate()
@@ -64,7 +74,12 @@ export default function Quotation() {
     const [rfq, setRfq] = useState<RFQType>()
     const [vendorData, setVendorData] = useState<VendorType>()
     const [formValues, setFormValues] = useState<QuotationType>(initialValues)
+
+    // ✅ IMPORTANT: store indents by BOTH keys:
+    // - backend id (id/_id) for old usages
+    // - getIndentID(indent) (indentNumber+itemCode) for item meta lookups
     const [indents, setIndents] = useState<{ [id: string]: IndentType }>({})
+
     const [isEditable, setIsEditable] = useState<boolean>(true)
     const [negotiation, setNegotiation] = useState<NegotiationType>()
     const [flags, setFlags] = useState<{
@@ -88,7 +103,17 @@ export default function Quotation() {
             })
 
             const { rfq: _rfq, indents: _indents } = response.data
-            setIndents(_indents?.reduce((obj, i) => ({ ...obj, [i.id]: i }), {}))
+
+            // ✅ FIX: index indents by both id and indentNumber+itemCode
+            const indentIndex: { [k: string]: IndentType } = {}
+            for (const i of _indents || []) {
+                const idKey = String((i as any)?.id || (i as any)?._id || '').trim()
+                if (idKey) indentIndex[idKey] = i
+
+                const pairKey = String(getIndentID(i) || '').trim()
+                if (pairKey) indentIndex[pairKey] = i
+            }
+            setIndents(indentIndex)
 
             const dueDate = new Date(_rfq.dueDate as string)
             if (dueDate.getTime() < Date.now() && rfqNumber) {
@@ -100,6 +125,7 @@ export default function Quotation() {
             if (_rfq?._id) setRfq(_rfq)
             return _rfq
         } catch (error: unknown) {
+            // @ts-ignore
             if (error?.response?.status === 404) {
                 showError(`RFQ not found. Invalid RFQ number '${_rfqNumber}'`)
                 navigate('/rfqs')
@@ -108,31 +134,47 @@ export default function Quotation() {
         }
     }
 
-    const createQItem = (rfqItem: RFQItemType): QuotationItemType => ({
-        indentNumber: rfqItem.indentNumber,
-        itemCode: rfqItem.itemCode,
-        qty: typeof rfqItem.rfqQty === 'number' ? rfqItem.rfqQty : 0,
-        hsnCode: '',
-        make: '',
-        rate: 0,
-        discountPercent: 0,
-        discountAmount: 0,
-        taxRate: 0,
-        delivery: 0,
-        remarks: '',
-        amount: {
-            basic: 0,
-            discount: 0,
-            taxable: 0,
-            total: 0,
-        },
-        taxDetails: [],
-        discountType: 'percent',
-    })
+    const n0 = (v: any) => {
+        const n = Number(v)
+        return Number.isFinite(n) ? n : 0
+    }
+    const s = (v: any) => String(v ?? '').trim()
+
+    // ✅ FIX: map RFQ item -> QuotationItem correctly (HSN + requested make + qty)
+    const createQItem = (rfqItem: RFQItemType): QuotationItemType =>
+        ({
+            indentNumber: s((rfqItem as any).indentNumber),
+            itemCode: s((rfqItem as any).itemCode),
+
+            qty: n0((rfqItem as any).rfqQty),
+
+            // ✅ RFQ DB has hsnCode and make stored in rfqMake
+            hsnCode: s((rfqItem as any).hsnCode),
+            make: s((rfqItem as any).rfqMake || (rfqItem as any).make),
+
+            rate: 0,
+            discountPercent: 0,
+            discountAmount: 0,
+            taxRate: 0,
+            delivery: 0,
+            remarks: '',
+            amount: {
+                basic: 0,
+                discount: 0,
+                taxable: 0,
+                total: 0,
+            },
+            taxDetails: [],
+            discountType: 'percent',
+
+            // ✅ new quotation should have items selected by default
+            selected: true,
+        } as any)
 
     useEffect(() => {
         const handleFetching = async () => {
             try {
+                // ✅ Creating quotation directly from RFQ
                 if (rfqNumber) {
                     const _rfq = await fetchRfq()
                     const clubbedResponse = clubItems(_rfq?.items?.map(createQItem) || [])
@@ -145,6 +187,8 @@ export default function Quotation() {
                     setIsEditable(true)
                     return
                 }
+
+                // ✅ Editing an existing quotation
                 if (!quotationNumber) return
 
                 const response = await ApiService.fetchData<QuotationType & { poNumber?: string; negotiation?: NegotiationType }>({
@@ -163,6 +207,7 @@ export default function Quotation() {
                     return
                 }
 
+                // ✅ append any missing RFQ items (keep unselected)
                 response.data.items = response.data.items.concat(
                     _rfq.items
                         ?.filter((ri) => !response.data.items.find((qi) => qi.indentNumber === ri.indentNumber && qi.itemCode === ri.itemCode))
@@ -172,12 +217,15 @@ export default function Quotation() {
                 if (response.data.negotiation) {
                     setNegotiation(response.data.negotiation)
                 }
+
                 if (response.data.poNumber) {
-                    showError("Quotation cannot be edited because a purchase order has been generated.")
+                    showError('Quotation cannot be edited because a purchase order has been generated.')
                     setIsEditable(false)
                 }
+
                 if (response.data.quotationDate) response.data.quotationDate = new Date(response.data.quotationDate)
                 if (response.data.validityDate) response.data.validityDate = new Date(response.data.validityDate)
+
                 if (response.data.items) {
                     const clubbedResponse = clubItems(
                         response.data.items.map((i) => ({
@@ -189,6 +237,7 @@ export default function Quotation() {
                     response.data.items = clubbedResponse.items
                     setQtyMap(clubbedResponse.qtyMap)
                 }
+
                 if (response.data.attachments)
                     response.data.attachments = response.data.attachments.map((i) => ({
                         ...i,
@@ -206,6 +255,7 @@ export default function Quotation() {
             await handleFetching()
             setFlags({})
         })()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
@@ -267,11 +317,11 @@ export default function Quotation() {
                     ),
                 }),
             )
-            for (const i of file) formData.append('file', i)
+            for (const i of file as any) formData.append('file', i)
 
             await ApiService.fetchData({
                 method: !quotationNumber ? 'POST' : 'PUT',
-                url: '/quotation' + (!quotationNumber ? '' : '/' + formValues._id),
+                url: '/quotation' + (!quotationNumber ? '' : '/' + (formValues as any)._id),
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -280,7 +330,7 @@ export default function Quotation() {
 
             showAlert(`Quotation ${values.status === 1 ? 'submitted' : 'saved'} successfully!`)
             navigate('/quotations')
-        } catch (error) {
+        } catch (error: any) {
             const mssg = 'Failed to save/submit quotation. Please contact support.'
             if (error?.response?.status === 500) showError(mssg)
             else showError(error?.response?.data?.message || mssg)
@@ -295,14 +345,14 @@ export default function Quotation() {
         try {
             const response = await ApiService.fetchData<{ success: true }>({
                 method: 'delete',
-                url: '/quotation/' + formValues?._id,
+                url: '/quotation/' + (formValues as any)?._id,
             })
             if (response.data.success) {
                 setFlags((prev) => ({ ...prev, deleting: false, deleteDialog: false }))
                 showAlert(`Quotation ${quotationNumber} has been deleted successfully.`)
                 navigate('/quotations')
             }
-        } catch (error) {
+        } catch (error: any) {
             if (error?.response?.status === 500) {
                 showError('Failed to delete quotation. Please contact support.')
                 setFlags((prev) => ({ ...prev, deleting: false }))
@@ -329,9 +379,9 @@ export default function Quotation() {
                 amount.basic += item.amount.basic
                 amount.discount += item.amount.discount || 0
                 amount.total += item.amount.total
-                if (item.amount.igst) amount.igst += item.amount.igst
-                if (item.amount.cgst) amount.cgst += item.amount.cgst
-                if (item.amount.sgst) amount.sgst += item.amount.sgst
+                if ((item as any).amount.igst) amount.igst += (item as any).amount.igst
+                if ((item as any).amount.cgst) amount.cgst += (item as any).amount.cgst
+                if ((item as any).amount.sgst) amount.sgst += (item as any).amount.sgst
             }
 
         amount.basic = +amount.basic.toFixed(2)
@@ -342,9 +392,11 @@ export default function Quotation() {
             amount.sgst = +amount.sgst.toFixed(2)
         }
 
-        if (_values.charges)
-            for (const charge of Object.values(_values.charges)) {
+        if ((_values as any).charges)
+            for (const charge of Object.values((_values as any).charges)) {
+                // @ts-ignore
                 amount.otherCharges += charge.amount + charge.gstAmount
+                // @ts-ignore
                 amount.total += charge.amount + charge.gstAmount
             }
 
@@ -367,7 +419,7 @@ export default function Quotation() {
                 showAlert(`Request has been marked as regret successfully.`)
                 navigate('/rfqs')
             }
-        } catch (error) {
+        } catch (error: any) {
             if (error?.response?.status === 500) {
                 showError('Failed to mark request as regret. Please contact support.')
                 setFlags((prev) => ({ ...prev, regretDialog: true }))
@@ -392,24 +444,19 @@ export default function Quotation() {
                                             {tabs.map((i, idx) => (
                                                 <TabNav key={i} className='pt-0' value={i}>
                                                     <div className='flex gap-2 items-center'>
-                                                        {idx === 1 && negotiation?.termsConditions && <MdLabelImportant color='red' className='size-5' />}
+                                                        {idx === 1 && (negotiation as any)?.termsConditions && <MdLabelImportant color='red' className='size-5' />}
                                                         <span className='text-xs'>{i}</span>
                                                     </div>
                                                 </TabNav>
                                             ))}
                                             <TabNav disabled className='p-0 opacity-100 cursor-auto flex-1 justify-end gap-1' value='actions'>
-                                                {!formValues?.status && (
+                                                {!((formValues as any)?.status) && (
                                                     <Button type='button' variant='twoTone' size='xs' onClick={() => handleSave(values, setErrors)}>
                                                         Save
                                                     </Button>
                                                 )}
-                                                {formValues?._id && isEditable && (
-                                                    <Button
-                                                        type='button'
-                                                        variant='twoTone'
-                                                        size='xs'
-                                                        color='red'
-                                                        onClick={() => setFlags({ deleteDialog: true })}>
+                                                {(formValues as any)?._id && isEditable && (
+                                                    <Button type='button' variant='twoTone' size='xs' color='red' onClick={() => setFlags({ deleteDialog: true })}>
                                                         Delete
                                                     </Button>
                                                 )}
@@ -418,18 +465,14 @@ export default function Quotation() {
                                                         Submit
                                                     </Button>
                                                 )}
-                                                {!values?._id && (
-                                                    <Button
-                                                        type='button'
-                                                        variant='solid'
-                                                        size='xs'
-                                                        color='red'
-                                                        onClick={() => setFlags({ regretDialog: true })}>
+                                                {!((values as any)?._id) && (
+                                                    <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ regretDialog: true })}>
                                                         Regret
                                                     </Button>
                                                 )}
                                             </TabNav>
                                         </TabList>
+
                                         <TabContent value={tabs[0]}>
                                             <div className='flex gap-2 text-xs'>
                                                 <div className='w-2/3'>
@@ -445,6 +488,7 @@ export default function Quotation() {
                                                                 onChange={() => null}
                                                             />
                                                         </FormItem>
+
                                                         <FormItem asterisk className='mb-0' labelClass='text-xs' label='Validity Date'>
                                                             <Field
                                                                 disabled={!isEditable}
@@ -454,10 +498,11 @@ export default function Quotation() {
                                                                 component={DatePicker}
                                                                 inputFormat='DD/MM/YYYY'
                                                                 size={'xs'}
-                                                                value={values.validityDate || null}
+                                                                value={(values as any).validityDate || null}
                                                                 onChange={(dateValue: Date) => setFieldValue('validityDate', dateValue)}
                                                             />
                                                         </FormItem>
+
                                                         <FormItem asterisk className='mb-0' labelClass='text-xs' label='Quotation Number'>
                                                             <Field
                                                                 disabled={!isEditable}
@@ -465,12 +510,13 @@ export default function Quotation() {
                                                                 name='quotationNumber'
                                                                 component={Input}
                                                                 size={'xs'}
-                                                                value={values.quotationNumber}
+                                                                value={(values as any).quotationNumber}
                                                                 invalid={errors?.quotationNumber ? true : false}
                                                                 validate={(val: string) => !val}
                                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                             />
                                                         </FormItem>
+
                                                         <FormItem className='mb-0' labelClass='text-xs' label='Quotation Date'>
                                                             <Field
                                                                 disabled
@@ -479,11 +525,12 @@ export default function Quotation() {
                                                                 component={DatePicker}
                                                                 inputFormat='DD/MM/YYYY'
                                                                 size={'xs'}
-                                                                value={values.quotationDate || null}
+                                                                value={(values as any).quotationDate || null}
                                                                 onChange={(dateValue: Date) => setFieldValue('quotationDate', dateValue)}
                                                             />
                                                         </FormItem>
                                                     </div>
+
                                                     <div className='flex w-full gap-2 mt-2'>
                                                         <FormItem className='mb-0' labelClass='text-xs' label='Credit Days'>
                                                             <Field
@@ -492,10 +539,11 @@ export default function Quotation() {
                                                                 name='creditDays'
                                                                 component={Input}
                                                                 size={'xs'}
-                                                                value={values.creditDays}
+                                                                value={(values as any).creditDays}
                                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                             />
                                                         </FormItem>
+
                                                         <FormItem asterisk className='mb-0' labelClass='text-xs' label='Freight Type'>
                                                             <Field name='freightType'>
                                                                 {({ field, form }: FieldProps<QuotationType>) => {
@@ -507,13 +555,14 @@ export default function Quotation() {
                                                                             size={'xs'}
                                                                             className='w-50'
                                                                             options={freightTypes}
-                                                                            value={freightTypes.find((i) => i.value === values.freightType)}
-                                                                            onChange={(option) => form.setFieldValue(field.name, option?.value)}
+                                                                            value={freightTypes.find((i) => i.value === (values as any).freightType)}
+                                                                            onChange={(option) => form.setFieldValue(field.name, (option as any)?.value)}
                                                                         />
                                                                     )
                                                                 }}
                                                             </Field>
                                                         </FormItem>
+
                                                         <FormItem className='mb-0' labelClass='text-xs' label='Payment Mode'>
                                                             <Field
                                                                 isDisabled={!isEditable}
@@ -522,11 +571,12 @@ export default function Quotation() {
                                                                 className='w-50'
                                                                 component={Select}
                                                                 options={paymentModes}
-                                                                value={paymentModes.find((i) => i.value === values.paymentMode)}
+                                                                value={paymentModes.find((i) => i.value === (values as any).paymentMode)}
                                                                 onChange={(option: OptionType) => setFieldValue('paymentMode', option.value)}
                                                             />
                                                         </FormItem>
                                                     </div>
+
                                                     <FormItem className='mb-0 mt-2' labelClass='text-xs' label='Remarks'>
                                                         <Field
                                                             textArea
@@ -536,11 +586,12 @@ export default function Quotation() {
                                                             component={Input}
                                                             size={'xs'}
                                                             className='min-h-8 !h-15 resize-none'
-                                                            value={values.remarks}
+                                                            value={(values as any).remarks}
                                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                         />
                                                     </FormItem>
                                                 </div>
+
                                                 <div className='p-2 pt-3 w-1/3 text-sm'>
                                                     <h6 className='text-sm'>Vendor Details</h6>
                                                     <div className='text-[13px]'>
@@ -550,7 +601,7 @@ export default function Quotation() {
                                                         </div>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>Vendor Location</span>
-                                                            <span className='text-right'>{vendorData?.street}</span>
+                                                            <span className='text-right'>{(vendorData as any)?.street}</span>
                                                         </div>
                                                     </div>
 
@@ -558,33 +609,34 @@ export default function Quotation() {
                                                     <div className='mt-2 text-[13px]'>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>Basic</span>
-                                                            <span>{values.amount.basic}</span>
+                                                            <span>{(values as any).amount.basic}</span>
                                                         </div>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>Discount</span>
-                                                            <span>{values.amount.discount}</span>
+                                                            <span>{(values as any).amount.discount}</span>
                                                         </div>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>Other Charges</span>
-                                                            <span>{values.amount.otherCharges}</span>
+                                                            <span>{(values as any).amount.otherCharges}</span>
                                                         </div>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>SGST</span>
-                                                            <span>{values.amount.sgst}</span>
+                                                            <span>{(values as any).amount.sgst}</span>
                                                         </div>
                                                         <div className='flex justify-between gap-2'>
                                                             <span>CGST</span>
-                                                            <span>{values.amount.cgst}</span>
+                                                            <span>{(values as any).amount.cgst}</span>
                                                         </div>
                                                         <hr className='block my-1' />
                                                         <div className='flex justify-between gap-2 font-bold'>
                                                             <span>Net Amount</span>
-                                                            <span>{values.amount.total}</span>
+                                                            <span>{(values as any).amount.total}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </TabContent>
+
                                         <TabContent value={tabs[1]}>
                                             <div className='overflow-auto'>
                                                 <Table compact className='text-xs' containerClassName='h-full border border-slate-200 border-t-0'>
@@ -602,9 +654,9 @@ export default function Quotation() {
                                                                             icon={<TiArrowForwardOutline className='size-4' />}
                                                                             className='!h-auto !py-0 mr-1 bg-none hover:bg-none'
                                                                             onClick={() =>
-                                                                                setValues((prev) => ({
+                                                                                setValues((prev: any) => ({
                                                                                     ...prev,
-                                                                                    termsConditions: rfq?.termsConditions || {},
+                                                                                    termsConditions: (rfq as any)?.termsConditions || {},
                                                                                 }))
                                                                             }>
                                                                             <span className='text-xs font-normal'>Copy</span>
@@ -613,7 +665,7 @@ export default function Quotation() {
                                                                 </div>
                                                             </Th>
                                                             <Th className='flex-1 w-[40%]'>Quotation T&C</Th>
-                                                            {negotiation?.termsConditions && (
+                                                            {(negotiation as any)?.termsConditions && (
                                                                 <Th className='border-l border-l-slate-400/80 flex-1 w-[40%]'>
                                                                     <div className='flex justify-between w-full'>
                                                                         <div className='flex gap-2 items-center'>
@@ -628,15 +680,15 @@ export default function Quotation() {
                                                                                 icon={<TiArrowForwardOutline className='size-4 transform scale-x-[-1]' />}
                                                                                 className='!h-auto !py-0 mr-1 bg-none hover:bg-none'
                                                                                 onClick={() =>
-                                                                                    setValues((prev) => ({
+                                                                                    setValues((prev: any) => ({
                                                                                         ...prev,
                                                                                         termsConditions: !prev.termsConditions
-                                                                                            ? negotiation.termsConditions || {}
+                                                                                            ? (negotiation as any).termsConditions || {}
                                                                                             : termsConditionsOptions.reduce(
                                                                                                   (obj, { value: key }) => ({
                                                                                                       ...obj,
                                                                                                       [key]:
-                                                                                                          negotiation.termsConditions?.[key] ||
+                                                                                                          (negotiation as any).termsConditions?.[key] ||
                                                                                                           prev.termsConditions[key],
                                                                                                   }),
                                                                                                   {},
@@ -653,13 +705,16 @@ export default function Quotation() {
                                                     </THead>
                                                     <TBody>
                                                         {termsConditionsOptions
+                                                            // @ts-ignore
                                                             .toSorted(
-                                                                (a, b) => (rfq?.termsConditions?.[b.value] ? 1 : 0) - (rfq?.termsConditions?.[a.value] ? 1 : 0),
+                                                                (a, b) =>
+                                                                    (((rfq as any)?.termsConditions?.[b.value] ? 1 : 0) -
+                                                                        ((rfq as any)?.termsConditions?.[a.value] ? 1 : 0)) as any,
                                                             )
                                                             .map(({ label, value }) => (
                                                                 <Tr key={value}>
                                                                     <Td className='whitespace-nowrap'>{label}</Td>
-                                                                    <Td className='border-x border-x-slate-400/80'>{rfq?.termsConditions?.[value]}</Td>
+                                                                    <Td className='border-x border-x-slate-400/80'>{(rfq as any)?.termsConditions?.[value]}</Td>
                                                                     <Td>
                                                                         <Field
                                                                             disabled={!isEditable}
@@ -671,10 +726,8 @@ export default function Quotation() {
                                                                             component={Input}
                                                                         />
                                                                     </Td>
-                                                                    {negotiation?.termsConditions && (
-                                                                        <Td className='border-l border-l-slate-400/80'>
-                                                                            {negotiation?.termsConditions?.[value]}
-                                                                        </Td>
+                                                                    {(negotiation as any)?.termsConditions && (
+                                                                        <Td className='border-l border-l-slate-400/80'>{(negotiation as any)?.termsConditions?.[value]}</Td>
                                                                     )}
                                                                 </Tr>
                                                             ))}
@@ -682,29 +735,26 @@ export default function Quotation() {
                                                 </Table>
                                             </div>
                                         </TabContent>
+
                                         <TabContent value={tabs[2]}>
                                             <div className='flex overflow-auto border border-slate-200 border-t-0'>
                                                 <div className='w-2/5'>
-                                                    <AttachmentsTable
-                                                        id={values?._id || 'uploaded'}
-                                                        info='Uploaded'
-                                                        isSmall={true}
-                                                        attachments={values.attachments || []}
-                                                    />
-                                                    <AttachmentsTable id={rfq?._id || 'rfq'} info='RFQ' isSmall={true} attachments={rfq?.attachments || []} />
+                                                    <AttachmentsTable id={(values as any)?._id || 'uploaded'} info='Uploaded' isSmall={true} attachments={(values as any).attachments || []} />
+                                                    <AttachmentsTable id={(rfq as any)?._id || 'rfq'} info='RFQ' isSmall={true} attachments={(rfq as any)?.attachments || []} />
                                                 </div>
                                                 <div className='px-[.5px] bg-slate-200' />
                                                 <div className='w-3/5'>
                                                     <AttachmentsTable
-                                                        id={formValues?._id || 'selected'}
+                                                        id={(formValues as any)?._id || 'selected'}
                                                         info='Selected'
                                                         isEditable={isEditable}
-                                                        attachments={values.attachments || []}
+                                                        attachments={(values as any).attachments || []}
                                                         setValues={setValues}
                                                     />
                                                 </div>
                                             </div>
                                         </TabContent>
+
                                         <TabContent value={tabs[3]}>
                                             <div className='flex overflow-auto border border-slate-200 border-t-0'>
                                                 <Table compact className='text-xs' containerClassName='w-full'>
@@ -717,19 +767,21 @@ export default function Quotation() {
                                                     <TBody>
                                                         <Tr>
                                                             <Td>Contact Person</Td>
-                                                            <Td className='opacity-80'>{rfq?.contactPersonName}</Td>
+                                                            <Td className='opacity-80'>{(rfq as any)?.contactPersonName}</Td>
                                                         </Tr>
                                                         <Tr>
                                                             <Td>Contact Number</Td>
-                                                            <Td className='opacity-80'>{rfq?.contactNumber}</Td>
+                                                            <Td className='opacity-80'>{(rfq as any)?.contactNumber}</Td>
                                                         </Tr>
                                                         <Tr>
                                                             <Td>Email</Td>
-                                                            <Td className='opacity-80'>{rfq?.contactEmail}</Td>
+                                                            <Td className='opacity-80'>{(rfq as any)?.contactEmail}</Td>
                                                         </Tr>
                                                     </TBody>
                                                 </Table>
+
                                                 <div className='px-[.5px] bg-slate-200' />
+
                                                 <Table compact className='text-xs' containerClassName='w-full'>
                                                     <THead className='sticky top-0'>
                                                         <Tr>
@@ -792,28 +844,31 @@ export default function Quotation() {
                                             </div>
                                         </TabContent>
                                     </Tabs>
-                                    {negotiation?.items?.length && (
+
+                                    {(negotiation as any)?.items?.length ? (
                                         <>
                                             <div className='flex gap-2 items-center'>
                                                 <MdLabelImportant color='red' className='size-5' />
                                                 <h6 className='mb-2 mt-3'>Negotiation Items</h6>
                                             </div>
-                                            <QuotationNegotiation negotiation={negotiation} quotation={formValues} indents={indents} setValues={setValues} />
+                                            <QuotationNegotiation negotiation={negotiation as any} quotation={formValues as any} indents={indents} setValues={setValues} />
                                         </>
-                                    )}
+                                    ) : null}
+
                                     <h6 className='mb-2 mt-3'>Quotation Items</h6>
                                     <div>
                                         <QuotationItemsTable
                                             isEditable={isEditable}
                                             indents={indents}
-                                            items={values?.items}
-                                            values={values}
-                                            errors={errors}
-                                            setValues={setValues}
-                                            setFieldValue={setFieldValue}
-                                            handleAmountCalculation={handleAmountCalculation}
+                                            items={(values as any)?.items}
+                                            values={values as any}
+                                            errors={errors as any}
+                                            setValues={setValues as any}
+                                            setFieldValue={setFieldValue as any}
+                                            handleAmountCalculation={handleAmountCalculation as any}
                                         />
                                     </div>
+
                                     <div className='max-h-[35vh] overflow-auto mt-2'>
                                         <h6 className='mb-2'>Charges</h6>
                                         <ChargesTable<QuotationType>
@@ -821,7 +876,7 @@ export default function Quotation() {
                                             values={values}
                                             setValues={setValues}
                                             handleAmountCalculation={handleAmountCalculation}
-                                            negotiation={negotiation}
+                                            negotiation={negotiation as any}
                                         />
                                     </div>
                                 </FormContainer>

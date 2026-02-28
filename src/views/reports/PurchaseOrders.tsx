@@ -435,7 +435,7 @@ export default function PurchaseOrders() {
       { header: 'Last Authorized By', accessorKey: 'authorizedBy' },
       { header: 'Last Authorized At', accessorKey: 'authorizedAt' },
       { header: 'Company', accessorKey: 'company' },
-      { header: 'Division', accessorKey: 'division' },
+      // { header: 'Division', accessorKey: 'division' },
       { header: 'Purchase Type', accessorKey: 'purchaseType' },
       { header: 'Ref. Document Type', accessorKey: 'refDocumentType' },
       { header: 'Ref. Document No', accessorKey: 'refDocumentNumber' },

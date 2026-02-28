@@ -134,7 +134,7 @@ export default function POQuotationsList({ isOpen, onSubmit, onClose }: Props) {
                         csDate: cs.csDate,
                         company: companies.find((c) => c.plantCode?.toString() === companyCode)?.alias || companyCode,
                         companyCode,
-                        division: 'RR Group',
+                        division: ' ',
                         csNumber: cs.csNumber,
                         rfqNumber: cs.rfqNumber,
                         rfqDate: formatDate(cs.rfqDate?.toString()),

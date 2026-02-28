@@ -6,12 +6,24 @@ import { useAppSelector } from '@/store'
 import { formatDateTime, formatTimeDifference } from '@/utils/formatDate'
 import { showAlert, showError, showWarning } from '@/utils/hoc/showAlert'
 import { FormikHelpers } from 'formik'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BiSolidCheckSquare, BiSolidXSquare } from 'react-icons/bi'
 import { MdAdd } from 'react-icons/md'
 import { AxiosError } from 'axios'
 
 const { Tr, Th, Td, THead, TBody } = Table
+
+function normCompany(v: any) {
+    return String(v || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+}
+
+function getUserCompanyName(u: any) {
+    // supports: user.company.name OR user.company (string)
+    return String(u?.company?.name ?? u?.company ?? '').trim()
+}
 
 export default function Authorize({
     values,
@@ -31,12 +43,18 @@ export default function Authorize({
         statusLabel: 'Approve' | 'Reject'
         idx: number
     } | null>(null)
+
     const [flags, setFlags] = useState<{
         loading?: boolean
         authorize?: [number, 1 | 2]
     }>({})
+
     const loggedInUser = useAppSelector((state) => state?.auth?.user)
     const [users, setUsers] = useState<UserType[]>([])
+
+    // ✅ Company of logged-in user (for filtering)
+    const meCompanyName = useMemo(() => getUserCompanyName(loggedInUser), [loggedInUser])
+    const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
 
     useEffect(() => {
         ;(async () => {
@@ -45,12 +63,20 @@ export default function Authorize({
                     method: 'get',
                     url: '/user/po-vendors',
                 })
-                setUsers(response.data)
+                setUsers(Array.isArray(response.data) ? response.data : [])
             } catch (error) {
                 console.error(error)
             }
         })()
     }, [])
+
+    // ✅ Only show users having same company as logged in user
+    // (If logged-in user has no company, fallback to show all to avoid blocking)
+    const companyUsers = useMemo(() => {
+        if (!meCompanyKey) return users
+
+        return users.filter((u: any) => normCompany(getUserCompanyName(u)) === meCompanyKey)
+    }, [users, meCompanyKey])
 
     const handleAddLevel = () =>
         setValues((prev) => ({
@@ -97,7 +123,7 @@ export default function Authorize({
                 data: payload,
             })
 
-            updateAuthorize(values?.authorize?.map((row, i) => (i === idx ? { ...row, ...response.data.authorize } : row)))
+            updateAuthorize(values?.authorize?.map((r, i) => (i === idx ? { ...r, ...response.data.authorize } : r)))
             if (response?.data?.errorMessage) showWarning(response?.data?.errorMessage)
             else showAlert((approvalStatus ? 'Approved' : 'Rejected') + ' purchase order successfully.')
         } catch (error) {
@@ -109,6 +135,12 @@ export default function Authorize({
         setFlags({})
     }
 
+    // ✅ options: only same-company users, and exclude already selected users
+    const selectableUsers = useMemo(() => {
+        const selectedUserIds = new Set((values.authorize || []).map((a) => String(a.user || '')).filter(Boolean))
+        return companyUsers.filter((u: any) => !selectedUserIds.has(String(u?._id)))
+    }, [companyUsers, values.authorize])
+
     return (
         <>
             <div className='flex justify-end items-center gap-4 my-2'>
@@ -117,17 +149,19 @@ export default function Authorize({
                         disabled={Boolean(values?.readyForAuthorization)}
                         type='checkbox'
                         className='size-4'
-                        checked={Boolean(values._readyForAuthorization)}
-                        onChange={(e) => setFieldValue('_readyForAuthorization', e.target.checked)}
+                        checked={Boolean((values as any)._readyForAuthorization)}
+                        onChange={(e) => setFieldValue('_readyForAuthorization' as any, e.target.checked)}
                     />
                     <span>Ready for authorization</span>
                 </label>
+
                 {!values?.readyForAuthorization && (
                     <Button type='button' variant='solid' size='xs' icon={<MdAdd />} className='items-center' onClick={handleAddLevel}>
                         Add Level
                     </Button>
                 )}
             </div>
+
             <Table compact className='relative small-table'>
                 <THead className='sticky top-0'>
                     <Tr>
@@ -143,37 +177,46 @@ export default function Authorize({
                         <Th></Th>
                     </Tr>
                 </THead>
+
                 <TBody>
                     {values.authorize?.map((row, idx) => {
                         const isActionDisabled =
-                            !users.some((i) => i._id === row.user && i.username === loggedInUser.username) ||
+                            !users.some((i: any) => i._id === row.user && i.username === (loggedInUser as any)?.username) ||
                             (idx !== 0 && !values.authorize[idx - 1]?.approvalStatus)
 
                         return (
                             <Tr key={'auth-user:' + idx}>
                                 <Td>{idx + 1}</Td>
                                 <Td>{`Level ${idx + 1}`}</Td>
+
                                 <Td>
                                     {values?.readyForAuthorization || row?.approvalStatus ? (
-                                        users.find((i) => i._id === row.user)?.name
+                                        users.find((i: any) => i._id === row.user)?.name
                                     ) : (
                                         <Select
                                             size='xs'
                                             menuPosition='fixed'
                                             name={`authorize[${idx}].user`}
                                             className='w-56'
-                                            value={users.find((i) => i._id === row.user)}
-                                            options={users.filter((i) => !values.authorize?.filter((_i) => _i.user === i._id)?.length)}
-                                            getOptionLabel={(o) => `${o.name} (${o.username})`}
-                                            getOptionValue={(o) => o._id as string}
-                                            onChange={(newValue) => handleLevelChange(idx, { user: newValue?._id || '' })}
+                                            value={companyUsers.find((i: any) => i._id === row.user) || null}
+                                            options={selectableUsers}
+                                            getOptionLabel={(o: any) => `${o.name} (${o.username})`}
+                                            getOptionValue={(o: any) => o._id as string}
+                                            onChange={(newValue: any) => handleLevelChange(idx, { user: newValue?._id || '' })}
                                         />
                                     )}
+
+                                    {/* ✅ optional helper text */}
+                                    {!values?.readyForAuthorization && !row?.approvalStatus && meCompanyName ? (
+                                        <div className='mt-1 text-[11px] opacity-70'>Showing users of: {meCompanyName}</div>
+                                    ) : null}
                                 </Td>
+
                                 <Td>{formatDateTime(row.assignOn as string)}</Td>
                                 <Td>{formatDateTime(row.changedOn as string)}</Td>
                                 <Td>{formatTimeDifference(row.assignOn as string, row.changedOn as string)}</Td>
                                 <Td>{row.approvalStatus === 2 ? 'Rejected' : row.approvalStatus === 1 ? 'Authorized' : 'Initial'}</Td>
+
                                 <Td>
                                     <div className='flex items-center gap-1'>
                                         <Button
@@ -184,8 +227,7 @@ export default function Authorize({
                                             icon={<BiSolidCheckSquare className='text-green-500 size-7' />}
                                             loading={flags?.authorize?.[0] === idx && flags?.authorize?.[1] === 1}
                                             onClick={() => {
-                                                if (checkUnsavedChanges(values))
-                                                    return showError('Please save the unsaved changes before updating approval status.')
+                                                if (checkUnsavedChanges(values)) return showError('Please save the unsaved changes before updating approval status.')
                                                 setAuthDialogState({ idx, status: 1, statusLabel: 'Approve' })
                                             }}
                                         />
@@ -197,14 +239,14 @@ export default function Authorize({
                                             icon={<BiSolidXSquare className='text-red-600 size-7' />}
                                             loading={flags?.authorize?.[0] === idx && flags?.authorize?.[1] === 2}
                                             onClick={() => {
-                                                if (checkUnsavedChanges(values))
-                                                    return showError('Please save the unsaved changes before updating approval status.')
+                                                if (checkUnsavedChanges(values)) return showError('Please save the unsaved changes before updating approval status.')
                                                 if (!values.authorize[idx]?.comment?.length) return showError('Comments must be provided for PO rejection')
                                                 setAuthDialogState({ idx, status: 2, statusLabel: 'Reject' })
                                             }}
                                         />
                                     </div>
                                 </Td>
+
                                 <Td>
                                     {isActionDisabled || row.approvalStatus ? (
                                         row.comment
@@ -218,6 +260,7 @@ export default function Authorize({
                                         />
                                     )}
                                 </Td>
+
                                 <Td>
                                     {!values?.readyForAuthorization && !row?.approvalStatus && (
                                         <Button

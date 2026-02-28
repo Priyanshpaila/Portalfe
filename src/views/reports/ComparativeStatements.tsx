@@ -155,7 +155,7 @@ export default function ComparativeStatements() {
           <div className="min-w-[220px]">
             <div className="font-semibold text-slate-900">{row.original.rfqNumber}</div>
             <div className="text-xs text-slate-600 mt-1">
-              RFQ Date: <span className="font-medium text-slate-800">{row.original.rfqDate}</span>
+              RFQ Date: <span className="font-medium text-slate-800">{String(row.original.rfqDate)}</span>
             </div>
           </div>
         ),
@@ -169,7 +169,7 @@ export default function ComparativeStatements() {
             <div className={classNames('text-sm font-medium', row.original.authorizedBy ? 'text-slate-900' : 'text-slate-400')}>
               {row.original.authorizedBy || '—'}
             </div>
-            <div className="text-xs text-slate-600 mt-1">{row.original.authorizedAt || '—'}</div>
+            <div className="text-xs text-slate-600 mt-1">{String(row.original.authorizedAt) || '—'}</div>
           </div>
         ),
       },
@@ -179,8 +179,8 @@ export default function ComparativeStatements() {
         accessorKey: 'remarks',
         cell: ({ row }) => (
           <div className="min-w-[280px] max-w-[520px]">
-            <div className="text-sm text-slate-700 line-clamp-2" title={(row.original.remarks as any) || ''}>
-              {(row.original.remarks as any) || '—'}
+            <div className="text-sm text-slate-700 line-clamp-2" title={(row.original.csRemarks as any) || ''}>
+              {(row.original.csRemarks as any) || '—'}
             </div>
           </div>
         ),

@@ -1,5 +1,5 @@
 import { Button, Input, Table, Tag } from '@/components/ui'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Menu from '@/components/ui/Menu'
 import Tr from '@/components/ui/Table/Tr'
 import Td from '@/components/ui/Table/Td'
@@ -23,6 +23,23 @@ type _POType = Omit<POType, 'authorize'> & {
         username: string
     })[]
 }
+
+function getUserCompanyName(u: any) {
+    // supports: user.company.name OR user.company (string)
+    return String(u?.company?.name ?? u?.company ?? '').trim()
+}
+
+// optional: if you have company meta in user (gstin/pan), it will be used automatically
+function getUserCompanyMeta(u: any): { label?: string; gstin?: string; pan?: string; division?: string } {
+    const companyObj: any = u?.company
+    return {
+        label: String(companyObj?.label ?? companyObj?.name ?? companyObj ?? '').trim(),
+        gstin: String(companyObj?.gstin ?? '').trim(),
+        pan: String(companyObj?.pan ?? '').trim(),
+        division: String(companyObj?.division ?? '').trim(),
+    }
+}
+
 export default function POAuthorize() {
     const { signOut } = useAuth()
     const user = useAppSelector((state) => state.auth.user)
@@ -41,6 +58,10 @@ export default function POAuthorize() {
 
     const query = useQuery()
     const poNumber = query.get('poNumber')
+
+    // ✅ Company details from logged in user
+    const myCompanyName = useMemo(() => getUserCompanyName(user), [user])
+    const myCompanyMeta = useMemo(() => getUserCompanyMeta(user), [user])
 
     useEffect(() => {
         if (!poNumber || !user?.username) return
@@ -76,8 +97,8 @@ export default function POAuthorize() {
                 }
 
                 if (poResponse.data.items?.length) {
-                    const indentNumbers = []
-                    const itemCodes = []
+                    const indentNumbers: string[] = []
+                    const itemCodes: string[] = []
                     for (const i of poResponse.data.items) {
                         indentNumbers.push(i.indentNumber)
                         itemCodes.push(i.itemCode)
@@ -155,6 +176,7 @@ export default function POAuthorize() {
                         </Button>
                     </div>
                 </header>
+
                 <main className='px-6 pt-4 pb-20'>
                     <div className='flex justify-between text-xs gap-8 mb-4'>
                         {data?.nextApprover && (
@@ -180,7 +202,9 @@ export default function POAuthorize() {
                             )}
                         </div>
                     </div>
+
                     <div className='flex justify-between'>
+                        {/* ✅ COMPANY (removed hard-coded RR ISPAT) */}
                         <div className='flex-1'>
                             <span className='inline-block mb-2 text-[#DB7744] font-[900] text-sm'>
                                 <b>Company</b>
@@ -188,30 +212,39 @@ export default function POAuthorize() {
                             <div>
                                 <p className='my-0.5'>
                                     <span className='font-bold block'>[0] ({formatDate(po?.poDate as string)})</span>
-                                    <span>R.R.ISPAT(A UNIT OF GPIL) TLT DIVISION. ( RR Group)</span>
+                                    <span>
+                                        {myCompanyMeta?.label || myCompanyName || po?.company || '—'}
+                                        {myCompanyMeta?.division ? ` (${myCompanyMeta.division})` : ''}
+                                    </span>
                                 </p>
+
                                 <table>
                                     <tbody>
                                         <tr>
                                             <td className='pr-2 font-bold'>Portal PO No.</td>
                                             <td>: {po?.poNumber}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>GSTIN NO.</td>
-                                            <td>: 22AAACI7189K2ZA</td>
+                                            <td>: {myCompanyMeta?.gstin || (po as any)?.gstin || '—'}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>PAN NO.</td>
-                                            <td>: AAACI7189K</td>
+                                            <td>: {myCompanyMeta?.pan || (po as any)?.pan || '—'}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>Contact Detail</td>
                                             <td>: {po?.contactPersonName}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>Ref. Document Type</td>
                                             <td className='capitalize'>: {po?.refDocumentType}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>Ref. Document No.</td>
                                             <td>
@@ -219,10 +252,12 @@ export default function POAuthorize() {
                                                 {po?.refCSNumber && <CSModal csNumber={po.refCSNumber} />}
                                             </td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>PO Validity</td>
                                             <td>: {formatDate(po?.validityDate as string)}</td>
                                         </tr>
+
                                         <tr>
                                             <td className='pr-2 font-bold'>PO Remarks</td>
                                             <td>: {po?.remarks}</td>
@@ -231,6 +266,8 @@ export default function POAuthorize() {
                                 </table>
                             </div>
                         </div>
+
+                        {/* VENDOR */}
                         <div className='flex-1'>
                             <div>
                                 <p className='my-0.5'>
@@ -272,6 +309,8 @@ export default function POAuthorize() {
                                 </table>
                             </div>
                         </div>
+
+                        {/* SHIPMENT */}
                         <div className='flex-1'>
                             <span className='inline-block mb-2 text-[#DB7744] font-[900] text-sm'>
                                 <b>Shipment</b>
@@ -300,8 +339,10 @@ export default function POAuthorize() {
                             </div>
                         </div>
                     </div>
+
                     <VerticalTabs po={po as _POType} indents={indents} />
                 </main>
+
                 <footer className='flex bg-white gap-2 justify-end px-6 py-2 fixed bottom-0 w-full border-t border-2'>
                     {data?.approvalStatus ? (
                         <div className='font-bold'>
@@ -379,6 +420,7 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     ))}
                 </table>
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='chargeDetail' label='Charge Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <Table compact containerClassName='w-[30vw] ml-auto border my-3'>
                     <TBody>
@@ -398,7 +440,8 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                             <Td>
                                 <b>SGST @ 9%</b>
                             </Td>
-                            <Td className='border-l'>200</Td>
+                            {/* NOTE: this line was hard-coded "200" before; kept as-is? If you want, change to po.amount.sgst */}
+                            <Td className='border-l'>{po?.amount?.sgst}</Td>
                         </Tr>
                         {po?.taxDetails?.map((i) => (
                             <Tr key={'tax:' + i.chargeName}>
@@ -417,18 +460,20 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </TBody>
                 </Table>
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='terms&condition' label='Terms & Condition' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <Table compact containerClassName='border my-3'>
                     <TBody>
                         {termsConditionsOptions.map(({ label, value: key }) => (
                             <Tr key={key}>
                                 <Td className='border-r whitespace-nowrap'>{label}</Td>
-                                <Td className='py-0'>{po?.termsConditions[key]}</Td>
+                                <Td className='py-0'>{(po as any)?.termsConditions?.[key]}</Td>
                             </Tr>
                         ))}
                     </TBody>
                 </Table>
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='paymentTerms' label='Payment Terms' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <ol>
                     {po.paymentTerms?.map((pt, i) => (
@@ -438,11 +483,12 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     ))}
                 </ol>
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='indentDetail' label='Indent Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <table className='w-full my-3'>
                     <tbody>
                         {indents?.map((i) => (
-                            <React.Fragment key={'indent:' + i.indentNumber}>
+                            <React.Fragment key={'indent:' + i.indentNumber + ':' + i.itemCode}>
                                 <tr>
                                     <td className='pt-2 pr-2 align-top'>
                                         <b>{i.indentNumber}</b> ({formatDate(i.documentDate)}, ERP Authorized Date : 08/07/2025, ERP Created Date :{' '}
@@ -474,9 +520,10 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                     <td className='border-b pb-2 pr-2'>{i.make}</td>
                                     <td className='border-b pb-2 pr-2'>{i.costCenter}</td>
                                     <td className='border-b pb-2 pr-2'>{i.requestedBy}</td>
-                                    <td className='border-b pb-2 pr-2'>{i.documentType}</td>
+                                    <td className='border-b pb-2 pr-2'>{(i as any).documentType}</td>
                                     <td className='border-b pb-2 pr-2 text-right'>
-                                        PO Qty: {(+(po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0))?.toFixed(3)}
+                                        PO Qty:{' '}
+                                        {(+(po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0))?.toFixed(3)}
                                     </td>
                                 </tr>
                             </React.Fragment>
@@ -484,9 +531,11 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </tbody>
                 </table>
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='attachment' label='Attachment' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <AttachmentsTable id={po?._id as string} attachments={po?.attachments || []} />
             </Menu.MenuCollapse>
+
             <Menu.MenuCollapse eventKey='authorizationDetail' label='Authorization Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
                 <Table>
                     <TBody>
