@@ -1,7 +1,8 @@
+// QuotationItemsTable.tsx
 import { IndentType, QuotationItemType, QuotationType } from '@/@types/app'
 import { Field, FieldProps, FormikErrors, FormikHelpers, getIn } from 'formik'
 import { Button, Drawer, FormItem, Input, Select, Table } from '../ui'
-import React, { ChangeEvent, useState } from 'react'
+import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import CustomDrawer from './CustomDrawer'
 import { Loading } from '../shared'
 import { taxRates } from '@/constants/app.constant'
@@ -13,6 +14,9 @@ import { formatDate, formatDateTime } from '@/utils/formatDate'
 import { clubItems } from '@/utils/clubItems'
 import TextAreaExtended from './TextAreaExtended'
 import classNames from 'classnames'
+
+// ✅ GST from HSN map (adjust path if needed)
+import { getHsnInfo } from '@/utils/hsnGstMap'
 
 const { Tr, Th, Td, THead, TBody } = Table
 
@@ -28,6 +32,8 @@ const overwriteDefaultFields = {
     remarks: undefined,
     taxDetails: undefined,
 }
+
+const normalizeDigits = (v: any) => String(v ?? '').replace(/\D+/g, '')
 
 export const QuotationItemsTable = ({
     isEditable,
@@ -49,18 +55,108 @@ export const QuotationItemsTable = ({
 }) => {
     const [itemId, setItemId] = useState<string | null>(null)
 
+    // ✅ Track manual override of tax rate (so auto-fill won’t override user selection)
+    // key = `${indentNumber}:${itemCode}`
+    const manualTaxKeysRef = useRef<Set<string>>(new Set())
+    const lastHsnByKeyRef = useRef<Record<string, string>>({})
+
+    const getKey = (it: { indentNumber: string; itemCode: string }) => `${it.indentNumber}:${it.itemCode}`
+
+    // -------------------- GST helper (HSN -> GST%) --------------------
+    const parseSingleGstPercent = (txt: string): number | null => {
+        const t = String(txt ?? '').trim()
+        if (!t) return null
+        const nums = (t.match(/\d+(\.\d+)?/g) || [])
+            .map((x) => Number(x))
+            .filter((n) => Number.isFinite(n))
+        if (!nums.length) return null
+
+        // "5% / 18%" -> [5,18] => ambiguous => null
+        const uniq = Array.from(new Set(nums.map((n) => +n.toFixed(2))))
+        if (uniq.length !== 1) return null
+        return uniq[0]
+    }
+
+    const getGstRateFromHsn = (hsn: string | number | undefined): number | null => {
+        if (!hsn) return null
+
+        // IMPORTANT: slab mapping is heading-based (first 4 digits), so require >= 4 digits
+        const digits = normalizeDigits(hsn)
+        if (digits.length < 4) return null
+
+        const info = getHsnInfo(hsn)
+        return parseSingleGstPercent(String(info.gstPercent ?? ''))
+    }
+
+    // ✅ Apply auto-tax ONLY when:
+    // - user has NOT manually overridden tax rate for this item
+    // - and mapped GST exists
+    const applyAutoTaxIfAllowed = (item: QuotationItemType, opts?: { force?: boolean }) => {
+        const key = getKey(item)
+        const isManual = manualTaxKeysRef.current.has(key)
+        const force = !!opts?.force
+
+        if (isManual && !force) return item
+        if (!item.hsnCode) return item
+
+        const gst = getGstRateFromHsn(item.hsnCode)
+        if (gst === null) return item
+
+        return { ...item, taxRate: gst }
+    }
+
+    // -------------------- Recalculation wrapper --------------------
     const selectedItemsCount = values?.items?.filter((i) => i.selected)?.length || 0
-    const calculationHandlerWrapper = (_values: QuotationItemType) => {
+
+    const calculationHandlerWrapper = (_values: QuotationItemType, opts?: { forceAutoTax?: boolean }) => {
         if (!setValues) return
+
+        const patched =
+            _values?.selected
+                ? applyAutoTaxIfAllowed(_values, { force: !!opts?.forceAutoTax })
+                : _values
+
         setValues((prev) =>
             handleAmountCalculation({
                 ...prev,
                 items: prev.items?.map((i) =>
-                    i.itemCode !== _values.itemCode || i.indentNumber !== _values.indentNumber ? i : handleItemAmount(_values, true),
+                    i.itemCode !== patched.itemCode || i.indentNumber !== patched.indentNumber ? i : handleItemAmount(patched, true),
                 ),
             }),
         )
     }
+
+    // -------------------- Auto-fill GST once when items are loaded --------------------
+    const didInit = useRef(false)
+    useEffect(() => {
+        if (didInit.current) return
+        if (!setValues) return
+        if (!values?.items?.length) return
+
+        didInit.current = true
+
+        setValues((prev) =>
+            handleAmountCalculation({
+                ...prev,
+                items: prev.items?.map((it) => {
+                    if (!it.selected) return it
+
+                    // Don’t override if user already chose (manual set)
+                    const key = getKey(it)
+                    if (manualTaxKeysRef.current.has(key)) return it
+
+                    // If already has a taxRate from backend, keep it
+                    if (Number.isFinite(+it.taxRate) && +it.taxRate !== 0) return it
+
+                    // Try auto from HSN
+                    const patched = applyAutoTaxIfAllowed(it, { force: true })
+                    if (patched.taxRate !== it.taxRate) return handleItemAmount(patched, true)
+                    return it
+                }),
+            }),
+        )
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [setValues, values?.items?.length])
 
     return (
         <>
@@ -68,6 +164,7 @@ export const QuotationItemsTable = ({
                 <THead className='sticky top-0 whitespace-nowrap'>
                     <Tr>
                         <Th>#</Th>
+
                         {isEditable && (
                             <Th className='p-0'>
                                 <Field
@@ -79,22 +176,34 @@ export const QuotationItemsTable = ({
                                         setValues?.((prev) =>
                                             handleAmountCalculation({
                                                 ...prev,
-                                                items: prev.items?.map((i) =>
-                                                    handleItemAmount(
-                                                        {
-                                                            ...i,
-                                                            selected: e.target.checked,
-                                                            ...(e.target.checked ? {} : overwriteDefaultFields),
-                                                        },
-                                                        true,
-                                                    ),
-                                                ),
+                                                items: prev.items?.map((i) => {
+                                                    const key = getKey(i)
+
+                                                    const next = {
+                                                        ...i,
+                                                        selected: e.target.checked,
+                                                        ...(e.target.checked ? {} : overwriteDefaultFields),
+                                                    } as any
+
+                                                    // If item is deselected, clear manual override so future selection can auto-fill again
+                                                    if (!e.target.checked) {
+                                                        manualTaxKeysRef.current.delete(key)
+                                                    }
+
+                                                    // When selecting, auto-fill GST if available (unless user manually set before)
+                                                    const patched = e.target.checked
+                                                        ? applyAutoTaxIfAllowed(next as QuotationItemType)
+                                                        : (next as QuotationItemType)
+
+                                                    return handleItemAmount(patched, true)
+                                                }),
                                             }),
                                         )
                                     }}
                                 />
                             </Th>
                         )}
+
                         <Th className='w-full'>Item Description</Th>
                         <Th>Qty</Th>
                         <Th>HSN Code</Th>
@@ -128,6 +237,7 @@ export const QuotationItemsTable = ({
                                 )}
                             </div>
                         </Th>
+
                         {!isEditable && (
                             <>
                                 <Th className='text-right pr-1'>Base Amt</Th>
@@ -141,13 +251,17 @@ export const QuotationItemsTable = ({
                         )}
                     </Tr>
                 </THead>
+
                 <TBody>
                     {items?.map((i, index) => {
                         const isSelected = getIn(values, `items[${index}].selected`)
+                        const key = `${i.indentNumber}:${i.itemCode}`
+
                         return (
                             <React.Fragment key={i.indentNumber + i.itemCode}>
                                 <Tr className='border-none'>
                                     <Td className='pb-0'>{index + 1}</Td>
+
                                     {isEditable && (
                                         <Td className='pb-0 px-0'>
                                             <Field
@@ -155,16 +269,24 @@ export const QuotationItemsTable = ({
                                                 name={`items[${index}].selected`}
                                                 className='h-auto p-1'
                                                 type='checkbox'
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                                    calculationHandlerWrapper({
-                                                        ...items?.[index],
-                                                        selected: e.target.checked,
-                                                        ...(e.target.checked ? {} : overwriteDefaultFields),
-                                                    })
-                                                }
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    // If deselected -> clear manual flag + reset fields
+                                                    if (!e.target.checked) {
+                                                        manualTaxKeysRef.current.delete(key)
+                                                    }
+
+                                                    calculationHandlerWrapper(
+                                                        {
+                                                            ...items?.[index],
+                                                            selected: e.target.checked,
+                                                            ...(e.target.checked ? {} : overwriteDefaultFields),
+                                                        } as any,
+                                                    )
+                                                }}
                                             />
                                         </Td>
                                     )}
+
                                     <Td className='pb-0 '>
                                         <div className='flex items-center gap-2'>
                                             <span className='block text-left'>
@@ -181,7 +303,9 @@ export const QuotationItemsTable = ({
                                             )}
                                         </div>
                                     </Td>
+
                                     <Td className='pb-0 text-right'>{i?.qty}</Td>
+
                                     <Td className='pb-0 pr-1'>
                                         {isEditable ? (
                                             <Field
@@ -192,12 +316,32 @@ export const QuotationItemsTable = ({
                                                 className='h-auto p-1 !min-w-auto'
                                                 component={Input}
                                                 value={i.hsnCode}
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue?.(e.target.name, e.target.value)}
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const hsnCode = e.target.value
+
+                                                    // ✅ If HSN actually changed (not just same value), clear manual override
+                                                    // so that new HSN can auto-fill correct GST again.
+                                                    const prevHsn = lastHsnByKeyRef.current[key]
+                                                    if (prevHsn !== hsnCode) {
+                                                        lastHsnByKeyRef.current[key] = hsnCode
+                                                        manualTaxKeysRef.current.delete(key)
+                                                    }
+
+                                                    calculationHandlerWrapper(
+                                                        {
+                                                            ...items?.[index],
+                                                            hsnCode,
+                                                        } as any,
+                                                        // force auto tax fill after HSN change (manual was cleared above)
+                                                        { forceAutoTax: true },
+                                                    )
+                                                }}
                                             />
                                         ) : (
                                             i.hsnCode
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 px-0'>
                                         {isEditable ? (
                                             <TextAreaExtended
@@ -224,6 +368,7 @@ export const QuotationItemsTable = ({
                                             <TextAreaExtended title='Make' content={i.make} />
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 text-right'>
                                         {isEditable ? (
                                             <Field
@@ -239,13 +384,14 @@ export const QuotationItemsTable = ({
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                                                     e.target.value?.split?.('.')[1]?.length > 2
                                                         ? null
-                                                        : calculationHandlerWrapper({ ...items?.[index], rate: +e.target.value })
+                                                        : calculationHandlerWrapper({ ...items?.[index], rate: +e.target.value } as any)
                                                 }
                                             />
                                         ) : (
                                             '₹' + i.rate
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 px-0 text-right'>
                                         {isEditable ? (
                                             <Field
@@ -263,13 +409,14 @@ export const QuotationItemsTable = ({
                                                               ...items?.[index],
                                                               discountType: 'percent',
                                                               discountPercent: e.target.value,
-                                                          })
+                                                          } as any)
                                                 }
                                             />
                                         ) : (
                                             i?.discountPercent + '%'
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 text-right'>
                                         {isEditable ? (
                                             <Field
@@ -287,13 +434,14 @@ export const QuotationItemsTable = ({
                                                               ...items?.[index],
                                                               discountType: 'amount',
                                                               discountAmount: e.target.value,
-                                                          })
+                                                          } as any)
                                                 }
                                             />
                                         ) : (
                                             i?.discountAmount
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 px-0 text-right'>
                                         {isEditable ? (
                                             <FormItem className='mb-0'>
@@ -309,9 +457,15 @@ export const QuotationItemsTable = ({
                                                                 menuPosition='fixed'
                                                                 options={taxRates}
                                                                 value={taxRates.find((_i) => _i.value === i?.taxRate)}
-                                                                onChange={(option) =>
-                                                                    calculationHandlerWrapper({ ...items?.[index], taxRate: +(option?.value || 0) })
-                                                                }
+                                                                onChange={(option) => {
+                                                                    // ✅ User manually overrides taxRate via dropdown
+                                                                    manualTaxKeysRef.current.add(key)
+
+                                                                    calculationHandlerWrapper({
+                                                                        ...items?.[index],
+                                                                        taxRate: +(option?.value || 0),
+                                                                    } as any)
+                                                                }}
                                                             />
                                                         )
                                                     }}
@@ -321,6 +475,7 @@ export const QuotationItemsTable = ({
                                             i?.taxRate + '%'
                                         )}
                                     </Td>
+
                                     <Td className='pb-0 text-right'>
                                         {isEditable ? (
                                             <Field
@@ -339,13 +494,14 @@ export const QuotationItemsTable = ({
                                             i?.delivery
                                         )}
                                     </Td>
+
                                     {!isEditable && (
                                         <>
                                             <Td className='p-1 text-right'>{i.amount.basic ? `₹${i.amount.basic}` : null}</Td>
                                             <Td className='p-1 text-right'>{i.amount.taxable ? `₹${i.amount.taxable}` : null}</Td>
-                                            <Td className='p-1 text-right'>{i.amount.igst ? `₹${i.amount.igst}` : null}</Td>
-                                            <Td className='p-1 text-right'>{i.amount.cgst ? `₹${i.amount.cgst}` : null}</Td>
-                                            <Td className='p-1 text-right'>{i.amount.sgst ? `₹${i.amount.sgst}` : null}</Td>
+                                            <Td className='p-1 text-right'>{(i as any).amount.igst ? `₹${(i as any).amount.igst}` : null}</Td>
+                                            <Td className='p-1 text-right'>{(i as any).amount.cgst ? `₹${(i as any).amount.cgst}` : null}</Td>
+                                            <Td className='p-1 text-right'>{(i as any).amount.sgst ? `₹${(i as any).amount.sgst}` : null}</Td>
                                             <Td className='p-1 text-right'>{i.amount.total ? `₹${i.amount.total}` : null}</Td>
                                             <Td>
                                                 <TextAreaExtended title='Remarks' content={i.remarks} />
@@ -353,32 +509,30 @@ export const QuotationItemsTable = ({
                                         </>
                                     )}
                                 </Tr>
+
                                 {isEditable && (
                                     <Tr>
                                         <Td colSpan={4} className='pt-0' />
                                         <Td colSpan={2} className='pt-0 pr-0'>
-                                            {isEditable ? (
-                                                <TextAreaExtended
-                                                    isEditable={isSelected}
-                                                    title='Remarks'
-                                                    component={({ isExtended }) => (
-                                                        <Field
-                                                            textArea={isExtended}
-                                                            disabled={!isSelected}
-                                                            type='text'
-                                                            size={'xs'}
-                                                            name={`items[${index}].remarks`}
-                                                            className={classNames('h-auto p-1 !min-w-auto', !isExtended ? 'pointer-events-none' : null)}
-                                                            component={Input}
-                                                            value={i.remarks}
-                                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue?.(e.target.name, e.target.value)}
-                                                        />
-                                                    )}
-                                                />
-                                            ) : (
-                                                <TextAreaExtended title='Remarks' content={i.remarks} />
-                                            )}
+                                            <TextAreaExtended
+                                                isEditable={isSelected}
+                                                title='Remarks'
+                                                component={({ isExtended }) => (
+                                                    <Field
+                                                        textArea={isExtended}
+                                                        disabled={!isSelected}
+                                                        type='text'
+                                                        size={'xs'}
+                                                        name={`items[${index}].remarks`}
+                                                        className={classNames('h-auto p-1 !min-w-auto', !isExtended ? 'pointer-events-none' : null)}
+                                                        component={Input}
+                                                        value={i.remarks}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue?.(e.target.name, e.target.value)}
+                                                    />
+                                                )}
+                                            />
                                         </Td>
+
                                         <Td colSpan={5} className='pt-0'>
                                             <div className='flex justify-end gap-4 font-bold'>
                                                 <div className='flex gap-1'>
@@ -391,9 +545,9 @@ export const QuotationItemsTable = ({
                                                 </div>
                                                 <div className='flex gap-1'>
                                                     <span className='text-blue-500'>CSGT</span>
-                                                    <span>{i?.amount?.cgst?.toFixed(2)}</span>
+                                                    <span>{(i as any)?.amount?.cgst?.toFixed?.(2)}</span>
                                                     <span className='text-blue-500'>SGST</span>
-                                                    <span>{i?.amount?.sgst?.toFixed(2)}</span>
+                                                    <span>{(i as any)?.amount?.sgst?.toFixed?.(2)}</span>
                                                 </div>
                                                 <span className='block text-red-500'>{i?.amount?.total?.toFixed(2)}</span>
                                             </div>
@@ -405,6 +559,7 @@ export const QuotationItemsTable = ({
                     })}
                 </TBody>
             </Table>
+
             <Drawer title='Item Detail' isOpen={!!itemId} onClose={() => setItemId(null)} onRequestClose={() => setItemId(null)}>
                 {indents && itemId !== null && (
                     <Table compact borderlessRow>
