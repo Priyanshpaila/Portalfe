@@ -37,12 +37,12 @@ const POApproverDashboard = () => {
         })()
     }, [])
 
-    return (
-        <div className='space-y-4'>
-            <div className='px-5 py-4 border border-gray-300 rounded-lg w-fit'>
-                <div className='flex items-center gap-6 text-gray-800'>
-                    <span className='block text-6xl font-semibold font-mono'>{data?.length}</span>
-                    <span className='font-semibold text-base'>
+      return (
+        <div className='w-full min-w-0 space-y-4'>
+            <div className='w-full sm:w-fit rounded-lg border border-gray-300 px-4 py-4 sm:px-5'>
+                <div className='flex flex-col gap-3 text-gray-800 sm:flex-row sm:items-center sm:gap-6'>
+                    <span className='block text-4xl font-semibold font-mono sm:text-5xl lg:text-6xl'>{data?.length}</span>
+                    <span className='text-sm font-semibold sm:text-base'>
                         Unapproved
                         <br />
                         Purchase Order{data?.length === 1 ? '' : 's'}
@@ -50,9 +50,9 @@ const POApproverDashboard = () => {
                 </div>
             </div>
 
-            <div className='w-full'>
-                <span className='text-sm font-semibold mb-3 inline-block'>Pending Purchase Orders</span>
-                <div className='rounded-md overflow-hidden border border-gray-200'>
+            <div className='w-full min-w-0'>
+                <span className='mb-3 inline-block text-sm font-semibold'>Pending Purchase Orders</span>
+                <div className='overflow-x-auto rounded-md border border-gray-200'>
                     <Table compact>
                         <THead>
                             <Tr>
@@ -76,14 +76,14 @@ const POApproverDashboard = () => {
                                         <Td>
                                             {i.vendorName} ({i.vendorCode})
                                         </Td>
-                                        <Td>{i.itemDescription}</Td>
+                                        <Td>{Array.isArray(i.itemDescription) ? i.itemDescription.join(', ') : i.itemDescription}</Td>
                                         <Td className='text-right'>₹{+i.amount?.toFixed(2)}</Td>
                                     </Tr>
                                 ))
                             ) : (
                                 <Tr>
                                     <Td colSpan={7}>
-                                        <span className='block w-full opacity-80 text-center py-1.5'>
+                                        <span className='block w-full py-1.5 text-center opacity-80'>
                                             <i>No pending purchase orders</i>
                                         </span>
                                     </Td>

@@ -65,60 +65,60 @@ export default function POAuthorize() {
 
     useEffect(() => {
         if (!poNumber || !user?.username) return
-        ;(async () => {
-            try {
-                const poResponse = await ApiService.fetchData<_POType>({
-                    method: 'get',
-                    url: '/po',
-                    params: {
-                        poNumber,
-                        attachAuthUsers: true,
-                    },
-                })
-
-                const userIdx = poResponse.data?.authorize?.findIndex((i) => i.username === user?.username)
-
-                setData({
-                    ...poResponse.data?.authorize?.[userIdx],
-                    nextApprover: poResponse.data?.authorize?.[userIdx + 1]?.name,
-                })
-                setPO(poResponse.data)
-
-                if (poResponse.data.vendorCode) {
-                    const vendorResponse = await ApiService.fetchData<VendorType[]>({
+            ; (async () => {
+                try {
+                    const poResponse = await ApiService.fetchData<_POType>({
                         method: 'get',
-                        url: '/vendor/list',
+                        url: '/po',
                         params: {
-                            vendorCode: poResponse.data.vendorCode,
+                            poNumber,
+                            attachAuthUsers: true,
                         },
                     })
 
-                    setVendor(vendorResponse.data?.[0])
-                }
+                    const userIdx = poResponse.data?.authorize?.findIndex((i) => i.username === user?.username)
 
-                if (poResponse.data.items?.length) {
-                    const indentNumbers: string[] = []
-                    const itemCodes: string[] = []
-                    for (const i of poResponse.data.items) {
-                        indentNumbers.push(i.indentNumber)
-                        itemCodes.push(i.itemCode)
-                    }
-                    if (indentNumbers.length) {
-                        const indentsResponse = await ApiService.fetchData<IndentType[]>({
-                            method: 'post',
-                            url: '/indent',
-                            data: {
-                                indentNumber: indentNumbers,
-                                itemCode: itemCodes,
+                    setData({
+                        ...poResponse.data?.authorize?.[userIdx],
+                        nextApprover: poResponse.data?.authorize?.[userIdx + 1]?.name,
+                    })
+                    setPO(poResponse.data)
+
+                    if (poResponse.data.vendorCode) {
+                        const vendorResponse = await ApiService.fetchData<VendorType[]>({
+                            method: 'get',
+                            url: '/vendor/list',
+                            params: {
+                                vendorCode: poResponse.data.vendorCode,
                             },
                         })
-                        setIndents(indentsResponse.data)
+
+                        setVendor(vendorResponse.data?.[0])
                     }
+
+                    if (poResponse.data.items?.length) {
+                        const indentNumbers: string[] = []
+                        const itemCodes: string[] = []
+                        for (const i of poResponse.data.items) {
+                            indentNumbers.push(i.indentNumber)
+                            itemCodes.push(i.itemCode)
+                        }
+                        if (indentNumbers.length) {
+                            const indentsResponse = await ApiService.fetchData<IndentType[]>({
+                                method: 'post',
+                                url: '/indent',
+                                data: {
+                                    indentNumber: indentNumbers,
+                                    itemCode: itemCodes,
+                                },
+                            })
+                            setIndents(indentsResponse.data)
+                        }
+                    }
+                } catch (error) {
+                    console.error(error)
                 }
-            } catch (error) {
-                console.error(error)
-            }
-        })()
+            })()
     }, [poNumber, user])
 
     const handlePOAction = async (approvalStatus: 1 | 2) => {
@@ -371,58 +371,60 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
     if (!po || !indents?.[0]) return null
     return (
         <Menu className='mt-4'>
-            <Menu.MenuCollapse eventKey='itemDetail' label='Item Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <table className='w-full my-3'>
-                    {po?.items?.map((i) => (
-                        <React.Fragment key={i.indentNumber + ':' + i.itemCode}>
-                            <tr>
-                                <td className='pt-2 pr-1.5' colSpan={2}>
-                                    <b>{i.itemDescription}</b>
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Qty</b> : {Number(i.qty)?.toFixed(3)} {i.unit}
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Rate</b> : {Number(i.rate)?.toFixed(2)}
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Basic</b> : {i.amount?.taxable?.toFixed(2)}
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>CGST</b> : {(((i.amount.cgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>SGST</b> : {(((i.amount.sgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
-                                </td>
-                                <td className='pt-2 pr-1.5 text-right'>
-                                    <b>Net Amt</b> : {i.amount.total?.toFixed(2)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <b>HSN</b> : {i.hsnCode}
-                                </td>
-                                <td>
-                                    <b>PO Make</b> : {i.make}
-                                </td>
-                                <td colSpan={3} />
-                                <td className='text-right'>{i.amount?.cgst}</td>
-                                <td className='text-right'>{i.amount?.sgst}</td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td className='pr-1.5 pb-2 border-b'>
-                                    <b>Delivery Date</b> : {formatDate(i.schedule as string)}
-                                </td>
-                                <td colSpan={7} className='pb-2 border-b' />
-                            </tr>
-                        </React.Fragment>
-                    ))}
-                </table>
+            <Menu.MenuCollapse eventKey='itemDetail' label='Item Detail' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <div className='overflow-x-auto'>
+                    <table className='my-3 min-w-[900px] w-full'>
+                        {po?.items?.map((i) => (
+                            <React.Fragment key={i.indentNumber + ':' + i.itemCode}>
+                                <tr>
+                                    <td className='pt-2 pr-1.5' colSpan={2}>
+                                        <b>{i.itemDescription}</b>
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>Qty</b> : {Number(i.qty)?.toFixed(3)} {i.unit}
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>Rate</b> : {Number(i.rate)?.toFixed(2)}
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>Basic</b> : {i.amount?.taxable?.toFixed(2)}
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>CGST</b> : {(((i.amount.cgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>SGST</b> : {(((i.amount.sgst ?? 0 / (i.amount.taxable ?? 1)) * 100) / 2).toFixed(2)} %
+                                    </td>
+                                    <td className='pt-2 pr-1.5 text-right whitespace-nowrap'>
+                                        <b>Net Amt</b> : {i.amount.total?.toFixed(2)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <b>HSN</b> : {i.hsnCode}
+                                    </td>
+                                    <td>
+                                        <b>PO Make</b> : {i.make}
+                                    </td>
+                                    <td colSpan={3} />
+                                    <td className='text-right'>{i.amount?.cgst}</td>
+                                    <td className='text-right'>{i.amount?.sgst}</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td className='border-b pb-2 pr-1.5'>
+                                        <b>Delivery Date</b> : {formatDate(i.schedule as string)}
+                                    </td>
+                                    <td colSpan={7} className='border-b pb-2' />
+                                </tr>
+                            </React.Fragment>
+                        ))}
+                    </table>
+                </div>
             </Menu.MenuCollapse>
 
-            <Menu.MenuCollapse eventKey='chargeDetail' label='Charge Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <Table compact containerClassName='w-[30vw] ml-auto border my-3'>
+            <Menu.MenuCollapse eventKey='chargeDetail' label='Charge Detail' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <Table compact containerClassName='w-full sm:w-[70%] lg:w-[45%] xl:w-[30vw] ml-auto border my-3 overflow-x-auto'>
                     <TBody>
                         <Tr>
                             <Td>
@@ -440,7 +442,6 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                             <Td>
                                 <b>SGST @ 9%</b>
                             </Td>
-                            {/* NOTE: this line was hard-coded "200" before; kept as-is? If you want, change to po.amount.sgst */}
                             <Td className='border-l'>{po?.amount?.sgst}</Td>
                         </Tr>
                         {po?.taxDetails?.map((i) => (
@@ -461,83 +462,88 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                 </Table>
             </Menu.MenuCollapse>
 
-            <Menu.MenuCollapse eventKey='terms&condition' label='Terms & Condition' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <Table compact containerClassName='border my-3'>
+            <Menu.MenuCollapse eventKey='terms&condition' label='Terms & Condition' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <Table compact containerClassName='border my-3 overflow-x-auto'>
                     <TBody>
                         {termsConditionsOptions.map(({ label, value: key }) => (
                             <Tr key={key}>
                                 <Td className='border-r whitespace-nowrap'>{label}</Td>
-                                <Td className='py-0'>{(po as any)?.termsConditions?.[key]}</Td>
+                                <Td className='py-0 break-words'>{(po as any)?.termsConditions?.[key]}</Td>
                             </Tr>
                         ))}
                     </TBody>
                 </Table>
             </Menu.MenuCollapse>
 
-            <Menu.MenuCollapse eventKey='paymentTerms' label='Payment Terms' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <ol>
-                    {po.paymentTerms?.map((pt, i) => (
-                        <li key={'pt:list-' + i}>
-                            {i + 1}. {pt.paymentType} -- {pt.payValuePercent?.toFixed?.(2)}% on {pt.payOn} within {pt.days} Days
-                        </li>
-                    ))}
-                </ol>
-            </Menu.MenuCollapse>
-
-            <Menu.MenuCollapse eventKey='indentDetail' label='Indent Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <table className='w-full my-3'>
-                    <tbody>
-                        {indents?.map((i) => (
-                            <React.Fragment key={'indent:' + i.indentNumber + ':' + i.itemCode}>
-                                <tr>
-                                    <td className='pt-2 pr-2 align-top'>
-                                        <b>{i.indentNumber}</b> ({formatDate(i.documentDate)}, ERP Authorized Date : 08/07/2025, ERP Created Date :{' '}
-                                        {formatDate(i.createdOn as string)} ) <b>{i?.itemCode}</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top'>
-                                        <b>Unit</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top'>
-                                        <b>Make</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top'>
-                                        <b>Cost Center</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top'>
-                                        <b>Requested By</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top'>
-                                        <b>Indent Type</b>
-                                    </td>
-                                    <td className='pt-2 pr-2 whitespace-nowrap align-top text-right'>
-                                        <b>Ind. Qty</b>
-                                        <span>: {(+i.indentQty)?.toFixed(3)}</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='border-b pb-2 pr-2'>{i.techSpec}</td>
-                                    <td className='border-b pb-2 pr-2'>{i.unitOfMeasure}</td>
-                                    <td className='border-b pb-2 pr-2'>{i.make}</td>
-                                    <td className='border-b pb-2 pr-2'>{i.costCenter}</td>
-                                    <td className='border-b pb-2 pr-2'>{i.requestedBy}</td>
-                                    <td className='border-b pb-2 pr-2'>{(i as any).documentType}</td>
-                                    <td className='border-b pb-2 pr-2 text-right'>
-                                        PO Qty:{' '}
-                                        {(+(po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0))?.toFixed(3)}
-                                    </td>
-                                </tr>
-                            </React.Fragment>
+            <Menu.MenuCollapse eventKey='paymentTerms' label='Payment Terms' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <div className='overflow-x-auto'>
+                    <ol className='min-w-[280px]'>
+                        {po.paymentTerms?.map((pt, i) => (
+                            <li key={'pt:list-' + i}>
+                                {i + 1}. {pt.paymentType} -- {pt.payValuePercent?.toFixed?.(2)}% on {pt.payOn} within {pt.days} Days
+                            </li>
                         ))}
-                    </tbody>
-                </table>
+                    </ol>
+                </div>
             </Menu.MenuCollapse>
 
-            <Menu.MenuCollapse eventKey='attachment' label='Attachment' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <AttachmentsTable id={po?._id as string} attachments={po?.attachments || []} />
+            <Menu.MenuCollapse eventKey='indentDetail' label='Indent Detail' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <div className='overflow-x-auto'>
+                    <table className='my-3 min-w-[1100px] w-full'>
+                        <tbody>
+                            {indents?.map((i) => (
+                                <React.Fragment key={'indent:' + i.indentNumber + ':' + i.itemCode}>
+                                    <tr>
+                                        <td className='align-top pt-2 pr-2'>
+                                            <b>{i.indentNumber}</b> ({formatDate(i.documentDate)}, ERP Authorized Date : 08/07/2025, ERP Created Date :{' '}
+                                            {formatDate(i.createdOn as string)} ) <b>{i?.itemCode}</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 whitespace-nowrap'>
+                                            <b>Unit</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 whitespace-nowrap'>
+                                            <b>Make</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 whitespace-nowrap'>
+                                            <b>Cost Center</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 whitespace-nowrap'>
+                                            <b>Requested By</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 whitespace-nowrap'>
+                                            <b>Indent Type</b>
+                                        </td>
+                                        <td className='align-top pt-2 pr-2 text-right whitespace-nowrap'>
+                                            <b>Ind. Qty</b>
+                                            <span>: {(+i.indentQty)?.toFixed(3)}</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='border-b pb-2 pr-2'>{i.techSpec}</td>
+                                        <td className='border-b pb-2 pr-2'>{i.unitOfMeasure}</td>
+                                        <td className='border-b pb-2 pr-2'>{i.make}</td>
+                                        <td className='border-b pb-2 pr-2'>{i.costCenter}</td>
+                                        <td className='border-b pb-2 pr-2'>{i.requestedBy}</td>
+                                        <td className='border-b pb-2 pr-2'>{(i as any).documentType}</td>
+                                        <td className='border-b pb-2 pr-2 text-right whitespace-nowrap'>
+                                            PO Qty: {(+(po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0))?.toFixed(3)}
+                                        </td>
+                                    </tr>
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </Menu.MenuCollapse>
 
-            <Menu.MenuCollapse eventKey='authorizationDetail' label='Authorization Detail' className='bg-gray-100 hover:bg-slate-400/20 mb-1'>
-                <Table>
+            <Menu.MenuCollapse eventKey='attachment' label='Attachment' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <div className='overflow-x-auto'>
+                    <AttachmentsTable id={po?._id as string} attachments={po?.attachments || []} />
+                </div>
+            </Menu.MenuCollapse>
+
+            <Menu.MenuCollapse eventKey='authorizationDetail' label='Authorization Detail' className='mb-1 bg-gray-100 hover:bg-slate-400/20'>
+                <Table containerClassName='overflow-x-auto'>
                     <TBody>
                         {po?.authorize?.map((i, idx) => (
                             <Tr key={'authorize:' + i.user}>
@@ -546,12 +552,12 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                     <br />
                                     {i.name}
                                 </Td>
-                                <Td className='align-top'>
+                                <Td className='align-top whitespace-nowrap'>
                                     <b>Assigned On</b>
                                     <br />
                                     {formatDate(i.assignOn as string)}
                                 </Td>
-                                <Td className='align-top'>
+                                <Td className='align-top whitespace-nowrap'>
                                     <b>Duration</b>
                                     <br />
                                     {formatTimeDifference(i.assignOn as string, i.changedOn as string)}

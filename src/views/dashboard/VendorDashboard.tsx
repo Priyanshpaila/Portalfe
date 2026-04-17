@@ -66,13 +66,13 @@ const VendorDashboard = () => {
     }, [])
 
     return (
-        <div className='space-y-4'>
-            <div className='flex gap-4'>
-                <div className='px-5 py-4 w-full border border-gray-300 rounded-lg'>
-                    <span className='font-semibold text-sm'>Pending Enquiries</span>
-                    <div className='flex items-center gap-3.5 mt-3.5'>
+        <div className='w-full min-w-0 space-y-4'>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'>
+                <div className='w-full min-w-0 rounded-lg border border-gray-300 px-5 py-4'>
+                    <span className='text-sm font-semibold'>Pending Enquiries</span>
+                    <div className='mt-3.5 flex flex-wrap items-center gap-3.5'>
                         <span className='block text-2xl font-bold'>{stats?.pendingRFQs}</span>
-                        <Button size='xs' variant='twoTone' className='rounded-3xl flex items-center gap-2' onClick={() => navigate('/rfqs')}>
+                        <Button size='xs' variant='twoTone' className='flex items-center gap-2 rounded-3xl' onClick={() => navigate('/rfqs')}>
                             <span>View</span>
                             <MdOpenInNew className='size-4.5' />
                         </Button>
@@ -82,12 +82,12 @@ const VendorDashboard = () => {
                     </span>
                 </div>
 
-                <div className='px-5 py-4 w-full border border-gray-300 rounded-lg'>
-                    <span className='font-semibold text-sm'>Submitted Quotations</span>
+                <div className='w-full min-w-0 rounded-lg border border-gray-300 px-5 py-4'>
+                    <span className='text-sm font-semibold'>Submitted Quotations</span>
                     <div>
-                        <div className='flex items-center gap-3.5 mt-3.5'>
+                        <div className='mt-3.5 flex flex-wrap items-center gap-3.5'>
                             <span className='block text-2xl font-bold'>{stats?.totalQuotations}</span>
-                            <Button size='xs' variant='twoTone' className='rounded-3xl flex items-center gap-2' onClick={() => navigate('/quotations')}>
+                            <Button size='xs' variant='twoTone' className='flex items-center gap-2 rounded-3xl' onClick={() => navigate('/quotations')}>
                                 <span>View</span>
                                 <MdOpenInNew className='size-4.5' />
                             </Button>
@@ -98,12 +98,12 @@ const VendorDashboard = () => {
                     </div>
                 </div>
 
-                <div className='px-5 py-4 w-full border border-gray-300 rounded-lg'>
-                    <span className='font-semibold text-sm'>Purchase Orders</span>
+                <div className='w-full min-w-0 rounded-lg border border-gray-300 px-5 py-4 md:col-span-2 xl:col-span-1'>
+                    <span className='text-sm font-semibold'>Purchase Orders</span>
                     <div>
-                        <div className='flex items-center gap-3.5 mt-3.5'>
+                        <div className='mt-3.5 flex flex-wrap items-center gap-3.5'>
                             <span className='block text-2xl font-bold'>{stats?.totalPOs}</span>
-                            <Button size='xs' variant='twoTone' className='rounded-3xl flex items-center gap-2' onClick={() => navigate('/purchase-orders')}>
+                            <Button size='xs' variant='twoTone' className='flex items-center gap-2 rounded-3xl' onClick={() => navigate('/purchase-orders')}>
                                 <span>View</span>
                                 <MdOpenInNew className='size-4.5' />
                             </Button>
@@ -113,45 +113,45 @@ const VendorDashboard = () => {
                 </div>
             </div>
 
-            <div className='flex gap-4 w-full'>
-                <div className='pr-4 pt-4 border border-gray-300 rounded-lg w-2/3'>
+            <div className='flex w-full min-w-0 flex-col gap-4 xl:flex-row'>
+                <div className='w-full min-w-0 overflow-hidden rounded-lg border border-gray-300 pt-4 pr-4 xl:w-2/3'>
                     <MonthlyTrends monthlyTrend={monthlyTrend} />
                 </div>
-                <div className='py-4 border border-gray-300 rounded-lg w-1/3'>
-                    <span className='pl-4 text-sm font-semibold mb-3 inline-block'>Today vs Last 30 Days</span>
-                    <div>
+                <div className='w-full min-w-0 overflow-hidden rounded-lg border border-gray-300 py-4 xl:w-1/3'>
+                    <span className='mb-3 inline-block pl-4 text-sm font-semibold'>Today vs Last 30 Days</span>
+                    <div className='overflow-x-auto'>
                         <Table compact>
                             <THead>
                                 <Tr>
                                     <Th className='bg-white'></Th>
-                                    <Th className='py-3 text-right bg-white'>Today</Th>
-                                    <Th className='text-right bg-white'>Last 30 Days</Th>
+                                    <Th className='bg-white py-3 text-right'>Today</Th>
+                                    <Th className='bg-white text-right'>Last 30 Days</Th>
                                 </Tr>
                             </THead>
                             <TBody>
                                 <Tr>
                                     <Td className='py-2 pl-4'>
-                                        <div className='flex gap-2 items-center'>
+                                        <div className='flex items-center gap-2'>
                                             <Button size='xs' variant='twoTone' icon={<HiOutlineDocumentText size={20} />} className='pointer-events-none' />
                                             <span className='text-slate-700'>RFQs</span>
                                         </div>
                                     </Td>
                                     <Td className='text-right'>{todayVs30Days?.rfq?.today}</Td>
-                                    <Td className='text-right pr-4'>{todayVs30Days?.rfq?.last30Days}</Td>
+                                    <Td className='pr-4 text-right'>{todayVs30Days?.rfq?.last30Days}</Td>
                                 </Tr>
                                 <Tr>
                                     <Td className='py-2 pl-4'>
-                                        <div className='flex gap-2 items-center'>
+                                        <div className='flex items-center gap-2'>
                                             <Button size='xs' variant='twoTone' icon={<LuFileUser size={20} />} className='pointer-events-none' />
                                             <span className='text-slate-700'>Quotations</span>
                                         </div>
                                     </Td>
                                     <Td className='text-right'>{todayVs30Days?.quotation?.today}</Td>
-                                    <Td className='text-right pr-4'>{todayVs30Days?.quotation?.last30Days}</Td>
+                                    <Td className='pr-4 text-right'>{todayVs30Days?.quotation?.last30Days}</Td>
                                 </Tr>
                                 <Tr>
                                     <Td className='py-2 pl-4'>
-                                        <div className='flex gap-2 items-center'>
+                                        <div className='flex items-center gap-2'>
                                             <Button
                                                 size='xs'
                                                 variant='twoTone'
@@ -162,17 +162,17 @@ const VendorDashboard = () => {
                                         </div>
                                     </Td>
                                     <Td className='text-right'>{todayVs30Days?.po?.today}</Td>
-                                    <Td className='text-right pr-4'>{todayVs30Days?.po?.last30Days}</Td>
+                                    <Td className='pr-4 text-right'>{todayVs30Days?.po?.last30Days}</Td>
                                 </Tr>
                                 <Tr>
                                     <Td className='py-2 pl-4'>
-                                        <div className='flex gap-2 items-center'>
+                                        <div className='flex items-center gap-2'>
                                             <Button size='xs' variant='twoTone' icon={<LiaRupeeSignSolid size={20} />} className='pointer-events-none' />
                                             <span className='text-slate-700'>PO Amount</span>
                                         </div>
                                     </Td>
                                     <Td className='text-right'>{formatIndianAmount(todayVs30Days?.poTotal?.today)}</Td>
-                                    <Td className='text-right pr-4'>{formatIndianAmount(todayVs30Days?.poTotal?.last30Days)}</Td>
+                                    <Td className='pr-4 text-right'>{formatIndianAmount(todayVs30Days?.poTotal?.last30Days)}</Td>
                                 </Tr>
                             </TBody>
                         </Table>
@@ -180,16 +180,16 @@ const VendorDashboard = () => {
                 </div>
             </div>
 
-            <div className='flex gap-4 w-full'>
-                <div className='p-4 w-full border border-gray-300 rounded-lg'>
-                    <div className='mb-3 flex items-center justify-between'>
+            <div className='flex w-full min-w-0 flex-col gap-4 xl:flex-row'>
+                <div className='w-full min-w-0 rounded-lg border border-gray-300 p-4'>
+                    <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
                         <span className='text-sm font-semibold'>Latest Enquiries Received</span>
-                        <Button size='xs' variant='twoTone' className='rounded-3xl flex items-center gap-2' onClick={() => navigate('/rfqs')}>
+                        <Button size='xs' variant='twoTone' className='flex items-center gap-2 rounded-3xl' onClick={() => navigate('/rfqs')}>
                             See All
                             <MdOpenInNew className='size-4.5' />
                         </Button>
                     </div>
-                    <div className='rounded-md overflow-hidden border border-gray-200'>
+                    <div className='overflow-x-auto rounded-md border border-gray-200'>
                         <Table compact>
                             <THead>
                                 <Tr>
@@ -212,11 +212,12 @@ const VendorDashboard = () => {
                         </Table>
                     </div>
                 </div>
-                <div className='p-4 w-full border border-gray-300 rounded-lg'>
-                    <div className='mb-3 flex items-center justify-between'>
+
+                <div className='w-full min-w-0 rounded-lg border border-gray-300 p-4'>
+                    <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
                         <span className='text-sm font-semibold'>Enquiries Expiring Soon</span>
                     </div>
-                    <div className='rounded-md overflow-hidden border border-gray-200'>
+                    <div className='overflow-x-auto rounded-md border border-gray-200'>
                         <Table compact>
                             <THead>
                                 <Tr>
@@ -245,11 +246,11 @@ const VendorDashboard = () => {
                 </div>
             </div>
 
-            <div className='p-4 w-full border border-gray-300 rounded-lg'>
-                <div className='mb-3 flex items-center justify-between'>
+            <div className='w-full min-w-0 rounded-lg border border-gray-300 p-4'>
+                <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
                     <span className='text-sm font-semibold'>Latest Quotations Submitted</span>
                 </div>
-                <div className='rounded-md overflow-hidden border border-gray-200'>
+                <div className='overflow-x-auto rounded-md border border-gray-200'>
                     <Table compact>
                         <THead>
                             <Tr>
@@ -274,7 +275,7 @@ const VendorDashboard = () => {
                                             size='xs'
                                             variant='twoTone'
                                             icon={<MdOpenInNew className='size-4.5' />}
-                                            className='rounded-3xl flex items-center gap-2'
+                                            className='flex items-center gap-2 rounded-3xl'
                                             onClick={() => navigate('/quotation?quotationNumber=' + i.quotationNumber)}
                                         />
                                     </Td>
@@ -285,9 +286,9 @@ const VendorDashboard = () => {
                 </div>
             </div>
 
-            <div className='p-4 w-full border border-gray-300 rounded-lg'>
-                <span className='text-sm font-semibold mb-3 inline-block'>Latest POs Received</span>
-                <div className='rounded-md overflow-hidden border border-gray-200'>
+            <div className='w-full min-w-0 rounded-lg border border-gray-300 p-4'>
+                <span className='mb-3 inline-block text-sm font-semibold'>Latest POs Received</span>
+                <div className='overflow-x-auto rounded-md border border-gray-200'>
                     <Table compact>
                         <THead>
                             <Tr>
@@ -312,7 +313,7 @@ const VendorDashboard = () => {
                                             size='xs'
                                             variant='twoTone'
                                             icon={<MdOpenInNew className='size-4.5' />}
-                                            className='rounded-3xl flex items-center gap-2'
+                                            className='flex items-center gap-2 rounded-3xl'
                                             onClick={() => navigate('/purchase-order?poNumber=' + i.poNumber)}
                                         />
                                     </Td>

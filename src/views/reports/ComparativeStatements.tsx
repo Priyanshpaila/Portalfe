@@ -112,129 +112,133 @@ export default function ComparativeStatements() {
   }, [rawData, isAdminLike, isVendor, meCompanyKey])
 
   const columns: ColumnDef<CSType>[] = useMemo(() => {
-    return [
-      { header: '#', accessorKey: '', cell: ({ cell }) => cell.row.index + 1 },
+     return [
+            { header: '#', accessorKey: '', cell: ({ cell }) => cell.row.index + 1 },
 
-      {
-        id: 'edit',
-        header: '',
-        cell: ({ row }) => (
-          <Link to={`/comparative-statement?csNumber=${encodeURIComponent(row.original.csNumber)}`}>
-            <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
-          </Link>
-        ),
-      },
+            {
+                id: 'edit',
+                header: '',
+                cell: ({ row }) => (
+                    <Link to={`/comparative-statement?csNumber=${encodeURIComponent(row.original.csNumber)}`}>
+                        <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
+                    </Link>
+                ),
+            },
 
-      {
-        header: 'CS',
-        id: 'cs',
-        cell: ({ row }) => {
-          const meta = getStatusMeta(row.original.status as string)
-          return (
-            <div className="min-w-[260px]">
-              <div className="flex items-center gap-2">
-                <div className="font-semibold text-slate-900">{row.original.csNumber}</div>
-                <Tag color={meta.color} className="capitalize">
-                  {meta.label}
-                </Tag>
-              </div>
+            {
+                header: 'CS',
+                id: 'cs',
+                cell: ({ row }) => {
+                    const meta = getStatusMeta(row.original.status as string)
+                    return (
+                        <div className="min-w-[180px] sm:min-w-[220px] lg:min-w-[260px]">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-semibold text-slate-900 break-words">{row.original.csNumber}</div>
+                                <Tag color={meta.color} className="capitalize">
+                                    {meta.label}
+                                </Tag>
+                            </div>
 
-              <div className="text-xs text-slate-600 mt-1 flex flex-wrap gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-slate-100">CS Date: {row.original.csDate}</span>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100">Validity: {row.original.csValidity}</span>
-              </div>
+                            <div className="mt-1 flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:gap-2">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 break-words">
+                                    CS Date: {row.original.csDate}
+                                </span>
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 break-words">
+                                    Validity: {row.original.csValidity}
+                                </span>
+                            </div>
+                        </div>
+                    )
+                },
+            },
+
+            {
+                header: 'RFQ',
+                id: 'rfq',
+                cell: ({ row }) => (
+                    <div className="min-w-[160px] sm:min-w-[190px] lg:min-w-[220px]">
+                        <div className="font-semibold text-slate-900 break-words">{row.original.rfqNumber}</div>
+                        <div className="mt-1 text-xs text-slate-600">
+                            RFQ Date: <span className="font-medium text-slate-800">{String(row.original.rfqDate)}</span>
+                        </div>
+                    </div>
+                ),
+            },
+
+            {
+                header: 'Authorized',
+                id: 'auth',
+                cell: ({ row }) => (
+                    <div className="min-w-[180px] sm:min-w-[210px] lg:min-w-[240px]">
+                        <div className={classNames('text-sm font-medium break-words', row.original.authorizedBy ? 'text-slate-900' : 'text-slate-400')}>
+                            {row.original.authorizedBy || '—'}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600 break-words">{String(row.original.authorizedAt) || '—'}</div>
+                    </div>
+                ),
+            },
+
+            {
+                header: 'Remarks',
+                accessorKey: 'remarks',
+                cell: ({ row }) => (
+                    <div className="min-w-[180px] sm:min-w-[220px] lg:min-w-[280px] max-w-[280px] sm:max-w-[360px] lg:max-w-[520px]">
+                        <div className="line-clamp-2 break-words text-sm text-slate-700" title={(row.original.csRemarks as any) || ''}>
+                            {(row.original.csRemarks as any) || '—'}
+                        </div>
+                    </div>
+                ),
+            },
+        ]
+    }, [])
+
+    return (
+        <div className="w-full min-w-0 overflow-x-auto">
+            <div className="min-w-[760px] lg:min-w-0">
+                <CustomDataTable<CSType>
+                    title={`Comparative Statements${!isAdminLike && meCompanyName ? ` • ${meCompanyName}` : ''}`}
+                    columns={columns}
+                    fetchApi={'/cs/list'}
+                    filters={[
+                        { label: 'CS Number', type: 'text', value: 'csNumber' },
+                        { label: 'CS Date', type: 'date-range', value: 'csDate' },
+                        { label: 'RFQ Number', type: 'text', value: 'rfqNumber' },
+                        { label: 'Vendor', type: 'debounced-select', value: 'vendorCode', url: '/vendor/values', hidden: Boolean(user.vendorCode) },
+                        {
+                            type: 'input-row',
+                            fields: [
+                                { label: 'Indent Number', type: 'text', value: 'indentNumber' },
+                                { label: 'Item Code', type: 'text', value: 'itemCode' },
+                            ],
+                        },
+                        { label: 'Item Description', type: 'text', value: 'itemDescription' },
+                        {
+                            label: 'Status',
+                            type: 'select',
+                            value: 'status',
+                            options: [
+                                { label: 'Initial', value: 'initial' },
+                                { label: 'Authorized', value: 'authorized' },
+                            ],
+                        },
+                        ...(isAdminLike ? [{ label: 'Company', type: 'text', value: 'company' } as any] : []),
+                    ]}
+                    data={tableData}
+                    setData={(_data: CSType[]) =>
+                        setRawData(
+                            (_data || []).map((i) => ({
+                                ...i,
+                                company: (i as any)?.company || '',
+                                status: i.status === 2 ? 'Completed' : i.status === 1 ? 'Authorized' : 'Initial',
+                                csDate: formatDate(i.csDate as string),
+                                csValidity: formatDate(i.csValidity as string),
+                                rfqDate: formatDate(i.rfqDate as string),
+                                authorizedAt: i.authorizedAt ? formatDateTime(i.authorizedAt as string) : '',
+                            })),
+                        )
+                    }
+                />
             </div>
-          )
-        },
-      },
-
-      {
-        header: 'RFQ',
-        id: 'rfq',
-        cell: ({ row }) => (
-          <div className="min-w-[220px]">
-            <div className="font-semibold text-slate-900">{row.original.rfqNumber}</div>
-            <div className="text-xs text-slate-600 mt-1">
-              RFQ Date: <span className="font-medium text-slate-800">{String(row.original.rfqDate)}</span>
-            </div>
-          </div>
-        ),
-      },
-
-      {
-        header: 'Authorized',
-        id: 'auth',
-        cell: ({ row }) => (
-          <div className="min-w-[240px]">
-            <div className={classNames('text-sm font-medium', row.original.authorizedBy ? 'text-slate-900' : 'text-slate-400')}>
-              {row.original.authorizedBy || '—'}
-            </div>
-            <div className="text-xs text-slate-600 mt-1">{String(row.original.authorizedAt) || '—'}</div>
-          </div>
-        ),
-      },
-
-      {
-        header: 'Remarks',
-        accessorKey: 'remarks',
-        cell: ({ row }) => (
-          <div className="min-w-[280px] max-w-[520px]">
-            <div className="text-sm text-slate-700 line-clamp-2" title={(row.original.csRemarks as any) || ''}>
-              {(row.original.csRemarks as any) || '—'}
-            </div>
-          </div>
-        ),
-      },
-    ]
-  }, [])
-
-  return (
-    <CustomDataTable<CSType>
-      title={`Comparative Statements${!isAdminLike && meCompanyName ? ` • ${meCompanyName}` : ''}`}
-      columns={columns}
-      fetchApi={'/cs/list'}
-      filters={[
-        { label: 'CS Number', type: 'text', value: 'csNumber' },
-        { label: 'CS Date', type: 'date-range', value: 'csDate' },
-        { label: 'RFQ Number', type: 'text', value: 'rfqNumber' },
-        { label: 'Vendor', type: 'debounced-select', value: 'vendorCode', url: '/vendor/values', hidden: Boolean(user.vendorCode) },
-        {
-          type: 'input-row',
-          fields: [
-            { label: 'Indent Number', type: 'text', value: 'indentNumber' },
-            { label: 'Item Code', type: 'text', value: 'itemCode' },
-          ],
-        },
-        { label: 'Item Description', type: 'text', value: 'itemDescription' },
-        {
-          label: 'Status',
-          type: 'select',
-          value: 'status',
-          options: [
-            { label: 'Initial', value: 'initial' },
-            { label: 'Authorized', value: 'authorized' },
-          ],
-        },
-
-        // ✅ OPTIONAL: only show company filter for admin-like users (so they can filter across firms)
-        ...(isAdminLike ? [{ label: 'Company', type: 'text', value: 'company' } as any] : []),
-      ]}
-      data={tableData}
-      setData={(_data: CSType[]) =>
-        setRawData(
-          (_data || []).map((i) => ({
-            ...i,
-            // ✅ keep company (for filtering)
-            company: (i as any)?.company || '',
-
-            status: i.status === 2 ? 'Completed' : i.status === 1 ? 'Authorized' : 'Initial',
-            csDate: formatDate(i.csDate as string),
-            csValidity: formatDate(i.csValidity as string),
-            rfqDate: formatDate(i.rfqDate as string),
-            authorizedAt: i.authorizedAt ? formatDateTime(i.authorizedAt as string) : '',
-          })),
-        )
-      }
-    />
-  )
+        </div>
+    )
 }

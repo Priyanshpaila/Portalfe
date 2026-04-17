@@ -88,7 +88,6 @@ function asVendorNo(v: any) {
     return Number.isFinite(n) && n > 0 ? n : null
 }
 
-
 const itemKey = (i: any) => String(i?._id || getIndentID(i) || `${i?.indentNumber || ''}:${i?.itemCode || ''}`)
 
 /** ========= Readable UI Components ========= */
@@ -133,9 +132,7 @@ function VendorStrip({
                             <div
                                 key={`vendor-card-${vNo}`}
                                 className={classNames(
-                                    // ✅ smaller cards
                                     'rounded-2xl border bg-white shadow-sm w-[240px] p-2.5',
-                                    // ✅ only subtle highlighting; don't mislead in item-wise mode
                                     isTotalsBestNet ? 'border-emerald-300' : isTotalsBestBasic ? 'border-amber-300' : 'border-slate-200',
                                     !isItemWise && isTotalsBestNet ? 'ring-1 ring-emerald-100' : null,
                                 )}>
@@ -146,7 +143,6 @@ function VendorStrip({
                                         <div className='text-[11px] text-slate-600 mt-0.5 truncate'>{fmt((v as any).vendorLocation)}</div>
                                     </div>
 
-                                    {/* ✅ explicit: Totals badges */}
                                     <div className='flex flex-col gap-1 items-end'>
                                         {isTotalsBestNet && (
                                             <Tag color='green' className='text-[10px]'>
@@ -161,7 +157,6 @@ function VendorStrip({
                                     </div>
                                 </div>
 
-                                {/* ✅ per-item wins (only in item-wise mode) */}
                                 {isItemWise && itemsCount > 0 && (
                                     <div className='mt-2 flex flex-wrap gap-1'>
                                         <span className='px-2 py-0.5 rounded-full bg-slate-100 text-[10px] text-slate-700'>
@@ -525,7 +520,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
 
     const sheetRef = useRef<HTMLDivElement>(null)
 
-    // ✅ react-to-print v3+ API
     const reactToPrintFn = useReactToPrint({
         contentRef: sheetRef,
         documentTitle: csNumber ? `CS_${csNumber}` : rfqNumber ? `CS_RFQ_${rfqNumber}` : 'Comparative_Statement',
@@ -540,7 +534,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
     const [csType, setCSType] = useState(csTypes[1].value)
     const [tab, setTab] = useState(tabs[0])
 
-    // UI-only
     const [viewMode, setViewMode] = useState<'readable' | 'table'>('readable')
     const [itemQuery, setItemQuery] = useState('')
     const [expandAll, setExpandAll] = useState(false)
@@ -557,7 +550,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
         })
     }, [(csSheet as any)?.items, itemQuery])
 
-    // ✅ per-item wins for vendor strip (prevents confusion)
     const vendorWinStats = useMemo(() => {
         const vendorsCount = ((csSheet as any)?.vendors?.length ?? 0) as number
         const items = ((csSheet as any)?.items ?? []) as any[]
@@ -638,8 +630,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
     }
 
     const isEditable = !viewOnly && (csSheet as any)?.status !== 1
-
-    // ✅ prevent "There is nothing to print"
     const canPrint = !isLoading && ((csSheet as any)?.items?.length ?? 0) > 0
 
     return (
@@ -662,44 +652,48 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
                 />
 
                 <Tabs variant='underline' className='mt-4' value={tab} onChange={setTab}>
-                    <TabList>
-                        {(viewOnly ? tabs.slice(0, 1) : tabs).map((i) => (
-                            <TabNav key={i} className='pt-0' value={i}>
-                                <span className='text-xs'>{i}</span>
-                            </TabNav>
-                        ))}
+                    <div className='overflow-x-auto pb-1'>
+                        <TabList className='min-w-max flex-nowrap'>
+                            {(viewOnly ? tabs.slice(0, 1) : tabs).map((i) => (
+                                <TabNav key={i} className='pt-0 whitespace-nowrap' value={i}>
+                                    <span className='text-xs'>{i}</span>
+                                </TabNav>
+                            ))}
 
-                        <TabNav disabled className='p-0 opacity-100 cursor-auto flex-1 justify-end gap-1' value='actions'>
-                            {tab === tabs[0] && (
-                                <>
-                                    <Button
-                                        type='button'
-                                        variant='twoTone'
-                                        size='xs'
-                                        icon={<IoPrintOutline />}
-                                        disabled={!canPrint}
-                                        onClick={() => reactToPrintFn()}>
-                                        Print PDF
-                                    </Button>
-                                    <Button
-                                        type='button'
-                                        variant='twoTone'
-                                        size='xs'
-                                        color='green'
-                                        icon={<RiFileExcel2Line />}
-                                        disabled={!canPrint}
-                                        onClick={() => exportTableToExcel(sheetRef)}>
-                                        Export to Excel
-                                    </Button>
-                                </>
-                            )}
-                        </TabNav>
-                    </TabList>
+                            <TabNav
+                                disabled
+                                className='p-0 opacity-100 cursor-auto min-w-max sm:flex-1 sm:justify-end'
+                                value='actions'>
+                                {tab === tabs[0] && (
+                                    <div className='flex flex-wrap items-center gap-1 justify-start sm:justify-end'>
+                                        <Button
+                                            type='button'
+                                            variant='twoTone'
+                                            size='xs'
+                                            icon={<IoPrintOutline />}
+                                            disabled={!canPrint}
+                                            onClick={() => reactToPrintFn()}>
+                                            Print PDF
+                                        </Button>
+                                        <Button
+                                            type='button'
+                                            variant='twoTone'
+                                            size='xs'
+                                            color='green'
+                                            icon={<RiFileExcel2Line />}
+                                            disabled={!canPrint}
+                                            onClick={() => exportTableToExcel(sheetRef)}>
+                                            Export to Excel
+                                        </Button>
+                                    </div>
+                                )}
+                            </TabNav>
+                        </TabList>
+                    </div>
 
                     <TabContent value={tabs[0]}>
-                        {/* UI Controls */}
                         <div className='flex flex-wrap items-center justify-between gap-2 mb-3'>
-                            <div className='flex items-center gap-2'>
+                            <div className='flex items-center gap-2 flex-wrap'>
                                 <Button type='button' size='xs' variant={viewMode === 'readable' ? 'solid' : 'twoTone'} onClick={() => setViewMode('readable')}>
                                     Readable
                                 </Button>
@@ -724,7 +718,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
                             </div>
                         </div>
 
-                        {/* Readable View */}
                         {viewMode === 'readable' && (
                             <div className='space-y-3'>
                                 <VendorStrip
@@ -767,7 +760,6 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
                             </div>
                         )}
 
-                        {/* Printable Matrix Table — ALWAYS MOUNTED */}
                         <div
                             ref={sheetRef}
                             className={classNames(
@@ -979,98 +971,101 @@ export function ComparativeStatementComponent({ viewOnly, rfqNumber, csNumber }:
                             </Table>
                         </div>
 
-                        {/* Selection tables */}
                         <div className='mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm p-3'>
-                            <div className='flex items-center justify-between mb-2'>
+                            <div className='flex flex-wrap items-center justify-between gap-2 mb-2'>
                                 <div className='font-semibold text-slate-900'>Selection</div>
                                 <div className='text-xs text-slate-500'>{csType === csTypes[0].value ? 'Item-wise selection' : 'Single vendor selection'}</div>
                             </div>
 
                             {csType === csTypes[0].value ? (
-                                <Table compact className='small-table'>
-                                    <THead className='sticky top-0'>
-                                        <Tr>
-                                            <Th>#</Th>
-                                            <Th>Item Description</Th>
-                                            <Th>QTY</Th>
-                                            <Th>Vendor Name</Th>
-                                            <Th>Vendor Location</Th>
-                                            <Th>Quotation Number</Th>
-                                            <Th>Quotation Date</Th>
-                                            <Th></Th>
-                                        </Tr>
-                                    </THead>
-                                    <TBody>
-                                        {selection?.map((s: any, idx: number) => (
-                                            <Tr key={`selection-${idx}`}>
-                                                <Td>{idx + 1}</Td>
-                                                <Td>{s.itemDescription}</Td>
-                                                <Td>{s.qty}</Td>
-                                                <Td>{s.name}</Td>
-                                                <Td>{s.vendorLocation}</Td>
-                                                <Td>{s.quotationNumber}</Td>
-                                                <Td>{formatDate(s.quotationDate)}</Td>
-                                                <Td>
-                                                    {isEditable && (
-                                                        <button
-                                                            type='button'
-                                                            className='text-red-600'
-                                                            onClick={() => setSelection((prev) => (prev || []).slice(0, idx).concat((prev || []).slice(idx + 1)))}>
-                                                            REMOVE
-                                                        </button>
-                                                    )}
-                                                </Td>
+                                <div className='overflow-x-auto'>
+                                    <Table compact className='small-table'>
+                                        <THead className='sticky top-0'>
+                                            <Tr>
+                                                <Th>#</Th>
+                                                <Th>Item Description</Th>
+                                                <Th>QTY</Th>
+                                                <Th>Vendor Name</Th>
+                                                <Th>Vendor Location</Th>
+                                                <Th>Quotation Number</Th>
+                                                <Th>Quotation Date</Th>
+                                                <Th></Th>
                                             </Tr>
-                                        ))}
-                                    </TBody>
-                                </Table>
-                            ) : (
-                                <Table compact className='small-table'>
-                                    <THead className='sticky top-0'>
-                                        <Tr>
-                                            <Th>#</Th>
-                                            <Th></Th>
-                                            <Th>Vendor Name</Th>
-                                            <Th>Vendor Location</Th>
-                                            <Th>Quotation Number</Th>
-                                            <Th>Quotation Date</Th>
-                                        </Tr>
-                                    </THead>
-                                    <TBody>
-                                        {(csSheet as any)?.vendors
-                                            ?.filter((v: any) => v?.quotationNumber)
-                                            ?.map((v: any, idx: number) => (
-                                                <Tr
-                                                    key={`vendor-1-${idx}`}
-                                                    className={isEditable ? 'cursor-pointer' : undefined}
-                                                    onClick={() =>
-                                                        isEditable
-                                                            ? setSelection([
-                                                                  {
-                                                                      vendorCode: v.vendorCode,
-                                                                      quotationNumber: v.quotationNumber,
-                                                                      quotationDate: v.quotationDate,
-                                                                  },
-                                                              ])
-                                                            : null
-                                                    }>
+                                        </THead>
+                                        <TBody>
+                                            {selection?.map((s: any, idx: number) => (
+                                                <Tr key={`selection-${idx}`}>
                                                     <Td>{idx + 1}</Td>
+                                                    <Td>{s.itemDescription}</Td>
+                                                    <Td>{s.qty}</Td>
+                                                    <Td>{s.name}</Td>
+                                                    <Td>{s.vendorLocation}</Td>
+                                                    <Td>{s.quotationNumber}</Td>
+                                                    <Td>{formatDate(s.quotationDate)}</Td>
                                                     <Td>
-                                                        <input
-                                                            disabled={!isEditable}
-                                                            type='radio'
-                                                            checked={(selection as any)?.[0]?.vendorCode === v.vendorCode}
-                                                            onChange={() => null}
-                                                        />
+                                                        {isEditable && (
+                                                            <button
+                                                                type='button'
+                                                                className='text-red-600'
+                                                                onClick={() => setSelection((prev) => (prev || []).slice(0, idx).concat((prev || []).slice(idx + 1)))}>
+                                                                REMOVE
+                                                            </button>
+                                                        )}
                                                     </Td>
-                                                    <Td>{v.name}</Td>
-                                                    <Td>{v.vendorLocation}</Td>
-                                                    <Td>{v.quotationNumber}</Td>
-                                                    <Td>{formatDate(v.quotationDate)}</Td>
                                                 </Tr>
                                             ))}
-                                    </TBody>
-                                </Table>
+                                        </TBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <div className='overflow-x-auto'>
+                                    <Table compact className='small-table'>
+                                        <THead className='sticky top-0'>
+                                            <Tr>
+                                                <Th>#</Th>
+                                                <Th></Th>
+                                                <Th>Vendor Name</Th>
+                                                <Th>Vendor Location</Th>
+                                                <Th>Quotation Number</Th>
+                                                <Th>Quotation Date</Th>
+                                            </Tr>
+                                        </THead>
+                                        <TBody>
+                                            {(csSheet as any)?.vendors
+                                                ?.filter((v: any) => v?.quotationNumber)
+                                                ?.map((v: any, idx: number) => (
+                                                    <Tr
+                                                        key={`vendor-1-${idx}`}
+                                                        className={isEditable ? 'cursor-pointer' : undefined}
+                                                        onClick={() =>
+                                                            isEditable
+                                                                ? setSelection([
+                                                                      {
+                                                                          vendorCode: v.vendorCode,
+                                                                          quotationNumber: v.quotationNumber,
+                                                                          quotationDate: v.quotationDate,
+                                                                      },
+                                                                  ])
+                                                                : null
+                                                        }>
+                                                        <Td>{idx + 1}</Td>
+                                                        <Td>
+                                                            <input
+                                                                disabled={!isEditable}
+                                                                type='radio'
+                                                                checked={(selection as any)?.[0]?.vendorCode === v.vendorCode}
+                                                                onChange={() => null}
+                                                            />
+                                                        </Td>
+                                                        <Td>{v.name}</Td>
+                                                        <Td>{v.vendorLocation}</Td>
+                                                        <Td>{v.quotationNumber}</Td>
+                                                        <Td>{formatDate(v.quotationDate)}</Td>
+                                                    </Tr>
+                                                ))}
+                                        </TBody>
+                                    </Table>
+                                </div>
                             )}
                         </div>
 
@@ -1167,8 +1162,8 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
                 Are you sure you want to delete this CS? This action cannot be undone.
             </ConfirmDialog>
 
-            <div className='mb-4 flex justify-between'>
-                <div className='flex gap-2 items-center'>
+            <div className='mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+                <div className='flex flex-wrap gap-2 items-center'>
                     <h4>Comparative Statement Sheet</h4>
                     <span
                         className={classNames(
@@ -1180,7 +1175,7 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
                 </div>
 
                 {!viewOnly && (
-                    <div className='flex gap-2'>
+                    <div className='flex flex-wrap gap-2 items-center lg:justify-end'>
                         {isEditable && (
                             <>
                                 <Button variant='solid' size='xs' icon={<MdOutlineSave />} onClick={() => handleSave(values)}>
@@ -1189,7 +1184,7 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
 
                                 {authority?.includes(PERMISSIONS.AUTHORIZE_CS) && (
                                     <>
-                                        <hr className='h-full w-[1.5px] bg-slate-200' />
+                                        <hr className='hidden sm:block h-6 w-[1.5px] bg-slate-200' />
                                         <Button variant='solid' size='xs' icon={<MdOutlineDownloadDone />} onClick={() => handleSave({ ...values, status: 1 })}>
                                             Submit
                                         </Button>
@@ -1209,17 +1204,17 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
 
             <div className='rounded-2xl border border-slate-200 bg-white shadow-sm p-3'>
                 <div className='flex flex-wrap gap-3'>
-                    <div className='min-w-[220px]'>
+                    <div className='min-w-[220px] max-w-full'>
                         <span className='block mb-2 text-xs'>CS Number</span>
                         <Input disabled type='text' name='csNumber' size='xs' value={values.csNumber} onChange={() => null} />
                     </div>
 
-                    <div className='min-w-[180px]'>
+                    <div className='min-w-[180px] max-w-full'>
                         <span className='block mb-2 text-xs'>CS Date</span>
                         <DatePicker disabled name='csDate' size='xs' inputFormat='DD/MM/YYYY' value={values.csDate || null} onChange={() => null} />
                     </div>
 
-                    <div className='min-w-[210px]'>
+                    <div className='min-w-[210px] max-w-full'>
                         <span className='block mb-2 text-xs'>Validity Date</span>
                         <DateTimepicker
                             disabled={!isEditable}
@@ -1230,13 +1225,13 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
                         />
                     </div>
 
-                    <div className='min-w-[260px]'>
+                    <div className='min-w-[260px] max-w-full'>
                         <span className='block mb-2 text-xs'>CS Type</span>
                         <Select
                             isDisabled={!isEditable}
                             size='xs'
                             name='csType'
-                            className='w-56'
+                            className='w-full sm:w-56'
                             value={csTypes.find((i) => i.value === csType) || null}
                             options={csTypes.filter((i) => i.value !== csType)}
                             onChange={(newValue) => setCSType(newValue?.value)}
@@ -1245,17 +1240,17 @@ function CSForm({ viewOnly, isEditable, csType, setCSType, handleSave, rfqDetail
                 </div>
 
                 <div className='flex flex-wrap gap-3 mt-3'>
-                    <div className='min-w-[220px]'>
+                    <div className='min-w-[220px] max-w-full'>
                         <span className='block mb-2 text-xs'>RFQ Number</span>
                         <Input disabled type='text' name='rfqNumber' size='xs' value={values.rfqNumber} onChange={() => null} />
                     </div>
 
-                    <div className='min-w-[180px]'>
+                    <div className='min-w-[180px] max-w-full'>
                         <span className='block mb-2 text-xs'>RFQ Date</span>
                         <DatePicker disabled inputFormat='DD/MM/YYYY' name='rfqDate' size='xs' value={values.rfqDate || null} onChange={() => null} />
                     </div>
 
-                    <div className='flex-1 min-w-[280px]'>
+                    <div className='flex-1 min-w-[280px] max-w-full'>
                         <span className='block mb-2 text-xs'>Remarks</span>
                         <Input
                             disabled={!isEditable}
@@ -1296,98 +1291,100 @@ const VendorModal = ({ isEditable, vendors, csType, vendorModalState, close, sub
     return (
         <Dialog isOpen={!!vendorModalState} width={window.innerWidth * 0.8} closable={false}>
             <h4 className='mb-4'>Select Vendors ({vendorModalState?.itemCode})</h4>
-            <Table compact className='text-xs'>
-                <THead className='sticky top-0'>
-                    <Tr>
-                        <Th>#</Th>
-                        <Th></Th>
-                        <Th>Vendor Name</Th>
-                        <Th>Vendor Location</Th>
-                        <Th>Quotation Number</Th>
-                        <Th>Quotation Date</Th>
-                        <Th>Qty</Th>
-                    </Tr>
-                </THead>
+            <div className='overflow-x-auto'>
+                <Table compact className='text-xs'>
+                    <THead className='sticky top-0'>
+                        <Tr>
+                            <Th>#</Th>
+                            <Th></Th>
+                            <Th>Vendor Name</Th>
+                            <Th>Vendor Location</Th>
+                            <Th>Quotation Number</Th>
+                            <Th>Quotation Date</Th>
+                            <Th>Qty</Th>
+                        </Tr>
+                    </THead>
 
-                <TBody>
-                    {vendors
-                        ?.filter((v: any) => v?.quotationNumber)
-                        ?.map((v: any, idx: number) => {
-                            const vendorQty = +selection?.find((i: any) => i.vendorCode === v.vendorCode)?.qty || 0
+                    <TBody>
+                        {vendors
+                            ?.filter((v: any) => v?.quotationNumber)
+                            ?.map((v: any, idx: number) => {
+                                const vendorQty = +selection?.find((i: any) => i.vendorCode === v.vendorCode)?.qty || 0
 
-                            return (
-                                <Tr key={`vendor-2-${idx}`}>
-                                    <Td>{idx + 1}</Td>
-                                    <Td>
-                                        <input
-                                            disabled={!isEditable}
-                                            type='checkbox'
-                                            checked={
-                                                selection?.find(
-                                                    (i: any) =>
-                                                        (csType === csTypes[0].value ? i.itemCode === vendorModalState?.itemCode : true) &&
-                                                        i.vendorCode === v.vendorCode,
-                                                )?.checked
-                                            }
-                                            onChange={(e) =>
-                                                setSelection((prev: any[]) =>
-                                                    e.target.checked
-                                                        ? prev.concat([
-                                                              {
-                                                                  ...vendorModalState,
-                                                                  ...v,
-                                                                  vendorCode: v.vendorCode,
-                                                                  checked: e.target.checked,
-                                                                  qty: e.target.checked ? Math.max(+vendorModalState?.qty - usedQty, 0).toFixed(3) : undefined,
-                                                              },
-                                                          ])
-                                                        : prev.filter((i: any) => i.vendorCode !== v.vendorCode && i.itemCode === vendorModalState?.itemCode),
-                                                )
-                                            }
-                                        />
-                                    </Td>
-                                    <Td>{v.name}</Td>
-                                    <Td>{v.vendorLocation}</Td>
-                                    <Td>{v.quotationNumber}</Td>
-                                    <Td>{formatDate(v.quotationDate)}</Td>
-                                    <Td>
-                                        <Input
-                                            disabled={!isEditable}
-                                            className='p-1 w-16'
-                                            type='number'
-                                            size='xs'
-                                            value={selection?.find((i: any) => i.vendorCode === v.vendorCode)?.qty}
-                                            onChange={(e: any) =>
-                                                usedQty - vendorQty + +e.target.value > +vendorModalState?.qty || e.target.value.split('.')?.[1]?.length > 3
-                                                    ? null
-                                                    : setSelection((prev: any[]) =>
-                                                          prev.map((i: any) => (i.vendorCode === v.vendorCode ? { ...i, qty: e.target.value } : i)),
-                                                      )
-                                            }
-                                        />
-                                    </Td>
-                                </Tr>
-                            )
-                        })}
-                </TBody>
+                                return (
+                                    <Tr key={`vendor-2-${idx}`}>
+                                        <Td>{idx + 1}</Td>
+                                        <Td>
+                                            <input
+                                                disabled={!isEditable}
+                                                type='checkbox'
+                                                checked={
+                                                    selection?.find(
+                                                        (i: any) =>
+                                                            (csType === csTypes[0].value ? i.itemCode === vendorModalState?.itemCode : true) &&
+                                                            i.vendorCode === v.vendorCode,
+                                                    )?.checked
+                                                }
+                                                onChange={(e) =>
+                                                    setSelection((prev: any[]) =>
+                                                        e.target.checked
+                                                            ? prev.concat([
+                                                                  {
+                                                                      ...vendorModalState,
+                                                                      ...v,
+                                                                      vendorCode: v.vendorCode,
+                                                                      checked: e.target.checked,
+                                                                      qty: e.target.checked ? Math.max(+vendorModalState?.qty - usedQty, 0).toFixed(3) : undefined,
+                                                                  },
+                                                              ])
+                                                            : prev.filter((i: any) => i.vendorCode !== v.vendorCode && i.itemCode === vendorModalState?.itemCode),
+                                                    )
+                                                }
+                                            />
+                                        </Td>
+                                        <Td>{v.name}</Td>
+                                        <Td>{v.vendorLocation}</Td>
+                                        <Td>{v.quotationNumber}</Td>
+                                        <Td>{formatDate(v.quotationDate)}</Td>
+                                        <Td>
+                                            <Input
+                                                disabled={!isEditable}
+                                                className='p-1 w-16'
+                                                type='number'
+                                                size='xs'
+                                                value={selection?.find((i: any) => i.vendorCode === v.vendorCode)?.qty}
+                                                onChange={(e: any) =>
+                                                    usedQty - vendorQty + +e.target.value > +vendorModalState?.qty || e.target.value.split('.')?.[1]?.length > 3
+                                                        ? null
+                                                        : setSelection((prev: any[]) =>
+                                                              prev.map((i: any) => (i.vendorCode === v.vendorCode ? { ...i, qty: e.target.value } : i)),
+                                                          )
+                                                }
+                                            />
+                                        </Td>
+                                    </Tr>
+                                )
+                            })}
+                    </TBody>
 
-                <TFoot>
-                    <Tr>
-                        <Td colSpan={7}>
-                            {isEditable && (
-                                <div className='flex justify-end gap-2'>
-                                    <Button variant='twoTone' size='sm' className='w-20' onClick={close}>
-                                        Cancel
-                                    </Button>
-                                    <Button variant='solid' size='sm' className='w-20' onClick={() => submit(selection)}>
-                                        Save
-                                    </Button>
-                                </div>
-                            )}
-                        </Td>
-                    </Tr>
-                </TFoot>
-            </Table>
+                    <TFoot>
+                        <Tr>
+                            <Td colSpan={7}>
+                                {isEditable && (
+                                    <div className='flex flex-wrap justify-end gap-2'>
+                                        <Button variant='twoTone' size='sm' className='w-20' onClick={close}>
+                                            Cancel
+                                        </Button>
+                                        <Button variant='solid' size='sm' className='w-20' onClick={() => submit(selection)}>
+                                            Save
+                                        </Button>
+                                    </div>
+                                )}
+                            </Td>
+                        </Tr>
+                    </TFoot>
+                </Table>
+            </div>
         </Dialog>
     )
 }

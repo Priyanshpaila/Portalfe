@@ -118,7 +118,7 @@ export default function PurchaseOrder() {
     const [companyLoading, setCompanyLoading] = useState(false)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             try {
                 setCompanyLoading(true)
                 const list = await getCompanies(true) // force refresh once
@@ -166,13 +166,13 @@ export default function PurchaseOrder() {
                 !items?.length
                     ? response.data
                     : response.data.map((i) => {
-                          if (!qtyMap[i.id]) return i
-                          return {
-                              ...i,
-                              prePOQty: i.prePOQty - (poNumber ? qtyMap[i.id] : 0),
-                              balanceQty: (i.balanceQty || 0) + qtyMap[i.id],
-                          }
-                      }),
+                        if (!qtyMap[i.id]) return i
+                        return {
+                            ...i,
+                            prePOQty: i.prePOQty - (poNumber ? qtyMap[i.id] : 0),
+                            balanceQty: (i.balanceQty || 0) + qtyMap[i.id],
+                        }
+                    }),
             )
         } catch (error) {
             console.error(error)
@@ -186,25 +186,25 @@ export default function PurchaseOrder() {
             setTab(tabs[0])
             setIndents([])
             setIndentSelection({})
-            ;(async () => {
-                try {
-                    const response = await ApiService.fetchData<{ poNumber: string }>({
-                        method: 'get',
-                        url: '/po/poNumber',
-                    })
+                ; (async () => {
+                    try {
+                        const response = await ApiService.fetchData<{ poNumber: string }>({
+                            method: 'get',
+                            url: '/po/poNumber',
+                        })
 
-                    setFormValues({ ...initialValues, poNumber: response?.data?.poNumber })
-                } catch (error) {
-                    console.error(error)
-                } finally {
-                    setFlags({})
-                }
-            })()
+                        setFormValues({ ...initialValues, poNumber: response?.data?.poNumber })
+                    } catch (error) {
+                        console.error(error)
+                    } finally {
+                        setFlags({})
+                    }
+                })()
 
             return
         }
 
-        ;(async () => {
+        ; (async () => {
             try {
                 const response = await ApiService.fetchData<POType>({
                     method: 'get',
@@ -438,39 +438,41 @@ export default function PurchaseOrder() {
                     const isPurchaseRequest = values.refDocumentType === refDocumentTypes[1].value
 
                     return (
-                        <Form className='px-1 mt-3'>
-                            <FormContainer>
+                        <Form className='mt-3 px-1'>
+                            <FormContainer className='min-w-0'>
                                 <Tabs variant='underline' value={tab} onChange={setTab}>
-                                    <TabList>
-                                        {tabs.map((i) => (
-                                            <TabNav key={i} className='pt-0 px-2' value={i}>
-                                                <span className='text-xs'>{i}</span>
+                                    <div className='overflow-x-auto'>
+                                        <TabList className='min-w-max flex-nowrap'>
+                                            {tabs.map((i) => (
+                                                <TabNav key={i} className='px-2 pt-0 whitespace-nowrap' value={i}>
+                                                    <span className='text-xs'>{i}</span>
+                                                </TabNav>
+                                            ))}
+                                            <TabNav
+                                                disabled
+                                                className='flex-1 cursor-auto justify-end gap-1 p-0 opacity-100 min-w-max'
+                                                value='actions'>
+                                                {isEditable ? (
+                                                    <Button type='submit' variant='solid' size='xs'>
+                                                        Save
+                                                    </Button>
+                                                ) : (
+                                                    <Button type='button' variant='twoTone' size='xs' onClick={() => setFlags({ amendWarning: true })}>
+                                                        Edit
+                                                    </Button>
+                                                )}
+                                                {formValues?._id && (
+                                                    <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ deleteWarning: true })}>
+                                                        Delete
+                                                    </Button>
+                                                )}
                                             </TabNav>
-                                        ))}
-                                        <TabNav disabled className='p-0 opacity-100 cursor-auto flex-1 justify-end gap-1' value='actions'>
-                                            {isEditable ? (
-                                                <Button type='submit' variant='solid' size='xs'>
-                                                    Save
-                                                </Button>
-                                            ) : (
-                                                <Button type='button' variant='twoTone' size='xs' onClick={() => setFlags({ amendWarning: true })}>
-                                                    Edit
-                                                </Button>
-                                            )}
-                                            {formValues?._id && (
-                                                <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ deleteWarning: true })}>
-                                                    Delete
-                                                </Button>
-                                            )}
-                                        </TabNav>
-                                    </TabList>
+                                        </TabList>
+                                    </div>
 
-                                    {/* ✅ TAB 0: General Information */}
                                     <TabContent value={tabs[0]} className='text-xs'>
-                                        <div className='flex gap-2 items-end w-full mt-2'>
-                                            {/* ✅ SAP PO Number REMOVED */}
-
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 items-end'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
                                                 <Field
                                                     disabled
                                                     type='text'
@@ -483,21 +485,20 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Amend No'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Amend No'>
                                                 <Field
                                                     disabled
                                                     type='text'
                                                     name='amendNumber'
                                                     component={Input}
-                                                    className='px-1 py-1.5 w-15'
+                                                    className='w-full px-1 py-1.5 sm:w-15'
                                                     size={'xs'}
                                                     value={values.amendNumber}
                                                     onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                 />
                                             </FormItem>
 
-                                            {/* ✅ FIX: poDate */}
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Document Date'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document Date'>
                                                 <Field
                                                     disabled
                                                     name='poDate'
@@ -509,10 +510,9 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            {/* ✅ Company -> Users from API */}
-                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Company'>
-                                                <div className='flex gap-0.5 items-end'>
-                                                    <FormItem className='mb-0'>
+                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Company'>
+                                                <div className='flex w-full flex-col gap-1 sm:flex-row sm:items-end'>
+                                                    <div className='w-full min-w-0'>
                                                         <Field name='company'>
                                                             {({ field, form }: FieldProps<POType>) => {
                                                                 const selected = companyOptions.find(
@@ -527,7 +527,7 @@ export default function PurchaseOrder() {
                                                                         getOptionLabel={(option) => option?.companyName}
                                                                         getOptionValue={(option) => option?.companyName}
                                                                         options={companyOptions}
-                                                                        className='w-60'
+                                                                        className='w-full sm:w-60'
                                                                         size={'xs'}
                                                                         value={selected || null}
                                                                         onChange={(option) => form.setFieldValue(field.name, option?.companyName)}
@@ -535,7 +535,7 @@ export default function PurchaseOrder() {
                                                                 )
                                                             }}
                                                         </Field>
-                                                    </FormItem>
+                                                    </div>
 
                                                     <Button
                                                         disabled={!isEditable}
@@ -544,42 +544,32 @@ export default function PurchaseOrder() {
                                                         size='xs'
                                                         icon={<MdOutlineList size={16} />}
                                                         onClick={() => setFlags({ csModal: true })}
+                                                        className='shrink-0'
                                                     />
                                                 </div>
                                             </FormItem>
 
                                             {values.refCSNumber && (
-                                                <CSModal
-                                                    csNumber={values.refCSNumber}
-                                                    customButton={({ onClick }) => (
-                                                        <Button type='button' variant='twoTone' size='xs' icon={<MdOpenInNew size={16} />} onClick={onClick}>
-                                                            View CS
-                                                        </Button>
-                                                    )}
-                                                />
+                                                <div className='w-full'>
+                                                    <CSModal
+                                                        csNumber={values.refCSNumber}
+                                                        customButton={({ onClick }) => (
+                                                            <Button type='button' variant='twoTone' size='xs' icon={<MdOpenInNew size={16} />} onClick={onClick}>
+                                                                View CS
+                                                            </Button>
+                                                        )}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
 
-                                        <div className='flex gap-2 items-end w-full mt-2'>
-                                            {/* <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Division'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='division'
-                                                    component={Select}
-                                                    className='w-40'
-                                                    size={'xs'}
-                                                    options={divisons}
-                                                    value={divisons.find((i) => i.value === values.division)}
-                                                    onChange={(option: OptionType) => setFieldValue('division', option.value)}
-                                                />
-                                            </FormItem> */}
-
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='purchaseType'
                                                     component={Select}
-                                                    className='w-40'
+                                                    className='w-full sm:w-40'
                                                     options={purchaseTypes}
                                                     size={'xs'}
                                                     value={purchaseTypes.find((i) => i.value === values.purchaseType)}
@@ -587,20 +577,20 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
+                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='refDocumentType'
                                                     component={Select}
                                                     options={refDocumentTypes}
-                                                    className='w-50'
+                                                    className='w-full sm:w-50'
                                                     size={'xs'}
                                                     value={refDocumentTypes.find((i) => i.value === values.refDocumentType)}
                                                     onChange={(option: OptionType) => handleDocTypeChange(option, setValues)}
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
                                                 <Field
                                                     disabled
                                                     type='text'
@@ -613,19 +603,19 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='serialNumber'
                                                     component={Select}
-                                                    className='w-40'
+                                                    className='w-full sm:w-40'
                                                     size={'xs'}
                                                     value={values.serialNumber}
                                                     onChange={(option: OptionType) => setFieldValue('serialNumber', option.value)}
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
                                                 <Field
                                                     disabled={!isEditable}
                                                     name='validityDate'
@@ -639,8 +629,8 @@ export default function PurchaseOrder() {
                                             </FormItem>
                                         </div>
 
-                                        <div className='flex gap-2 items-end w-full mt-2'>
-                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 items-end'>
+                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
                                                 <Field
                                                     type='text'
                                                     name='vendorCode'
@@ -649,7 +639,7 @@ export default function PurchaseOrder() {
                                                     getOptionLabel={(option: VendorType) => option.name || option.vendorCode}
                                                     getOptionValue={(option: VendorType) => option.vendorCode.toString()}
                                                     isDisabled={!isPurchaseRequest || !isEditable}
-                                                    className='w-50'
+                                                    className='w-full sm:w-50'
                                                     size={'xs'}
                                                     value={vendors.find((i) => i.vendorCode?.toString() === values.vendorCode?.toString())}
                                                     onChange={(option: VendorType) =>
@@ -668,39 +658,39 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
                                                 <Field
                                                     disabled={true}
                                                     type='text'
                                                     name='vendorLocation'
                                                     component={Input}
-                                                    className='px-1 py-1.5 w-50'
+                                                    className='w-full px-1 py-1.5'
                                                     size={'xs'}
                                                     value={values.vendorLocation}
                                                     onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
                                                 <Field
                                                     type='text'
                                                     name='contactPersonName'
                                                     component={Select}
                                                     isDisabled={!isPurchaseRequest || !isEditable}
                                                     options={values?.vendorContacts || []}
-                                                    className='w-40'
+                                                    className='w-full sm:w-40'
                                                     size={'xs'}
                                                     value={values?.vendorContacts?.find((i: any) => i.value === values.contactPersonName)}
                                                     onChange={(option: OptionType) => setFieldValue('contactPersonName', option.value)}
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Department Name'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Department Name'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='departmentName'
                                                     component={Select}
-                                                    className='w-50'
+                                                    className='w-full sm:w-50'
                                                     size={'xs'}
                                                     value={values.departmentName}
                                                     onChange={(option: OptionType) => setFieldValue('departmentName', option.value)}
@@ -708,28 +698,28 @@ export default function PurchaseOrder() {
                                             </FormItem>
                                         </div>
 
-                                        <div className='flex gap-2 items-end w-full mt-2'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
                                             {isPurchaseRequest && (
                                                 <>
-                                                    <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
+                                                    <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
                                                         <Field
                                                             disabled={!isEditable}
                                                             name='partyRefNumber'
                                                             component={Input}
-                                                            className='w-40'
+                                                            className='w-full sm:w-40'
                                                             size={'xs'}
                                                             value={values.partyRefNumber}
                                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('partyRefNumber', e.target.value)}
                                                         />
                                                     </FormItem>
 
-                                                    <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
+                                                    <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
                                                         <Field
                                                             disabled={!isEditable}
                                                             name='partyRefDate'
                                                             component={DatePicker}
                                                             inputFormat='DD/MM/YYYY'
-                                                            className='w-40'
+                                                            className='w-full sm:w-40'
                                                             size={'xs'}
                                                             value={values.partyRefDate}
                                                             onChange={(newDate: Date) => setFieldValue('partyRefDate', newDate)}
@@ -739,8 +729,8 @@ export default function PurchaseOrder() {
                                             )}
                                         </div>
 
-                                        <div className='flex gap-2'>
-                                            <FormItem className='w-full' labelClass='text-[11px] !mb-0.5 mt-2' label='Remarks'>
+                                        <div className='mt-2 flex flex-col gap-2 xl:flex-row'>
+                                            <FormItem className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Remarks'>
                                                 <Field
                                                     textArea
                                                     disabled={!isEditable}
@@ -755,7 +745,7 @@ export default function PurchaseOrder() {
                                             </FormItem>
 
                                             {values?.amendNumber && (
-                                                <FormItem asterisk className='w-full' labelClass='text-[11px] !mb-0.5 mt-2' label='Amend Remarks'>
+                                                <FormItem asterisk className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Amend Remarks'>
                                                     <Field name={'amendRemarks'}>
                                                         {({ field, form }: FieldProps<POType>) => {
                                                             const isInvalid = Boolean(getIn(form.errors, field.name))
@@ -785,45 +775,45 @@ export default function PurchaseOrder() {
                                         </div>
                                     </TabContent>
 
-                                    {/* TAB 1 */}
                                     <TabContent value={tabs[1]}>
-                                        <Indents
-                                            disabled={!isEditable}
-                                            indents={indents}
-                                            selection={indentSelection}
-                                            handleSelectAll={(selectionFlag) => {
-                                                const flags: { [key: string]: boolean } = {}
-                                                const items: POItem[] = []
+                                        <div className='min-w-0 overflow-x-auto'>
+                                            <Indents
+                                                disabled={!isEditable}
+                                                indents={indents}
+                                                selection={indentSelection}
+                                                handleSelectAll={(selectionFlag) => {
+                                                    const flags: { [key: string]: boolean } = {}
+                                                    const items: POItem[] = []
 
-                                                if (selectionFlag)
-                                                    for (const i of indents) {
-                                                        flags[i.id] = selectionFlag
-                                                        items.push(indentToItem(i, isPurchaseRequest, values?.items?.[0]?.taxDetails))
-                                                    }
+                                                    if (selectionFlag)
+                                                        for (const i of indents) {
+                                                            flags[i.id] = selectionFlag
+                                                            items.push(indentToItem(i, isPurchaseRequest, values?.items?.[0]?.taxDetails))
+                                                        }
 
-                                                setIndentSelection(flags)
-                                                setValues((prev) => handleAmountCalculation({ ...prev, items }))
-                                            }}
-                                            handleSelection={(val, selectionFlag) => {
-                                                setIndentSelection((prev) => ({ ...prev, [val.id as string]: selectionFlag }))
-                                                setValues((prev) =>
-                                                    handleAmountCalculation({
-                                                        ...prev,
-                                                        items: selectionFlag
-                                                            ? [...(prev.items || []), indentToItem(val, isPurchaseRequest, values?.items?.[0]?.taxDetails)]
-                                                            : (prev.items || [])?.filter(
-                                                                  (i) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode),
-                                                              ),
-                                                    }),
-                                                )
-                                            }}
-                                        />
+                                                    setIndentSelection(flags)
+                                                    setValues((prev) => handleAmountCalculation({ ...prev, items }))
+                                                }}
+                                                handleSelection={(val, selectionFlag) => {
+                                                    setIndentSelection((prev) => ({ ...prev, [val.id as string]: selectionFlag }))
+                                                    setValues((prev) =>
+                                                        handleAmountCalculation({
+                                                            ...prev,
+                                                            items: selectionFlag
+                                                                ? [...(prev.items || []), indentToItem(val, isPurchaseRequest, values?.items?.[0]?.taxDetails)]
+                                                                : (prev.items || [])?.filter(
+                                                                    (i) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode),
+                                                                ),
+                                                        }),
+                                                    )
+                                                }}
+                                            />
+                                        </div>
                                     </TabContent>
 
-                                    {/* TAB 2 */}
                                     <TabContent value={tabs[2]}>
-                                        <div className='flex gap-2 items-end w-full mt-2 text-xs'>
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end text-xs'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='shippingAccount[paymentMode]'
@@ -835,7 +825,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
+                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
                                                 <Field name='shippingAccount[freightType]'>
                                                     {({ field, form }: FieldProps<POType>) => (
                                                         <Select
@@ -844,7 +834,7 @@ export default function PurchaseOrder() {
                                                             isDisabled={!isEditable}
                                                             options={freightTypes}
                                                             size={'xs'}
-                                                            className='w-40'
+                                                            className='w-full sm:w-40'
                                                             value={freightTypes.find((i) => i.value === values.shippingAccount?.freightType) || null}
                                                             onChange={(option) => setFieldValue('shippingAccount[freightType]', (option as any)?.value)}
                                                         />
@@ -852,7 +842,7 @@ export default function PurchaseOrder() {
                                                 </Field>
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='shippingAccount[freightRate]'
@@ -864,7 +854,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
                                                 <Field
                                                     disabled={!isEditable}
                                                     type='text'
@@ -877,7 +867,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Priority'>
+                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Priority'>
                                                 <Field
                                                     isDisabled={!isEditable}
                                                     name='shippingAccount[priority]'
@@ -891,8 +881,8 @@ export default function PurchaseOrder() {
                                             </FormItem>
                                         </div>
 
-                                        <div className='flex gap-2 items-end w-full mt-2'>
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='From Location'>
+                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='From Location'>
                                                 <Field
                                                     disabled={!isEditable}
                                                     type='text'
@@ -905,7 +895,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='To Location'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='To Location'>
                                                 <Field
                                                     disabled={!isEditable}
                                                     type='text'
@@ -918,7 +908,7 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <FormItem className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
+                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
                                                 <Field
                                                     disabled={!isEditable}
                                                     type='text'
@@ -931,26 +921,27 @@ export default function PurchaseOrder() {
                                                 />
                                             </FormItem>
 
-                                            <label className='!mb-0 flex items-center py-1.5 ml-2 cursor-pointer select-none'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    type='checkbox'
-                                                    name='shippingAccount[defineTransportationRoute]'
-                                                    className='size-4'
-                                                    size={'xs'}
-                                                    checked={!!values.shippingAccount?.defineTransportationRoute}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.checked)}
-                                                />
-                                                <span className='text-xs inline-block pl-2'>Define Transportation Route</span>
-                                            </label>
+                                            <div className='flex min-h-[38px] items-center'>
+                                                <label className='!mb-0 flex cursor-pointer select-none items-center py-1.5'>
+                                                    <Field
+                                                        disabled={!isEditable}
+                                                        type='checkbox'
+                                                        name='shippingAccount[defineTransportationRoute]'
+                                                        className='size-4'
+                                                        size={'xs'}
+                                                        checked={!!values.shippingAccount?.defineTransportationRoute}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.checked)}
+                                                    />
+                                                    <span className='inline-block pl-2 text-xs'>Define Transportation Route</span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </TabContent>
 
-                                    {/* TAB 3 */}
                                     <TabContent value={tabs[3]}>
-                                        <div className='flex gap-2 w-full'>
-                                            <div className='w-full'>
-                                                <div className='mt-2 mb-1 flex justify-between'>
+                                        <div className='mt-2 flex flex-col gap-4 xl:flex-row'>
+                                            <div className='w-full min-w-0'>
+                                                <div className='mb-1 flex flex-wrap items-center justify-between gap-2'>
                                                     <span className='font-semibold'>Tax Details</span>
                                                     {isPurchaseRequest && (
                                                         <Button
@@ -964,68 +955,76 @@ export default function PurchaseOrder() {
                                                         </Button>
                                                     )}
                                                 </div>
-                                                <TaxDetails isPurchaseRequest={isPurchaseRequest} state={values} setValues={setValues} />
+                                                <div className='min-w-0 overflow-x-auto'>
+                                                    <TaxDetails isPurchaseRequest={isPurchaseRequest} state={values} setValues={setValues} />
+                                                </div>
                                             </div>
-                                            <div className='w-full'>
-                                                <span className='inline-block mb-1 mt-2 font-semibold'>Other Charges</span>
-                                                <ChargesTable<POType>
-                                                    isEditable={isPurchaseRequest && isEditable}
-                                                    values={values}
-                                                    setValues={setValues}
-                                                    handleAmountCalculation={(data) => handleAmountCalculation(data)?.amount}
-                                                />
+
+                                            <div className='w-full min-w-0'>
+                                                <span className='mb-1 inline-block font-semibold'>Other Charges</span>
+                                                <div className='min-w-0 overflow-x-auto'>
+                                                    <ChargesTable<POType>
+                                                        isEditable={isPurchaseRequest && isEditable}
+                                                        values={values}
+                                                        setValues={setValues}
+                                                        handleAmountCalculation={(data) => handleAmountCalculation(data)?.amount}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className='flex flex-col w-1/3 ml-auto my-2 py-2 px-3 border border-slate-200 text-xs'>
-                                            <div className='flex justify-between items-center'>
+
+                                        <div className='my-2 ml-auto flex w-full flex-col border border-slate-200 px-3 py-2 text-xs sm:w-1/2 xl:w-1/3'>
+                                            <div className='flex items-center justify-between'>
                                                 <span className='font-semibold'>Basic</span>
                                                 <span>{values.amount?.basic}</span>
                                             </div>
-                                            <div className='flex justify-between items-center'>
+                                            <div className='flex items-center justify-between'>
                                                 <span className='font-semibold'>Discount</span>
                                                 <span>{values.amount?.discount}</span>
                                             </div>
-                                            <div className='flex justify-between items-center'>
+                                            <div className='flex items-center justify-between'>
                                                 <span className='font-semibold'>Total Tax</span>
                                                 <span>{(values.amount?.igst || (values.amount?.cgst || 0) + (values.amount?.sgst || 0)).toFixed(2)}</span>
                                             </div>
-                                            <div className='flex justify-between items-center'>
+                                            <div className='flex items-center justify-between'>
                                                 <span className='font-semibold'>Other Charges</span>
                                                 <span>{values.amount?.otherCharges}</span>
                                             </div>
-                                            <div className='flex justify-between items-center'>
+                                            <div className='flex items-center justify-between'>
                                                 <span className='font-semibold'>Net Amount</span>
                                                 <span>{values.amount?.total}</span>
                                             </div>
                                         </div>
                                     </TabContent>
 
-                                    {/* TAB 4 */}
                                     <TabContent value={tabs[4]}>
-                                        <TermsAndConditions isEditable={isEditable} termsConditions={values.termsConditions} setFieldValue={setFieldValue} />
+                                        <div className='min-w-0 overflow-x-auto'>
+                                            <TermsAndConditions isEditable={isEditable} termsConditions={values.termsConditions} setFieldValue={setFieldValue} />
+                                        </div>
                                     </TabContent>
 
-                                    {/* TAB 5 */}
                                     <TabContent value={tabs[5]}>
-                                        <PaymentTerms values={values} setFieldValue={setFieldValue} setValues={setValues} />
+                                        <div className='min-w-0 overflow-x-auto'>
+                                            <PaymentTerms values={values} setFieldValue={setFieldValue} setValues={setValues} />
+                                        </div>
                                     </TabContent>
 
-                                    {/* TAB 6 */}
                                     <TabContent value={tabs[6]}>
-                                        <Authorize
-                                            values={values}
-                                            setValues={setValues}
-                                            setFieldValue={setFieldValue}
-                                            checkUnsavedChanges={checkUnsavedChanges}
-                                            updateAuthorize={(authorize) => setFormValues((prev) => ({ ...prev, authorize }) as POType)}
-                                        />
+                                        <div className='min-w-0 overflow-x-auto'>
+                                            <Authorize
+                                                values={values}
+                                                setValues={setValues}
+                                                setFieldValue={setFieldValue}
+                                                checkUnsavedChanges={checkUnsavedChanges}
+                                                updateAuthorize={(authorize) => setFormValues((prev) => ({ ...prev, authorize }) as POType)}
+                                            />
+                                        </div>
                                     </TabContent>
 
-                                    {/* TAB 7 */}
                                     <TabContent value={tabs[7]}>
-                                        <span className='font-semibold inline-block my-2'>PO Attachments</span>
-                                        <div className='flex gap-2'>
-                                            <div className='w-full'>
+                                        <span className='my-2 inline-block font-semibold'>PO Attachments</span>
+                                        <div className='flex flex-col gap-4 xl:flex-row'>
+                                            <div className='w-full min-w-0 overflow-x-auto'>
                                                 <AttachmentsTable<POType>
                                                     id={values?._id || 'uploaded'}
                                                     info='Uploaded'
@@ -1033,7 +1032,7 @@ export default function PurchaseOrder() {
                                                     attachments={values.attachments || []}
                                                 />
                                             </div>
-                                            <div className='w-full'>
+                                            <div className='w-full min-w-0 overflow-x-auto'>
                                                 <AttachmentsTable<POType>
                                                     id={values?._id || 'selected'}
                                                     info='Selected'
@@ -1045,23 +1044,19 @@ export default function PurchaseOrder() {
                                             </div>
                                         </div>
 
-                                        <span className='font-semibold inline-block mb-2 mt-4'>Other Attachments</span>
-                                        <div className='flex gap-2'>
+                                        <span className='mb-2 mt-4 inline-block font-semibold'>Other Attachments</span>
+                                        <div className='flex flex-col gap-3 xl:flex-row xl:gap-2'>
                                             <div className='w-full'>
-                                                <h6 className='text-[10.5px] font-bold opacity-65 mb-1' style={{ textTransform: 'uppercase' }}>
-                                                    RFQ
-                                                </h6>
+                                                <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>RFQ</h6>
                                             </div>
                                             <div className='w-full'>
-                                                <h6 className='text-[10.5px] font-bold opacity-65 mb-1' style={{ textTransform: 'uppercase' }}>
-                                                    Quotation
-                                                </h6>
+                                                <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>Quotation</h6>
                                             </div>
                                         </div>
                                     </TabContent>
                                 </Tabs>
 
-                                <div className='mt-1'>
+                                <div className='mt-1 min-w-0 overflow-x-auto'>
                                     <POItemsTable
                                         isEditable={isEditable}
                                         isPurchaseRequest={isPurchaseRequest}
