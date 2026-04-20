@@ -7,11 +7,11 @@ import { POType as _POType, VendorType, UserType } from '@/@types/app'
 import { formatDate, formatDateTime } from '@/utils/formatDate'
 import { AttachmentsDrawer } from '@/components/app/Attachments'
 import { useReactToPrint } from 'react-to-print'
-import { Button, Tag, Input } from '@/components/ui'
+import { Button, Tag, Input, Dialog } from '@/components/ui'
 import PurchaseOrderPrint from '@/components/prints/PurchaseOrder.print'
 import ApiService from '@/services/ApiService'
 import { Link } from 'react-router-dom'
-import { MdOutlineEdit } from 'react-icons/md'
+import { MdOutlineEdit, MdOutlineRemoveRedEye } from 'react-icons/md'
 import { useAppSelector } from '@/store'
 import { IoPrintOutline } from 'react-icons/io5'
 import { showAlert, showError, showWarning } from '@/utils/hoc/showAlert'
@@ -166,6 +166,74 @@ const POPrintComponent = (props: { po: POType }) => {
     )
 }
 
+const POPreviewDialogButton = ({ po }: { po: POType }) => {
+    const [vendorData, setVendorData] = useState<VendorType>()
+    const [loading, setLoading] = useState(false)
+    const [open, setOpen] = useState(false)
+
+    const handlePreview = async () => {
+        try {
+            if (vendorData?.vendorCode && String(vendorData.vendorCode) === String(po?.vendorCode)) {
+                setOpen(true)
+                return
+            }
+
+            setLoading(true)
+
+            const response = await ApiService.fetchData<any>({
+                method: 'get',
+                url: '/vendor/list',
+                params: { vendorCode: po.vendorCode },
+            })
+
+            const vendor = normalizeVendorPayload(response?.data, po.vendorCode)
+            if (!vendor) return showError('Vendor not found for this PO. Cannot preview.')
+
+            setVendorData(vendor)
+            setOpen(true)
+        } catch (error) {
+            console.error(error)
+            showError('Failed to fetch vendor data for preview. Please contact support.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <>
+            <Button variant="twoTone" size="xs" icon={<MdOutlineRemoveRedEye />} loading={loading} onClick={handlePreview} />
+
+            <Dialog isOpen={open} onClose={() => setOpen(false)} closable={false} width={1200}>
+                <div className="flex max-h-[85vh] flex-col">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                            <h5>PO Preview</h5>
+                            <div className="mt-1 text-xs text-slate-500">{po.poNumber}</div>
+                        </div>
+
+                        <Button type="button" variant="default" size="sm" onClick={() => setOpen(false)}>
+                            Close
+                        </Button>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white p-3">
+                        {vendorData ? (
+                            <PurchaseOrderPrint
+                                po={po as any}
+                                vendor={vendorData as any}
+                                hideStaticTNC={true}
+                                hideSignatures={true}
+                            />
+                        ) : (
+                            <div className="py-10 text-center text-sm text-slate-500">Loading preview...</div>
+                        )}
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    )
+}
+
 export default function PurchaseOrders() {
     const sheetRef = useRef<HTMLDivElement>(null)
     const user = useAppSelector((state) => state.auth.user)
@@ -174,7 +242,7 @@ export default function PurchaseOrders() {
     const [meUser, setMeUser] = useState<MeUser | null>(null)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             const u = await fetchMeUser()
             setMeUser(u)
         })()
@@ -195,7 +263,7 @@ export default function PurchaseOrders() {
     const [usersLoading, setUsersLoading] = useState(false)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             try {
                 setUsersLoading(true)
                 const res = await ApiService.fetchData<UserType[]>({ method: 'get', url: '/user/po-vendors' })
@@ -250,8 +318,8 @@ export default function PurchaseOrders() {
                     const status = nextAuth.some((x: any) => x.approvalStatus === 2)
                         ? 'Rejected'
                         : progressCount === nextAuth.length
-                          ? 'Authorized'
-                          : 'Initial'
+                            ? 'Authorized'
+                            : 'Initial'
 
                     return { ...r, authorize: nextAuth, progressCount, status }
                 }),
@@ -288,88 +356,90 @@ export default function PurchaseOrders() {
 
             ...(!user.vendorCode
                 ? [
-                      {
-                          id: 'edit',
-                          cell: ({ row }: { row: any }) => (
-                              <div className="min-w-[56px] flex justify-center">
-                                  <Link to={`/purchase-order?poNumber=${encodeURIComponent(row?.original?.poNumber)}`}>
-                                      <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
-                                  </Link>
-                              </div>
-                          ),
-                      },
-                  ]
+                    {
+                        id: 'edit',
+                        cell: ({ row }: { row: any }) => (
+                            <div className="min-w-[88px] flex items-center justify-center gap-2">
+                                <Link to={`/purchase-order?poNumber=${encodeURIComponent(row?.original?.poNumber)}`}>
+                                    <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
+                                </Link>
+
+                                <POPreviewDialogButton po={row.original} />
+                            </div>
+                        ),
+                    },
+                ]
                 : []),
 
             ...(!user.vendorCode
                 ? [
-                      {
-                          header: 'Approval',
-                          id: 'approval',
-                          cell: ({ row }: { row: any }) => {
-                              const po: POType = row.original
+                    {
+                        header: 'Approval',
+                        id: 'approval',
+                        cell: ({ row }: { row: any }) => {
+                            const po: POType = row.original
 
-                              if (usersLoading) return <span className="opacity-60">…</span>
-                              if (!po?.authorize?.length) return <span className="opacity-60">—</span>
+                            if (usersLoading) return <span className="opacity-60">…</span>
+                            if (!po?.authorize?.length) return <span className="opacity-60">—</span>
 
-                              const myIdx = getMyAssignedAuthIndex(po, users, user)
-                              if (myIdx < 0) return <span className="opacity-60">—</span>
+                            const myIdx = getMyAssignedAuthIndex(po, users, user)
+                            if (myIdx < 0) return <span className="opacity-60">—</span>
 
-                              const prevOk = myIdx === 0 ? true : Boolean(po.authorize?.[myIdx - 1]?.approvalStatus)
+                            const prevOk = myIdx === 0 ? true : Boolean(po.authorize?.[myIdx - 1]?.approvalStatus)
 
-                              const isActionDisabled =
-                                  !prevOk || Boolean(po.authorize?.[myIdx]?.approvalStatus) || !Boolean(po?.readyForAuthorization)
+                            const isActionDisabled =
+                                !prevOk || Boolean(po.authorize?.[myIdx]?.approvalStatus) || !Boolean(po?.readyForAuthorization)
 
-                              const levelLabel = `L${myIdx + 1}`
+                            const levelLabel = `L${myIdx + 1}`
 
-                              return (
-                                  <div className="min-w-[120px] flex flex-wrap items-center gap-1">
-                                      <Tag className="mr-1" color="blue">
-                                          {levelLabel}
-                                      </Tag>
+                            return (
+                                <div className="min-w-[120px] flex flex-wrap items-center gap-1">
+                                    <Tag className="mr-1" color="blue">
+                                        {levelLabel}
+                                    </Tag>
 
-                                      <Button
-                                          disabled={Boolean(isActionDisabled)}
-                                          variant="plain"
-                                          size="xs"
-                                          className="h-[29.33px] w-[29.33px] p-0"
-                                          icon={<BiSolidCheckSquare className="size-7 text-green-500" />}
-                                          loading={actionFlags[po._id as string]?.approving}
-                                          onClick={() =>
-                                              setApprovalDialog({
-                                                  poId: po._id as string,
-                                                  poNumber: po.poNumber as string,
-                                                  idx: myIdx,
-                                                  status: 1,
-                                                  statusLabel: 'Approve',
-                                                  comment: '',
-                                              })
-                                          }
-                                      />
+                                    <Button
+                                        disabled={Boolean(isActionDisabled)}
+                                        variant="plain"
+                                        size="xs"
+                                        className="h-[29.33px] w-[29.33px] p-0"
+                                        icon={<BiSolidCheckSquare className="size-7 text-green-500" />}
+                                        loading={actionFlags[po._id as string]?.approving}
+                                        onClick={() =>
+                                            setApprovalDialog({
+                                                poId: po._id as string,
+                                                poNumber: po.poNumber as string,
+                                                idx: myIdx,
+                                                status: 1,
+                                                statusLabel: 'Approve',
+                                                comment: '',
+                                            })
+                                        }
+                                    />
 
-                                      <Button
-                                          disabled={Boolean(isActionDisabled)}
-                                          variant="plain"
-                                          size="xs"
-                                          className="h-[29.33px] w-[29.33px] p-0"
-                                          icon={<BiSolidXSquare className="size-7 text-red-600" />}
-                                          loading={actionFlags[po._id as string]?.rejecting}
-                                          onClick={() =>
-                                              setApprovalDialog({
-                                                  poId: po._id as string,
-                                                  poNumber: po.poNumber as string,
-                                                  idx: myIdx,
-                                                  status: 2,
-                                                  statusLabel: 'Reject',
-                                                  comment: '',
-                                              })
-                                          }
-                                      />
-                                  </div>
-                              )
-                          },
-                      },
-                  ]
+                                    <Button
+                                        disabled={Boolean(isActionDisabled)}
+                                        variant="plain"
+                                        size="xs"
+                                        className="h-[29.33px] w-[29.33px] p-0"
+                                        icon={<BiSolidXSquare className="size-7 text-red-600" />}
+                                        loading={actionFlags[po._id as string]?.rejecting}
+                                        onClick={() =>
+                                            setApprovalDialog({
+                                                poId: po._id as string,
+                                                poNumber: po.poNumber as string,
+                                                idx: myIdx,
+                                                status: 2,
+                                                statusLabel: 'Reject',
+                                                comment: '',
+                                            })
+                                        }
+                                    />
+                                </div>
+                            )
+                        },
+                    },
+                ]
                 : []),
 
             {
@@ -435,10 +505,10 @@ export default function PurchaseOrders() {
                                 row.original.status === 'Completed'
                                     ? 'green'
                                     : row.original.status === 'Authorized'
-                                      ? 'indigo'
-                                      : row.original.status === 'Rejected'
-                                        ? 'red'
-                                        : 'amber'
+                                        ? 'indigo'
+                                        : row.original.status === 'Rejected'
+                                            ? 'red'
+                                            : 'amber'
                             }
                         >
                             {row.original.status}

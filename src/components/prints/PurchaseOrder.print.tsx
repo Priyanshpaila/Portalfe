@@ -74,12 +74,22 @@ const EMPTY_COMPANY = {
     email: '',
 }
 
-const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) => {
+const PurchaseOrderPrint = ({
+    po,
+    vendor,
+    hideStaticTNC = false,
+    hideSignatures = false,
+}: {
+    po: POType
+    vendor: VendorType
+    hideStaticTNC?: boolean
+    hideSignatures?: boolean
+}) => {
     // ✅ hooks must ALWAYS run
     const [meUser, setMeUser] = useState<MeUser | null>(null)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             const u = await fetchMeUser()
             setMeUser(u)
         })()
@@ -173,298 +183,311 @@ const PurchaseOrderPrint = ({ po, vendor }: { po: POType; vendor: VendorType }) 
     if (!safePo || !safeVendor) return null
 
     return (
-        <div className='flex justify-center bg-gray-100 print:bg-white p-4 print:p-0'>
-            <div className='bg-white shadow-md print:shadow-none print:p-0 font-sans text-xs border border-black'>
-                {/* Top header */}
-                <div className='flex flex-col justify-between mb-2 text-center text-xs space-y-0.5 pt-4'>
-                    <h1 className='font-bold text-sm mb-0'>
-                        {companyInfo.name}
-                        {companyInfo.divisionName ? `, ${companyInfo.divisionName}` : ''}
-                    </h1>
+        <div className='flex justify-center bg-gray-100 p-2 sm:p-4 print:bg-white print:p-0'>
+            <div className='w-full max-w-[1100px] bg-white border border-black font-sans text-[10px] sm:text-xs shadow-md print:shadow-none print:max-w-none print:w-full print:p-0'>
+                <div className='px-2 sm:px-0'>
+                    {/* Top header */}
+                    <div className='flex flex-col justify-between mb-2 px-1 pt-3 text-center text-[10px] sm:text-xs space-y-0.5 sm:pt-4'>
+                        <h1 className='mb-0 text-xs sm:text-sm font-bold break-words'>
+                            {companyInfo.name}
+                            {companyInfo.divisionName ? `, ${companyInfo.divisionName}` : ''}
+                        </h1>
 
-                    {!!companyInfo.address && <p className='mb-0'>{companyInfo.address}</p>}
-                    {!!companyInfo.cin && <p className='mb-0'>CIN No :- {companyInfo.cin}</p>}
-                </div>
+                        {!!companyInfo.address && <p className='mb-0 break-words'>{companyInfo.address}</p>}
+                        {!!companyInfo.cin && <p className='mb-0 break-words'>CIN No :- {companyInfo.cin}</p>}
+                    </div>
 
-                <div className='relative'>
-                    <h2 className='text-center text-lg font-bold mb-3'>Purchase Order</h2>
-                    <span className='absolute right-2 top-1/2 -translate-y-[50%]'>Portal PO No: {safePo.sapPONumber}</span>
+                    <div className='relative mb-2 px-1'>
+                        <h2 className='text-center text-base sm:text-lg font-bold'>Purchase Order</h2>
+                        <div className='mt-1 text-right text-[10px] sm:text-xs md:absolute md:right-2 md:top-1/2 md:mt-0 md:-translate-y-1/2 break-words'>
+                            Portal PO No: {safePo.sapPONumber}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Supplier Details */}
-                <div className='flex gap-2 border-y border-black px-2'>
-                    <div className='w-3/5 border-r border-black py-1'>
+                <div className='flex flex-col md:flex-row print:flex-row border-y border-black px-2'>
+                    <div className='w-full md:w-3/5 print:w-3/5 border-b md:border-b-0 md:border-r print:border-b-0 print:border-r border-black py-2 md:py-1'>
                         <p className='font-bold mb-1'>Details Of Supplier</p>
-                        <p className='font-bold mb-0.5'>{safePo.vendorName}</p>
-                        <p className='mb-0.5'>{safePo.vendorLocation}</p>
+                        <p className='font-bold mb-0.5 break-words'>{safePo.vendorName}</p>
+                        <p className='mb-0.5 break-words'>{safePo.vendorLocation}</p>
 
-                        <table className='w-full text-xs mt-1'>
-                            <tbody>
-                                <tr>
-                                    <td className='py-0.5 whitespace-nowrap'>State Name</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {(safeVendor as any)?.district || '-'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5 whitespace-nowrap'>State Code</td>
-                                    <td className='py-0.5'>: {(safeVendor as any)?.region || '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>GSTIN</td>
-                                    <td className='py-0.5'>: {(safeVendor as any)?.gstin || '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>MSME No.</td>
-                                    <td className='py-0.5'>: {(safeVendor as any)?.msme || '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>PAN No.</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {(safeVendor as any)?.panNumber || '-'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Contact Detail</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : Contact Name: {safePo.contactPersonName || '-'} | Mo.No:{' '}
-                                        {(safeVendor as any)?.mobile || (safeVendor as any)?.phone || '-'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Email</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {(safeVendor as any)?.email || '-'}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div className='overflow-x-auto'>
+                            <table className='w-full text-[10px] sm:text-xs mt-1 min-w-[300px]'>
+                                <tbody>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>State Name</td>
+                                        <td className='py-0.5' colSpan={3}>
+                                            : {(safeVendor as any)?.district || '-'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>State Code</td>
+                                        <td className='py-0.5'>: {(safeVendor as any)?.region || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>GSTIN</td>
+                                        <td className='py-0.5'>: {(safeVendor as any)?.gstin || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>MSME No.</td>
+                                        <td className='py-0.5'>: {(safeVendor as any)?.msme || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>PAN No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {(safeVendor as any)?.panNumber || '-'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap align-top'>Contact Detail</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : Contact Name: {safePo.contactPersonName || '-'} | Mo.No.{' '}
+                                            {(safeVendor as any)?.mobile || (safeVendor as any)?.phone || '-'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Email</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {(safeVendor as any)?.email || '-'}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div className='w-2/5'>
-                        <table className='w-full text-xs mt-1'>
-                            <tbody>
-                                <tr>
-                                    <td className='py-0.5'>Order No.</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {safePo.poNumber}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Date</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {formatDate(safePo.poDate as string)}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Amend No.</td>
-                                    <td className='py-0.5'>: {safePo.amendNumber}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Date</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {(safePo as any)?.amendDate ? formatDate((safePo as any).amendDate as string) : ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5' colSpan={1}>
-                                        Party Ref No.
-                                    </td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {safePo.partyRefNumber || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5' colSpan={1}>
-                                        Party Ref Date
-                                    </td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {safePo.partyRefDate ? formatDate(safePo.partyRefDate as string) : ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Indent No.</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {items?.[0]?.indentNumber || ''} ({items?.[0]?.csDate ? formatDate(items[0].csDate as string) : ''})
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div className='w-full md:w-2/5 print:w-2/5 py-2 md:py-1 md:pl-2 print:pl-2'>
+                        <div className='overflow-x-auto'>
+                            <table className='w-full text-[10px] sm:text-xs mt-1 min-w-[260px]'>
+                                <tbody>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Order No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {safePo.poNumber}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Date</td>
+                                        <td className='py-0.5' colSpan={3}>
+                                            : {formatDate(safePo.poDate as string)}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Amend No.</td>
+                                        <td className='py-0.5'>: {safePo.amendNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Date</td>
+                                        <td className='py-0.5' colSpan={3}>
+                                            : {(safePo as any)?.amendDate ? formatDate((safePo as any).amendDate as string) : ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Party Ref No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {safePo.partyRefNumber || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Party Ref Date</td>
+                                        <td className='py-0.5' colSpan={3}>
+                                            : {safePo.partyRefDate ? formatDate(safePo.partyRefDate as string) : ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Indent No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {items?.[0]?.indentNumber || ''} ({items?.[0]?.csDate ? formatDate(items[0].csDate as string) : ''})
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
                 {/* Order Details and Billing Address */}
-                <div className='grid grid-cols-2 gap-x-2 px-2'>
-                    <div className='border-r border-black py-1'>
+                <div className='grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-2 px-2'>
+                    <div className='border-b md:border-b-0 md:border-r print:border-b-0 print:border-r border-black py-2 md:py-1'>
                         <p className='font-bold mb-1'>Delivery Address</p>
-                        <p className='font-bold mb-0.5'>{mePersonName || companyInfo.name || '-'}</p>
-                        {!!deliveryAddressText && <p className='mb-0.5'>{deliveryAddressText}</p>}
+                        <p className='font-bold mb-0.5 break-words'>{mePersonName || companyInfo.name || '-'}</p>
+                        {!!deliveryAddressText && <p className='mb-0.5 break-words'>{deliveryAddressText}</p>}
 
-                        <table className='w-full text-xs'>
-                            <tbody>
-                                <tr>
-                                    <td className='py-0.5'>State Name</td>
-                                    <td className='py-0.5'>: {companyInfo.stateName || ''}</td>
-                                    <td className='py-0.5'>State Code</td>
-                                    <td className='py-0.5'>: {companyInfo.stateCode || ''}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>GSTIN</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.gstin || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>PAN No.</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.pan || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>CIN No.</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.cin || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Contact Detail</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.phone || ''}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div className='overflow-x-auto'>
+                            <table className='w-full text-[10px] sm:text-xs min-w-[280px]'>
+                                <tbody>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>State Name</td>
+                                        <td className='py-0.5'>: {companyInfo.stateName || ''}</td>
+                                        <td className='py-0.5 whitespace-nowrap'>State Code</td>
+                                        <td className='py-0.5'>: {companyInfo.stateCode || ''}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>GSTIN</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.gstin || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>PAN No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.pan || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>CIN No.</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.cin || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Contact Detail</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.phone || ''}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div className='py-1'>
+                    <div className='py-2 md:py-1 md:pl-2 print:pl-2'>
                         <p className='font-bold mb-1'>Billing Address</p>
-                        {!!companyInfo.address && <p className='mb-0.5'>{companyInfo.address}</p>}
+                        {!!companyInfo.address && <p className='mb-0.5 break-words'>{companyInfo.address}</p>}
 
-                        <table className='w-full text-xs mt-1'>
-                            <tbody>
-                                <tr>
-                                    <td className='py-0.5'>State Name</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.stateName || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>State Code</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.stateCode || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>GSTIN</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.gstin || ''}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>PAN No.</td>
-                                    <td className='py-0.5'>: {companyInfo.pan || ''}</td>
-                                    <td className='py-0.5'>CIN</td>
-                                    <td className='py-0.5'>: {companyInfo.cin || ''}</td>
-                                </tr>
-                                <tr>
-                                    <td className='py-0.5'>Contact Detail</td>
-                                    <td className='py-0.5' colSpan={3}>
-                                        : {companyInfo.phone || ''}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div className='overflow-x-auto'>
+                            <table className='w-full text-[10px] sm:text-xs mt-1 min-w-[280px]'>
+                                <tbody>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>State Name</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.stateName || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>State Code</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.stateCode || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>GSTIN</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.gstin || ''}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>PAN No.</td>
+                                        <td className='py-0.5 break-words'>: {companyInfo.pan || ''}</td>
+                                        <td className='py-0.5 whitespace-nowrap'>CIN</td>
+                                        <td className='py-0.5 break-words'>: {companyInfo.cin || ''}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className='py-0.5 whitespace-nowrap'>Contact Detail</td>
+                                        <td className='py-0.5 break-words' colSpan={3}>
+                                            : {companyInfo.phone || ''}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
                 {/* Description of Goods Table */}
-                <table className='w-full text-xs border border-gray-400'>
-                    <thead>
-                        <tr className='bg-gray-200'>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>SNo.</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Description of Goods</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Order Qty.</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>UOQ</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Rate(Per Unit)</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Tax on Amount</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>CGST</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>SGST</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>IGST</th>
-                            <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>CESS</th>
-                            <th className='border-b border-gray-400 px-1 py-0.5 text-center'>Net Amount</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {items.map((item: any, idx: number) => (
-                            <tr key={`${item?.itemCode || 'item'}-${idx}`}>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 text-center'>{idx + 1}</td>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 w-1/4'>
-                                    {item.itemDescription}
-                                    <br />
-                                    {item.techSpec}
-                                    <br />
-                                    Make: {item.make}
-                                    <br />
-                                    <b>Delivery Date: {formatDate(item.schedule as string)}</b>
-                                    <br />
-                                    <b>HSN/SAC No.: {item.hsnCode}</b>
-                                </td>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.qty || 0).toFixed(3)}</td>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 text-center'>{item.unit}</td>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.rate || 0).toFixed(2)}</td>
-                                <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.amount?.basic || 0).toFixed(2)}</td>
-                                <td className='align-top px-1 py-0.5 text-right'>{Number(item.amount?.total || 0).toFixed(2)}</td>
+                <div className='overflow-x-auto'>
+                    <table className='w-full min-w-[980px] text-[10px] sm:text-xs border border-gray-400'>
+                        <thead>
+                            <tr className='bg-gray-200'>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>SNo.</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Description of Goods</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Order Qty.</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>UOQ</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Rate(Per Unit)</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>Tax on Amount</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>CGST</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>SGST</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>IGST</th>
+                                <th className='border-r border-b border-gray-400 px-1 py-0.5 text-center'>CESS</th>
+                                <th className='border-b border-gray-400 px-1 py-0.5 text-center'>Net Amount</th>
                             </tr>
-                        ))}
+                        </thead>
 
-                        <tr className='font-bold'>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>Total</td>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>{totals.totalQty.toFixed(2)}</td>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
-                            <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>{totals.totalBasic.toFixed(2)}</td>
-                            <td className='border-y border-gray-400 px-1 py-0.5 text-right'>{totals.totalInvoice.toFixed(2)}</td>
-                        </tr>
-
-                        <tr>
-                            <td className='border-b border-gray-400 px-1 py-0.5' colSpan={7}>
-                                Total Invoice Value (In words): <b>{amountInWords(totals.totalInvoice)}</b>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div className='border-t border-black pt-2'>
-                    <StaticTNC />
-
-                    <div className='mt-2 text-right'>
-                        <p className='font-bold pr-2'>For {companyInfo.name || '-'}</p>
-
-                        {/* Keep signatures together if possible, but don't push TNC */}
-                        <div className='mt-3 print:break-inside-avoid grid grid-cols-2 sm:grid-cols-3 gap-4 px-2 text-center'>
-                            {safePo.authorize?.map((auth: any, idx: number) => (
-                                <div key={idx} className='flex flex-col items-center break-inside-avoid'>
-                                    <div className='h-14 w-20 flex items-center justify-center'>
-                                        {auth.digitalSignature && auth.user ? (
-                                            <img
-                                                src={`${appConfig.apiPrefix}/file/download/${auth.user}/${auth.digitalSignature}`}
-                                                alt='Signature'
-                                                className='max-h-14 max-w-20 object-contain'
-                                            />
-                                        ) : (
-                                            <div className='h-10 w-16 border border-black/30 rounded' />
-                                        )}
-                                    </div>
-
-                                    <p className='font-bold mt-1 leading-tight'>{auth?.name}</p>
-                                    <p className='text-[10px] leading-tight'>{auth?.assignOn ? formatDate(auth.assignOn as string) : ''}</p>
-                                </div>
+                        <tbody>
+                            {items.map((item: any, idx: number) => (
+                                <tr key={`${item?.itemCode || 'item'}-${idx}`}>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 text-center'>{idx + 1}</td>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 w-1/4'>
+                                        {item.itemDescription}
+                                        <br />
+                                        {item.techSpec}
+                                        <br />
+                                        Make: {item.make}
+                                        <br />
+                                        <b>Delivery Date: {formatDate(item.schedule as string)}</b>
+                                        <br />
+                                        <b>HSN/SAC No.: {item.hsnCode}</b>
+                                    </td>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.qty || 0).toFixed(3)}</td>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 text-center'>{item.unit}</td>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.rate || 0).toFixed(2)}</td>
+                                    <td className='align-top border-r border-gray-400 px-1 py-0.5 text-right'>{Number(item.amount?.basic || 0).toFixed(2)}</td>
+                                    <td className='align-top px-1 py-0.5 text-right'>{Number(item.amount?.total || 0).toFixed(2)}</td>
+                                </tr>
                             ))}
-                        </div>
-                    </div>
+
+                            <tr className='font-bold'>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>Total</td>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>{totals.totalQty.toFixed(2)}</td>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5'></td>
+                                <td className='border-y border-r border-gray-400 px-1 py-0.5 text-right'>{totals.totalBasic.toFixed(2)}</td>
+                                <td className='border-y border-gray-400 px-1 py-0.5 text-right'>{totals.totalInvoice.toFixed(2)}</td>
+                            </tr>
+
+                            <tr>
+                                <td className='border-b border-gray-400 px-1 py-0.5' colSpan={7}>
+                                    Total Invoice Value (In words): <b>{amountInWords(totals.totalInvoice)}</b>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+
+                {(!hideStaticTNC || !hideSignatures) && (
+                    <div className='border-t border-black pt-2'>
+                        {!hideStaticTNC && <StaticTNC />}
+
+                        {!hideSignatures && (
+                            <div className='mt-2 text-right'>
+                                <p className='font-bold px-2'>For {companyInfo.name || '-'}</p>
+
+                                <div className='mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 gap-4 px-2 text-center print:break-inside-avoid'>
+                                    {safePo.authorize?.map((auth: any, idx: number) => (
+                                        <div key={idx} className='flex flex-col items-center break-inside-avoid'>
+                                            <div className='h-14 w-20 flex items-center justify-center'>
+                                                {auth.digitalSignature && auth.user ? (
+                                                    <img
+                                                        src={`${appConfig.apiPrefix}/file/download/${auth.user}/${auth.digitalSignature}`}
+                                                        alt='Signature'
+                                                        className='max-h-14 max-w-20 object-contain'
+                                                    />
+                                                ) : (
+                                                    <div className='h-10 w-16 border border-black/30 rounded' />
+                                                )}
+                                            </div>
+
+                                            <p className='mt-1 font-bold leading-tight break-words'>{auth?.name}</p>
+                                            <p className='text-[10px] leading-tight'>{auth?.assignOn ? formatDate(auth.assignOn as string) : ''}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )
@@ -505,14 +528,13 @@ const StaticTNC = () => {
     ]
 
     return (
-        <div className='px-3 py-2 text-[11px] leading-[1.35]'>
-            {/* SPECIAL (keep this box intact if possible) */}
+        <div className='px-2 sm:px-3 py-2 text-[10px] sm:text-[11px] leading-[1.35]'>
             <div className='print:break-inside-avoid border border-black/40 rounded-md'>
                 <div className='px-2 py-1 border-b border-black/40'>
                     <p className='font-bold uppercase tracking-wide'>Special Terms &amp; Conditions</p>
                 </div>
 
-                <ol className='list-decimal pl-6 pr-2 py-2 space-y-1'>
+                <ol className='list-decimal pl-5 sm:pl-6 pr-2 py-2 space-y-1'>
                     {special.map((t, idx) => (
                         <li key={idx} className='text-gray-900'>
                             {t}
@@ -521,7 +543,6 @@ const StaticTNC = () => {
                 </ol>
             </div>
 
-            {/* GENERAL (allow page breaks between sections, not inside a section) */}
             <div className='mt-2 border border-black/40 rounded-md'>
                 <div className='px-2 py-1 border-b border-black/40'>
                     <p className='font-bold uppercase tracking-wide'>General Terms &amp; Conditions</p>

@@ -56,7 +56,7 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
     const [meUser, setMeUser] = useState<MeUser | null>(null)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             const u = await fetchMeUser()
             setMeUser(u)
         })()
@@ -98,7 +98,7 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
         <div className="bg-gray-100 print:bg-white p-4 print:p-0">
             <div className="max-w-[820px] mx-auto bg-white border border-black text-[11px] leading-[1.35] shadow-sm print:shadow-none">
                 {/* Header */}
-                <div className="border-b border-black px-3 py-2 relative text-center">
+                {/* <div className="border-b border-black px-3 py-2 relative text-center">
                     <div className="text-[16px] font-extrabold uppercase tracking-wide">{companyInfo.name || '—'}</div>
 
                     {companyInfo.address ? <div className="mt-0.5 text-[11px]">{companyInfo.address}</div> : null}
@@ -120,6 +120,41 @@ const RFQPrint = ({ rfq }: { rfq: Omit<RFQType, 'status'> }) => {
                     <div className="mt-2 flex justify-center">
                         <div className="px-6 py-1 border border-black font-bold text-[14px] tracking-wide">
                             REQUEST FOR QUOTATION
+                        </div>
+                    </div>
+                </div> */}
+
+                <div className="relative border-b border-black px-3 py-3 text-center">
+                    <div className="mb-2 flex justify-center md:absolute md:left-2 md:top-1/2 md:mb-0 md:-translate-y-1/2 print:hidden">
+                        <img
+                            src="/img/logo/logo-title.png"
+                            className="h-auto w-[90px] sm:w-[110px] md:w-[120px]"
+                            alt="logo"
+                        />
+                    </div>
+
+                    <div className="md:px-[120px]">
+                        <div className="text-[14px] sm:text-[16px] font-extrabold uppercase tracking-wide break-words">
+                            {companyInfo.name || '—'}
+                        </div>
+
+                        {companyInfo.address ? (
+                            <div className="mt-0.5 text-[10px] sm:text-[11px] break-words">
+                                {companyInfo.address}
+                            </div>
+                        ) : null}
+
+                        <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] sm:text-[10.5px] break-words">
+                            {companyInfo.phone ? <span className="break-all sm:break-normal">Phone: {companyInfo.phone}</span> : null}
+                            {companyInfo.email ? <span className="break-all sm:break-normal">Email: {companyInfo.email}</span> : null}
+                            {companyInfo.gstin ? <span className="break-all sm:break-normal">GSTIN: {companyInfo.gstin}</span> : null}
+                            {companyInfo.pan ? <span className="break-all sm:break-normal">PAN: {companyInfo.pan}</span> : null}
+                        </div>
+
+                        <div className="mt-2 flex justify-center">
+                            <div className="border border-black px-3 py-1 text-[12px] sm:px-6 sm:text-[14px] font-bold tracking-wide">
+                                REQUEST FOR QUOTATION
+                            </div>
                         </div>
                     </div>
                 </div>

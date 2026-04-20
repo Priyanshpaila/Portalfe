@@ -437,11 +437,62 @@ export default function PurchaseOrder() {
                 {({ values, setFieldValue, setValues, errors }) => {
                     const isPurchaseRequest = values.refDocumentType === refDocumentTypes[1].value
 
+                    const desktopActionButtons = (
+                        <>
+                            {isEditable ? (
+                                <Button type='submit' variant='solid' size='xs'>
+                                    Save
+                                </Button>
+                            ) : (
+                                <Button type='button' variant='twoTone' size='xs' onClick={() => setFlags({ amendWarning: true })}>
+                                    Edit
+                                </Button>
+                            )}
+
+                            {formValues?._id && (
+                                <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ deleteWarning: true })}>
+                                    Delete
+                                </Button>
+                            )}
+                        </>
+                    )
+
+                    const mobileActionButtons = (
+                        <>
+                            {isEditable ? (
+                                <Button type='submit' variant='solid' size='xs' className='flex-1 min-w-[120px]'>
+                                    Save
+                                </Button>
+                            ) : (
+                                <Button
+                                    type='button'
+                                    variant='twoTone'
+                                    size='xs'
+                                    className='flex-1 min-w-[120px]'
+                                    onClick={() => setFlags({ amendWarning: true })}>
+                                    Edit
+                                </Button>
+                            )}
+
+                            {formValues?._id && (
+                                <Button
+                                    type='button'
+                                    variant='solid'
+                                    size='xs'
+                                    color='red'
+                                    className='flex-1 min-w-[120px]'
+                                    onClick={() => setFlags({ deleteWarning: true })}>
+                                    Delete
+                                </Button>
+                            )}
+                        </>
+                    )
+
                     return (
-                        <Form className='mt-3 px-1'>
+                        <Form className='mt-3 px-1 pb-24 sm:pb-0'>
                             <FormContainer className='min-w-0'>
-                                <Tabs variant='underline' value={tab} onChange={setTab}>
-                                    <div className='overflow-x-auto'>
+                                {/* <Tabs variant='underline' value={tab} onChange={setTab}> */}
+                                    {/* <div className='overflow-x-auto'>
                                         <TabList className='min-w-max flex-nowrap'>
                                             {tabs.map((i) => (
                                                 <TabNav key={i} className='px-2 pt-0 whitespace-nowrap' value={i}>
@@ -468,605 +519,629 @@ export default function PurchaseOrder() {
                                                 )}
                                             </TabNav>
                                         </TabList>
-                                    </div>
+                                    </div> */}
 
-                                    <TabContent value={tabs[0]} className='text-xs'>
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 items-end'>
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
-                                                <Field
+                                    <Tabs variant='underline' value={tab} onChange={setTab}>
+                                        <div className='-mx-1 overflow-x-auto px-1 pb-1'>
+                                            <TabList className='min-w-max flex-nowrap'>
+                                                {tabs.map((i) => (
+                                                    <TabNav key={i} className='px-2 pt-0 whitespace-nowrap' value={i}>
+                                                        <span className='text-xs'>{i}</span>
+                                                    </TabNav>
+                                                ))}
+
+                                                <TabNav
                                                     disabled
-                                                    type='text'
-                                                    name='poNumber'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.poNumber}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
+                                                    className='hidden sm:flex flex-1 cursor-auto justify-end gap-1 p-0 opacity-100 min-w-max'
+                                                    value='actions'>
+                                                    {desktopActionButtons}
+                                                </TabNav>
+                                            </TabList>
+                                        </div>
 
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Amend No'>
-                                                <Field
-                                                    disabled
-                                                    type='text'
-                                                    name='amendNumber'
-                                                    component={Input}
-                                                    className='w-full px-1 py-1.5 sm:w-15'
-                                                    size={'xs'}
-                                                    value={values.amendNumber}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
+                                        <div className='sm:hidden sticky bottom-3 z-30 mt-3'>
+                                            <div className='rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur'>
+                                                <div className='flex flex-wrap gap-2'>{mobileActionButtons}</div>
+                                            </div>
+                                        </div>
 
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document Date'>
-                                                <Field
-                                                    disabled
-                                                    name='poDate'
-                                                    component={DatePicker}
-                                                    inputFormat='DD/MM/YYYY'
-                                                    size={'xs'}
-                                                    value={values.poDate || null}
-                                                    onChange={(newDate: Date) => setFieldValue('poDate', newDate)}
-                                                />
-                                            </FormItem>
+                                        <TabContent value={tabs[0]} className='text-xs'>
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 items-end'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
+                                                    <Field
+                                                        disabled
+                                                        type='text'
+                                                        name='poNumber'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.poNumber}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
 
-                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Company'>
-                                                <div className='flex w-full flex-col gap-1 sm:flex-row sm:items-end'>
-                                                    <div className='w-full min-w-0'>
-                                                        <Field name='company'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Amend No'>
+                                                    <Field
+                                                        disabled
+                                                        type='text'
+                                                        name='amendNumber'
+                                                        component={Input}
+                                                        className='w-full px-1 py-1.5 sm:w-15'
+                                                        size={'xs'}
+                                                        value={values.amendNumber}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document Date'>
+                                                    <Field
+                                                        disabled
+                                                        name='poDate'
+                                                        component={DatePicker}
+                                                        inputFormat='DD/MM/YYYY'
+                                                        size={'xs'}
+                                                        value={values.poDate || null}
+                                                        onChange={(newDate: Date) => setFieldValue('poDate', newDate)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Company'>
+                                                    <div className='flex w-full flex-col gap-1 sm:flex-row sm:items-end'>
+                                                        <div className='w-full min-w-0'>
+                                                            <Field name='company'>
+                                                                {({ field, form }: FieldProps<POType>) => {
+                                                                    const selected = companyOptions.find(
+                                                                        (i) => i.companyName?.toString() === values.company?.toString(),
+                                                                    )
+
+                                                                    return (
+                                                                        <Select
+                                                                            field={field}
+                                                                            form={form}
+                                                                            isDisabled={!isEditable || companyLoading}
+                                                                            getOptionLabel={(option) => option?.companyName}
+                                                                            getOptionValue={(option) => option?.companyName}
+                                                                            options={companyOptions}
+                                                                            className='w-full sm:w-60'
+                                                                            size={'xs'}
+                                                                            value={selected || null}
+                                                                            onChange={(option) => form.setFieldValue(field.name, option?.companyName)}
+                                                                        />
+                                                                    )
+                                                                }}
+                                                            </Field>
+                                                        </div>
+
+                                                        <Button
+                                                            disabled={!isEditable}
+                                                            type='button'
+                                                            variant='twoTone'
+                                                            size='xs'
+                                                            icon={<MdOutlineList size={16} />}
+                                                            onClick={() => setFlags({ csModal: true })}
+                                                            className='shrink-0'
+                                                        />
+                                                    </div>
+                                                </FormItem>
+
+                                                {values.refCSNumber && (
+                                                    <div className='w-full'>
+                                                        <CSModal
+                                                            csNumber={values.refCSNumber}
+                                                            customButton={({ onClick }) => (
+                                                                <Button type='button' variant='twoTone' size='xs' icon={<MdOpenInNew size={16} />} onClick={onClick}>
+                                                                    View CS
+                                                                </Button>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='purchaseType'
+                                                        component={Select}
+                                                        className='w-full sm:w-40'
+                                                        options={purchaseTypes}
+                                                        size={'xs'}
+                                                        value={purchaseTypes.find((i) => i.value === values.purchaseType)}
+                                                        onChange={(option: OptionType) => setFieldValue('purchaseType', option.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='refDocumentType'
+                                                        component={Select}
+                                                        options={refDocumentTypes}
+                                                        className='w-full sm:w-50'
+                                                        size={'xs'}
+                                                        value={refDocumentTypes.find((i) => i.value === values.refDocumentType)}
+                                                        onChange={(option: OptionType) => handleDocTypeChange(option, setValues)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
+                                                    <Field
+                                                        disabled
+                                                        type='text'
+                                                        name='refDocumentNumber'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.refDocumentNumber}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='serialNumber'
+                                                        component={Select}
+                                                        className='w-full sm:w-40'
+                                                        size={'xs'}
+                                                        value={values.serialNumber}
+                                                        onChange={(option: OptionType) => setFieldValue('serialNumber', option.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
+                                                    <Field
+                                                        disabled={!isEditable}
+                                                        name='validityDate'
+                                                        component={DatePicker}
+                                                        inputFormat='DD/MM/YYYY'
+                                                        clearable={false}
+                                                        size={'xs'}
+                                                        value={values.validityDate || null}
+                                                        onChange={(newDate: Date) => setFieldValue('validityDate', newDate)}
+                                                    />
+                                                </FormItem>
+                                            </div>
+
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 items-end'>
+                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
+                                                    <Field
+                                                        type='text'
+                                                        name='vendorCode'
+                                                        component={Select}
+                                                        options={vendors}
+                                                        getOptionLabel={(option: VendorType) => option.name || option.vendorCode}
+                                                        getOptionValue={(option: VendorType) => option.vendorCode.toString()}
+                                                        isDisabled={!isPurchaseRequest || !isEditable}
+                                                        className='w-full sm:w-50'
+                                                        size={'xs'}
+                                                        value={vendors.find((i) => i.vendorCode?.toString() === values.vendorCode?.toString())}
+                                                        onChange={(option: VendorType) =>
+                                                            setValues((prev) => ({
+                                                                ...prev,
+                                                                vendorCode: option.vendorCode?.toString(),
+                                                                vendorName: option.name?.toString(),
+                                                                vendorLocation: option.street || option.street2,
+                                                                vendorContacts: option.contactPerson?.map((i) => ({
+                                                                    label: `${i.name} (${i.email})`,
+                                                                    value: i.name,
+                                                                })),
+                                                                contactPersonName: '',
+                                                            }))
+                                                        }
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
+                                                    <Field
+                                                        disabled={true}
+                                                        type='text'
+                                                        name='vendorLocation'
+                                                        component={Input}
+                                                        className='w-full px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.vendorLocation}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
+                                                    <Field
+                                                        type='text'
+                                                        name='contactPersonName'
+                                                        component={Select}
+                                                        isDisabled={!isPurchaseRequest || !isEditable}
+                                                        options={values?.vendorContacts || []}
+                                                        className='w-full sm:w-40'
+                                                        size={'xs'}
+                                                        value={values?.vendorContacts?.find((i: any) => i.value === values.contactPersonName)}
+                                                        onChange={(option: OptionType) => setFieldValue('contactPersonName', option.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Department Name'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='departmentName'
+                                                        component={Select}
+                                                        className='w-full sm:w-50'
+                                                        size={'xs'}
+                                                        value={values.departmentName}
+                                                        onChange={(option: OptionType) => setFieldValue('departmentName', option.value)}
+                                                    />
+                                                </FormItem>
+                                            </div>
+
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
+                                                {isPurchaseRequest && (
+                                                    <>
+                                                        <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
+                                                            <Field
+                                                                disabled={!isEditable}
+                                                                name='partyRefNumber'
+                                                                component={Input}
+                                                                className='w-full sm:w-40'
+                                                                size={'xs'}
+                                                                value={values.partyRefNumber}
+                                                                onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('partyRefNumber', e.target.value)}
+                                                            />
+                                                        </FormItem>
+
+                                                        <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
+                                                            <Field
+                                                                disabled={!isEditable}
+                                                                name='partyRefDate'
+                                                                component={DatePicker}
+                                                                inputFormat='DD/MM/YYYY'
+                                                                className='w-full sm:w-40'
+                                                                size={'xs'}
+                                                                value={values.partyRefDate}
+                                                                onChange={(newDate: Date) => setFieldValue('partyRefDate', newDate)}
+                                                            />
+                                                        </FormItem>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            <div className='mt-2 flex flex-col gap-2 xl:flex-row'>
+                                                <FormItem className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Remarks'>
+                                                    <Field
+                                                        textArea
+                                                        disabled={!isEditable}
+                                                        type='text'
+                                                        name='remarks'
+                                                        className={'px-[5px] !h-15 min-h-15 py-1.5 text-xs'}
+                                                        component={Input}
+                                                        size={'xs'}
+                                                        value={values.remarks}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                {values?.amendNumber && (
+                                                    <FormItem asterisk className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Amend Remarks'>
+                                                        <Field name={'amendRemarks'}>
                                                             {({ field, form }: FieldProps<POType>) => {
-                                                                const selected = companyOptions.find(
-                                                                    (i) => i.companyName?.toString() === values.company?.toString(),
-                                                                )
-
+                                                                const isInvalid = Boolean(getIn(form.errors, field.name))
                                                                 return (
-                                                                    <Select
-                                                                        field={field}
-                                                                        form={form}
-                                                                        isDisabled={!isEditable || companyLoading}
-                                                                        getOptionLabel={(option) => option?.companyName}
-                                                                        getOptionValue={(option) => option?.companyName}
-                                                                        options={companyOptions}
-                                                                        className='w-full sm:w-60'
+                                                                    <Field
+                                                                        textArea
+                                                                        disabled={!isEditable}
+                                                                        type='text'
+                                                                        name='amendRemarks'
+                                                                        className={classNames(
+                                                                            'px-[5px] !h-15 min-h-15 py-1.5 text-xs',
+                                                                            isInvalid && 'bg-red-50 !border !border-red-500',
+                                                                        )}
+                                                                        component={Input}
                                                                         size={'xs'}
-                                                                        value={selected || null}
-                                                                        onChange={(option) => form.setFieldValue(field.name, option?.companyName)}
+                                                                        validate={(value: string) => !(!values?.amendNumber || value?.trim?.()?.length > 0)}
+                                                                        value={values.amendRemarks}
+                                                                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                                                            setFieldValue(e.target.name, e.target.value)
+                                                                        }
                                                                     />
                                                                 )
                                                             }}
                                                         </Field>
-                                                    </div>
+                                                    </FormItem>
+                                                )}
+                                            </div>
+                                        </TabContent>
 
-                                                    <Button
-                                                        disabled={!isEditable}
-                                                        type='button'
-                                                        variant='twoTone'
-                                                        size='xs'
-                                                        icon={<MdOutlineList size={16} />}
-                                                        onClick={() => setFlags({ csModal: true })}
-                                                        className='shrink-0'
+                                        <TabContent value={tabs[1]}>
+                                            <div className='min-w-0 overflow-x-auto'>
+                                                <Indents
+                                                    disabled={!isEditable}
+                                                    indents={indents}
+                                                    selection={indentSelection}
+                                                    handleSelectAll={(selectionFlag) => {
+                                                        const flags: { [key: string]: boolean } = {}
+                                                        const items: POItem[] = []
+
+                                                        if (selectionFlag)
+                                                            for (const i of indents) {
+                                                                flags[i.id] = selectionFlag
+                                                                items.push(indentToItem(i, isPurchaseRequest, values?.items?.[0]?.taxDetails))
+                                                            }
+
+                                                        setIndentSelection(flags)
+                                                        setValues((prev) => handleAmountCalculation({ ...prev, items }))
+                                                    }}
+                                                    handleSelection={(val, selectionFlag) => {
+                                                        setIndentSelection((prev) => ({ ...prev, [val.id as string]: selectionFlag }))
+                                                        setValues((prev) =>
+                                                            handleAmountCalculation({
+                                                                ...prev,
+                                                                items: selectionFlag
+                                                                    ? [...(prev.items || []), indentToItem(val, isPurchaseRequest, values?.items?.[0]?.taxDetails)]
+                                                                    : (prev.items || [])?.filter(
+                                                                        (i) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode),
+                                                                    ),
+                                                            }),
+                                                        )
+                                                    }}
+                                                />
+                                            </div>
+                                        </TabContent>
+
+                                        <TabContent value={tabs[2]}>
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end text-xs'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='shippingAccount[paymentMode]'
+                                                        component={Select}
+                                                        options={paymentModes}
+                                                        size={'xs'}
+                                                        value={paymentModes.find((i) => i.value === values?.shippingAccount?.paymentMode) || null}
+                                                        onChange={(option: OptionType) => setFieldValue('shippingAccount[paymentMode]', option.value)}
                                                     />
-                                                </div>
-                                            </FormItem>
+                                                </FormItem>
 
-                                            {values.refCSNumber && (
-                                                <div className='w-full'>
-                                                    <CSModal
-                                                        csNumber={values.refCSNumber}
-                                                        customButton={({ onClick }) => (
-                                                            <Button type='button' variant='twoTone' size='xs' icon={<MdOpenInNew size={16} />} onClick={onClick}>
-                                                                View CS
-                                                            </Button>
+                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
+                                                    <Field name='shippingAccount[freightType]'>
+                                                        {({ field, form }: FieldProps<POType>) => (
+                                                            <Select
+                                                                field={field}
+                                                                form={form}
+                                                                isDisabled={!isEditable}
+                                                                options={freightTypes}
+                                                                size={'xs'}
+                                                                className='w-full sm:w-40'
+                                                                value={freightTypes.find((i) => i.value === values.shippingAccount?.freightType) || null}
+                                                                onChange={(option) => setFieldValue('shippingAccount[freightType]', (option as any)?.value)}
+                                                            />
                                                         )}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end'>
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='purchaseType'
-                                                    component={Select}
-                                                    className='w-full sm:w-40'
-                                                    options={purchaseTypes}
-                                                    size={'xs'}
-                                                    value={purchaseTypes.find((i) => i.value === values.purchaseType)}
-                                                    onChange={(option: OptionType) => setFieldValue('purchaseType', option.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='refDocumentType'
-                                                    component={Select}
-                                                    options={refDocumentTypes}
-                                                    className='w-full sm:w-50'
-                                                    size={'xs'}
-                                                    value={refDocumentTypes.find((i) => i.value === values.refDocumentType)}
-                                                    onChange={(option: OptionType) => handleDocTypeChange(option, setValues)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
-                                                <Field
-                                                    disabled
-                                                    type='text'
-                                                    name='refDocumentNumber'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.refDocumentNumber}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='serialNumber'
-                                                    component={Select}
-                                                    className='w-full sm:w-40'
-                                                    size={'xs'}
-                                                    value={values.serialNumber}
-                                                    onChange={(option: OptionType) => setFieldValue('serialNumber', option.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    name='validityDate'
-                                                    component={DatePicker}
-                                                    inputFormat='DD/MM/YYYY'
-                                                    clearable={false}
-                                                    size={'xs'}
-                                                    value={values.validityDate || null}
-                                                    onChange={(newDate: Date) => setFieldValue('validityDate', newDate)}
-                                                />
-                                            </FormItem>
-                                        </div>
-
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 items-end'>
-                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
-                                                <Field
-                                                    type='text'
-                                                    name='vendorCode'
-                                                    component={Select}
-                                                    options={vendors}
-                                                    getOptionLabel={(option: VendorType) => option.name || option.vendorCode}
-                                                    getOptionValue={(option: VendorType) => option.vendorCode.toString()}
-                                                    isDisabled={!isPurchaseRequest || !isEditable}
-                                                    className='w-full sm:w-50'
-                                                    size={'xs'}
-                                                    value={vendors.find((i) => i.vendorCode?.toString() === values.vendorCode?.toString())}
-                                                    onChange={(option: VendorType) =>
-                                                        setValues((prev) => ({
-                                                            ...prev,
-                                                            vendorCode: option.vendorCode?.toString(),
-                                                            vendorName: option.name?.toString(),
-                                                            vendorLocation: option.street || option.street2,
-                                                            vendorContacts: option.contactPerson?.map((i) => ({
-                                                                label: `${i.name} (${i.email})`,
-                                                                value: i.name,
-                                                            })),
-                                                            contactPersonName: '',
-                                                        }))
-                                                    }
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
-                                                <Field
-                                                    disabled={true}
-                                                    type='text'
-                                                    name='vendorLocation'
-                                                    component={Input}
-                                                    className='w-full px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.vendorLocation}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
-                                                <Field
-                                                    type='text'
-                                                    name='contactPersonName'
-                                                    component={Select}
-                                                    isDisabled={!isPurchaseRequest || !isEditable}
-                                                    options={values?.vendorContacts || []}
-                                                    className='w-full sm:w-40'
-                                                    size={'xs'}
-                                                    value={values?.vendorContacts?.find((i: any) => i.value === values.contactPersonName)}
-                                                    onChange={(option: OptionType) => setFieldValue('contactPersonName', option.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Department Name'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='departmentName'
-                                                    component={Select}
-                                                    className='w-full sm:w-50'
-                                                    size={'xs'}
-                                                    value={values.departmentName}
-                                                    onChange={(option: OptionType) => setFieldValue('departmentName', option.value)}
-                                                />
-                                            </FormItem>
-                                        </div>
-
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
-                                            {isPurchaseRequest && (
-                                                <>
-                                                    <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
-                                                        <Field
-                                                            disabled={!isEditable}
-                                                            name='partyRefNumber'
-                                                            component={Input}
-                                                            className='w-full sm:w-40'
-                                                            size={'xs'}
-                                                            value={values.partyRefNumber}
-                                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('partyRefNumber', e.target.value)}
-                                                        />
-                                                    </FormItem>
-
-                                                    <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
-                                                        <Field
-                                                            disabled={!isEditable}
-                                                            name='partyRefDate'
-                                                            component={DatePicker}
-                                                            inputFormat='DD/MM/YYYY'
-                                                            className='w-full sm:w-40'
-                                                            size={'xs'}
-                                                            value={values.partyRefDate}
-                                                            onChange={(newDate: Date) => setFieldValue('partyRefDate', newDate)}
-                                                        />
-                                                    </FormItem>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        <div className='mt-2 flex flex-col gap-2 xl:flex-row'>
-                                            <FormItem className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Remarks'>
-                                                <Field
-                                                    textArea
-                                                    disabled={!isEditable}
-                                                    type='text'
-                                                    name='remarks'
-                                                    className={'px-[5px] !h-15 min-h-15 py-1.5 text-xs'}
-                                                    component={Input}
-                                                    size={'xs'}
-                                                    value={values.remarks}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            {values?.amendNumber && (
-                                                <FormItem asterisk className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Amend Remarks'>
-                                                    <Field name={'amendRemarks'}>
-                                                        {({ field, form }: FieldProps<POType>) => {
-                                                            const isInvalid = Boolean(getIn(form.errors, field.name))
-                                                            return (
-                                                                <Field
-                                                                    textArea
-                                                                    disabled={!isEditable}
-                                                                    type='text'
-                                                                    name='amendRemarks'
-                                                                    className={classNames(
-                                                                        'px-[5px] !h-15 min-h-15 py-1.5 text-xs',
-                                                                        isInvalid && 'bg-red-50 !border !border-red-500',
-                                                                    )}
-                                                                    component={Input}
-                                                                    size={'xs'}
-                                                                    validate={(value: string) => !(!values?.amendNumber || value?.trim?.()?.length > 0)}
-                                                                    value={values.amendRemarks}
-                                                                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                                                        setFieldValue(e.target.name, e.target.value)
-                                                                    }
-                                                                />
-                                                            )
-                                                        }}
                                                     </Field>
                                                 </FormItem>
-                                            )}
-                                        </div>
-                                    </TabContent>
 
-                                    <TabContent value={tabs[1]}>
-                                        <div className='min-w-0 overflow-x-auto'>
-                                            <Indents
-                                                disabled={!isEditable}
-                                                indents={indents}
-                                                selection={indentSelection}
-                                                handleSelectAll={(selectionFlag) => {
-                                                    const flags: { [key: string]: boolean } = {}
-                                                    const items: POItem[] = []
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='shippingAccount[freightRate]'
+                                                        component={Select}
+                                                        options={freightRates}
+                                                        size={'xs'}
+                                                        value={freightRates.find((i) => i.value === values.shippingAccount?.freightRate) || null}
+                                                        onChange={(option: OptionType) => setFieldValue('shippingAccount[freightRate]', option.value)}
+                                                    />
+                                                </FormItem>
 
-                                                    if (selectionFlag)
-                                                        for (const i of indents) {
-                                                            flags[i.id] = selectionFlag
-                                                            items.push(indentToItem(i, isPurchaseRequest, values?.items?.[0]?.taxDetails))
-                                                        }
-
-                                                    setIndentSelection(flags)
-                                                    setValues((prev) => handleAmountCalculation({ ...prev, items }))
-                                                }}
-                                                handleSelection={(val, selectionFlag) => {
-                                                    setIndentSelection((prev) => ({ ...prev, [val.id as string]: selectionFlag }))
-                                                    setValues((prev) =>
-                                                        handleAmountCalculation({
-                                                            ...prev,
-                                                            items: selectionFlag
-                                                                ? [...(prev.items || []), indentToItem(val, isPurchaseRequest, values?.items?.[0]?.taxDetails)]
-                                                                : (prev.items || [])?.filter(
-                                                                    (i) => !(i.indentNumber === val.indentNumber && i.itemCode === val.itemCode),
-                                                                ),
-                                                        }),
-                                                    )
-                                                }}
-                                            />
-                                        </div>
-                                    </TabContent>
-
-                                    <TabContent value={tabs[2]}>
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end text-xs'>
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='shippingAccount[paymentMode]'
-                                                    component={Select}
-                                                    options={paymentModes}
-                                                    size={'xs'}
-                                                    value={paymentModes.find((i) => i.value === values?.shippingAccount?.paymentMode) || null}
-                                                    onChange={(option: OptionType) => setFieldValue('shippingAccount[paymentMode]', option.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
-                                                <Field name='shippingAccount[freightType]'>
-                                                    {({ field, form }: FieldProps<POType>) => (
-                                                        <Select
-                                                            field={field}
-                                                            form={form}
-                                                            isDisabled={!isEditable}
-                                                            options={freightTypes}
-                                                            size={'xs'}
-                                                            className='w-full sm:w-40'
-                                                            value={freightTypes.find((i) => i.value === values.shippingAccount?.freightType) || null}
-                                                            onChange={(option) => setFieldValue('shippingAccount[freightType]', (option as any)?.value)}
-                                                        />
-                                                    )}
-                                                </Field>
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='shippingAccount[freightRate]'
-                                                    component={Select}
-                                                    options={freightRates}
-                                                    size={'xs'}
-                                                    value={freightRates.find((i) => i.value === values.shippingAccount?.freightRate) || null}
-                                                    onChange={(option: OptionType) => setFieldValue('shippingAccount[freightRate]', option.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    type='text'
-                                                    name='shippingAccount[freightAmount]'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.shippingAccount?.freightAmount}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Priority'>
-                                                <Field
-                                                    isDisabled={!isEditable}
-                                                    name='shippingAccount[priority]'
-                                                    component={Select}
-                                                    options={priorities}
-                                                    size={'xs'}
-                                                    value={priorities.find((i) => i.value === values?.shippingAccount?.priority) || null}
-                                                    onChange={(option: OptionType) => setFieldValue('shippingAccount[priority]', option.value)}
-                                                    required
-                                                />
-                                            </FormItem>
-                                        </div>
-
-                                        <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='From Location'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    type='text'
-                                                    name='shippingAccount[fromLocation]'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.shippingAccount?.fromLocation}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='To Location'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    type='text'
-                                                    name='shippingAccount[toLocation]'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.shippingAccount?.toLocation}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
-                                                <Field
-                                                    disabled={!isEditable}
-                                                    type='text'
-                                                    name='shippingAccount[shippingAddress]'
-                                                    component={Input}
-                                                    className='px-1 py-1.5'
-                                                    size={'xs'}
-                                                    value={values.shippingAccount?.shippingAddress}
-                                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
-                                                />
-                                            </FormItem>
-
-                                            <div className='flex min-h-[38px] items-center'>
-                                                <label className='!mb-0 flex cursor-pointer select-none items-center py-1.5'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
                                                     <Field
                                                         disabled={!isEditable}
-                                                        type='checkbox'
-                                                        name='shippingAccount[defineTransportationRoute]'
-                                                        className='size-4'
+                                                        type='text'
+                                                        name='shippingAccount[freightAmount]'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
                                                         size={'xs'}
-                                                        checked={!!values.shippingAccount?.defineTransportationRoute}
-                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.checked)}
+                                                        value={values.shippingAccount?.freightAmount}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
-                                                    <span className='inline-block pl-2 text-xs'>Define Transportation Route</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </TabContent>
+                                                </FormItem>
 
-                                    <TabContent value={tabs[3]}>
-                                        <div className='mt-2 flex flex-col gap-4 xl:flex-row'>
-                                            <div className='w-full min-w-0'>
-                                                <div className='mb-1 flex flex-wrap items-center justify-between gap-2'>
-                                                    <span className='font-semibold'>Tax Details</span>
-                                                    {isPurchaseRequest && (
-                                                        <Button
-                                                            type='button'
-                                                            variant='twoTone'
-                                                            size='xs'
-                                                            icon={<FaPlus size={10} />}
-                                                            disabled={!values.items?.length || !isEditable}
-                                                            onClick={() => setFlags({ taxModal: true })}>
-                                                            Add
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <div className='min-w-0 overflow-x-auto'>
-                                                    <TaxDetails isPurchaseRequest={isPurchaseRequest} state={values} setValues={setValues} />
-                                                </div>
-                                            </div>
-
-                                            <div className='w-full min-w-0'>
-                                                <span className='mb-1 inline-block font-semibold'>Other Charges</span>
-                                                <div className='min-w-0 overflow-x-auto'>
-                                                    <ChargesTable<POType>
-                                                        isEditable={isPurchaseRequest && isEditable}
-                                                        values={values}
-                                                        setValues={setValues}
-                                                        handleAmountCalculation={(data) => handleAmountCalculation(data)?.amount}
+                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Priority'>
+                                                    <Field
+                                                        isDisabled={!isEditable}
+                                                        name='shippingAccount[priority]'
+                                                        component={Select}
+                                                        options={priorities}
+                                                        size={'xs'}
+                                                        value={priorities.find((i) => i.value === values?.shippingAccount?.priority) || null}
+                                                        onChange={(option: OptionType) => setFieldValue('shippingAccount[priority]', option.value)}
+                                                        required
                                                     />
+                                                </FormItem>
+                                            </div>
+
+                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='From Location'>
+                                                    <Field
+                                                        disabled={!isEditable}
+                                                        type='text'
+                                                        name='shippingAccount[fromLocation]'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.shippingAccount?.fromLocation}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='To Location'>
+                                                    <Field
+                                                        disabled={!isEditable}
+                                                        type='text'
+                                                        name='shippingAccount[toLocation]'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.shippingAccount?.toLocation}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
+                                                    <Field
+                                                        disabled={!isEditable}
+                                                        type='text'
+                                                        name='shippingAccount[shippingAddress]'
+                                                        component={Input}
+                                                        className='px-1 py-1.5'
+                                                        size={'xs'}
+                                                        value={values.shippingAccount?.shippingAddress}
+                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
+                                                    />
+                                                </FormItem>
+
+                                                <div className='flex min-h-[38px] items-center'>
+                                                    <label className='!mb-0 flex cursor-pointer select-none items-center py-1.5'>
+                                                        <Field
+                                                            disabled={!isEditable}
+                                                            type='checkbox'
+                                                            name='shippingAccount[defineTransportationRoute]'
+                                                            className='size-4'
+                                                            size={'xs'}
+                                                            checked={!!values.shippingAccount?.defineTransportationRoute}
+                                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.checked)}
+                                                        />
+                                                        <span className='inline-block pl-2 text-xs'>Define Transportation Route</span>
+                                                    </label>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </TabContent>
 
-                                        <div className='my-2 ml-auto flex w-full flex-col border border-slate-200 px-3 py-2 text-xs sm:w-1/2 xl:w-1/3'>
-                                            <div className='flex items-center justify-between'>
-                                                <span className='font-semibold'>Basic</span>
-                                                <span>{values.amount?.basic}</span>
-                                            </div>
-                                            <div className='flex items-center justify-between'>
-                                                <span className='font-semibold'>Discount</span>
-                                                <span>{values.amount?.discount}</span>
-                                            </div>
-                                            <div className='flex items-center justify-between'>
-                                                <span className='font-semibold'>Total Tax</span>
-                                                <span>{(values.amount?.igst || (values.amount?.cgst || 0) + (values.amount?.sgst || 0)).toFixed(2)}</span>
-                                            </div>
-                                            <div className='flex items-center justify-between'>
-                                                <span className='font-semibold'>Other Charges</span>
-                                                <span>{values.amount?.otherCharges}</span>
-                                            </div>
-                                            <div className='flex items-center justify-between'>
-                                                <span className='font-semibold'>Net Amount</span>
-                                                <span>{values.amount?.total}</span>
-                                            </div>
-                                        </div>
-                                    </TabContent>
+                                        <TabContent value={tabs[3]}>
+                                            <div className='mt-2 flex flex-col gap-4 xl:flex-row'>
+                                                <div className='w-full min-w-0'>
+                                                    <div className='mb-1 flex flex-wrap items-center justify-between gap-2'>
+                                                        <span className='font-semibold'>Tax Details</span>
+                                                        {isPurchaseRequest && (
+                                                            <Button
+                                                                type='button'
+                                                                variant='twoTone'
+                                                                size='xs'
+                                                                icon={<FaPlus size={10} />}
+                                                                disabled={!values.items?.length || !isEditable}
+                                                                onClick={() => setFlags({ taxModal: true })}>
+                                                                Add
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className='min-w-0 overflow-x-auto'>
+                                                        <TaxDetails isPurchaseRequest={isPurchaseRequest} state={values} setValues={setValues} />
+                                                    </div>
+                                                </div>
 
-                                    <TabContent value={tabs[4]}>
-                                        <div className='min-w-0 overflow-x-auto'>
-                                            <TermsAndConditions isEditable={isEditable} termsConditions={values.termsConditions} setFieldValue={setFieldValue} />
-                                        </div>
-                                    </TabContent>
-
-                                    <TabContent value={tabs[5]}>
-                                        <div className='min-w-0 overflow-x-auto'>
-                                            <PaymentTerms values={values} setFieldValue={setFieldValue} setValues={setValues} />
-                                        </div>
-                                    </TabContent>
-
-                                    <TabContent value={tabs[6]}>
-                                        <div className='min-w-0 overflow-x-auto'>
-                                            <Authorize
-                                                values={values}
-                                                setValues={setValues}
-                                                setFieldValue={setFieldValue}
-                                                checkUnsavedChanges={checkUnsavedChanges}
-                                                updateAuthorize={(authorize) => setFormValues((prev) => ({ ...prev, authorize }) as POType)}
-                                            />
-                                        </div>
-                                    </TabContent>
-
-                                    <TabContent value={tabs[7]}>
-                                        <span className='my-2 inline-block font-semibold'>PO Attachments</span>
-                                        <div className='flex flex-col gap-4 xl:flex-row'>
-                                            <div className='w-full min-w-0 overflow-x-auto'>
-                                                <AttachmentsTable<POType>
-                                                    id={values?._id || 'uploaded'}
-                                                    info='Uploaded'
-                                                    isSmall={true}
-                                                    attachments={values.attachments || []}
-                                                />
+                                                <div className='w-full min-w-0'>
+                                                    <span className='mb-1 inline-block font-semibold'>Other Charges</span>
+                                                    <div className='min-w-0 overflow-x-auto'>
+                                                        <ChargesTable<POType>
+                                                            isEditable={isPurchaseRequest && isEditable}
+                                                            values={values}
+                                                            setValues={setValues}
+                                                            handleAmountCalculation={(data) => handleAmountCalculation(data)?.amount}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className='w-full min-w-0 overflow-x-auto'>
-                                                <AttachmentsTable<POType>
-                                                    id={values?._id || 'selected'}
-                                                    info='Selected'
-                                                    isEditable={true}
-                                                    isDisabled={!isEditable}
-                                                    attachments={values.attachments || []}
+
+                                            <div className='my-2 ml-auto flex w-full flex-col border border-slate-200 px-3 py-2 text-xs sm:w-1/2 xl:w-1/3'>
+                                                <div className='flex items-center justify-between'>
+                                                    <span className='font-semibold'>Basic</span>
+                                                    <span>{values.amount?.basic}</span>
+                                                </div>
+                                                <div className='flex items-center justify-between'>
+                                                    <span className='font-semibold'>Discount</span>
+                                                    <span>{values.amount?.discount}</span>
+                                                </div>
+                                                <div className='flex items-center justify-between'>
+                                                    <span className='font-semibold'>Total Tax</span>
+                                                    <span>{(values.amount?.igst || (values.amount?.cgst || 0) + (values.amount?.sgst || 0)).toFixed(2)}</span>
+                                                </div>
+                                                <div className='flex items-center justify-between'>
+                                                    <span className='font-semibold'>Other Charges</span>
+                                                    <span>{values.amount?.otherCharges}</span>
+                                                </div>
+                                                <div className='flex items-center justify-between'>
+                                                    <span className='font-semibold'>Net Amount</span>
+                                                    <span>{values.amount?.total}</span>
+                                                </div>
+                                            </div>
+                                        </TabContent>
+
+                                        <TabContent value={tabs[4]}>
+                                            <div className='min-w-0 overflow-x-auto'>
+                                                <TermsAndConditions isEditable={isEditable} termsConditions={values.termsConditions} setFieldValue={setFieldValue} />
+                                            </div>
+                                        </TabContent>
+
+                                        <TabContent value={tabs[5]}>
+                                            <div className='min-w-0 overflow-x-auto'>
+                                                <PaymentTerms values={values} setFieldValue={setFieldValue} setValues={setValues} />
+                                            </div>
+                                        </TabContent>
+
+                                        <TabContent value={tabs[6]}>
+                                            <div className='min-w-0 overflow-x-auto'>
+                                                <Authorize
+                                                    values={values}
                                                     setValues={setValues}
+                                                    setFieldValue={setFieldValue}
+                                                    checkUnsavedChanges={checkUnsavedChanges}
+                                                    updateAuthorize={(authorize) => setFormValues((prev) => ({ ...prev, authorize }) as POType)}
                                                 />
                                             </div>
-                                        </div>
+                                        </TabContent>
 
-                                        <span className='mb-2 mt-4 inline-block font-semibold'>Other Attachments</span>
-                                        <div className='flex flex-col gap-3 xl:flex-row xl:gap-2'>
-                                            <div className='w-full'>
-                                                <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>RFQ</h6>
+                                        <TabContent value={tabs[7]}>
+                                            <span className='my-2 inline-block font-semibold'>PO Attachments</span>
+                                            <div className='flex flex-col gap-4 xl:flex-row'>
+                                                <div className='w-full min-w-0 overflow-x-auto'>
+                                                    <AttachmentsTable<POType>
+                                                        id={values?._id || 'uploaded'}
+                                                        info='Uploaded'
+                                                        isSmall={true}
+                                                        attachments={values.attachments || []}
+                                                    />
+                                                </div>
+                                                <div className='w-full min-w-0 overflow-x-auto'>
+                                                    <AttachmentsTable<POType>
+                                                        id={values?._id || 'selected'}
+                                                        info='Selected'
+                                                        isEditable={true}
+                                                        isDisabled={!isEditable}
+                                                        attachments={values.attachments || []}
+                                                        setValues={setValues}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className='w-full'>
-                                                <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>Quotation</h6>
-                                            </div>
-                                        </div>
-                                    </TabContent>
-                                </Tabs>
 
-                                <div className='mt-1 min-w-0 overflow-x-auto'>
-                                    <POItemsTable
-                                        isEditable={isEditable}
-                                        isPurchaseRequest={isPurchaseRequest}
-                                        items={values.items?.filter((i) => indentSelection[getIndentID(i)]) || []}
-                                        values={values}
-                                        errors={errors}
-                                        setValues={setValues}
-                                        setFieldValue={setFieldValue}
-                                    />
-                                </div>
+                                            <span className='mb-2 mt-4 inline-block font-semibold'>Other Attachments</span>
+                                            <div className='flex flex-col gap-3 xl:flex-row xl:gap-2'>
+                                                <div className='w-full'>
+                                                    <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>RFQ</h6>
+                                                </div>
+                                                <div className='w-full'>
+                                                    <h6 className='mb-1 text-[10.5px] font-bold opacity-65 uppercase'>Quotation</h6>
+                                                </div>
+                                            </div>
+                                        </TabContent>
+                                    </Tabs>
+
+                                    <div className='mt-1 min-w-0 overflow-x-auto'>
+                                        <POItemsTable
+                                            isEditable={isEditable}
+                                            isPurchaseRequest={isPurchaseRequest}
+                                            items={values.items?.filter((i) => indentSelection[getIndentID(i)]) || []}
+                                            values={values}
+                                            errors={errors}
+                                            setValues={setValues}
+                                            setFieldValue={setFieldValue}
+                                        />
+                                    </div>
                             </FormContainer>
 
                             <TaxModal

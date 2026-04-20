@@ -9,7 +9,7 @@ import { RFQItemsDrawer } from '@/components/app/RFQItems'
 import { AttachmentsDrawer } from '@/components/app/Attachments'
 import { VendorQuotationsDrawer } from '@/components/app/VendorQuotations'
 import classNames from 'classnames'
-import { MdOutlineEdit } from 'react-icons/md'
+import { MdOutlineEdit, MdOutlineRemoveRedEye } from 'react-icons/md'
 import ApiService from '@/services/ApiService'
 import DateTimepicker from '@/components/ui/DatePicker/DateTimepicker'
 import { useReactToPrint } from 'react-to-print'
@@ -102,11 +102,11 @@ export default function RFQs() {
         if (isVendor) return
         if (meCompanyName) return
 
-        ;(async () => {
-            const me = await fetchMeUser()
-            const c = String(me?.company?.name || '').trim()
-            if (c) setMeCompanyName(c)
-        })()
+            ; (async () => {
+                const me = await fetchMeUser()
+                const c = String(me?.company?.name || '').trim()
+                if (c) setMeCompanyName(c)
+            })()
     }, [isAdminLike, isVendor, meCompanyName])
 
     const meCompanyKey = useMemo(() => normCompany(meCompanyName), [meCompanyName])
@@ -128,29 +128,71 @@ export default function RFQs() {
         return [
             { header: '#', accessorKey: '', cell: ({ cell }) => cell.row.index + 1 },
 
+            // ...(user.vendorCode
+            //     ? [
+            //         {
+            //             id: 'add_quotation',
+            //             cell: ({ row }) => (
+            //                 <Link to={`/quotation?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
+            //                     <Button variant="twoTone" size="xs" icon={<HiOutlineDocumentAdd />} />
+            //                 </Link>
+            //             ),
+            //         },
+            //     ]
+            //     : user.authority?.includes(PERMISSIONS.MANAGE_RFQ)
+            //         ? [
+            //             {
+            //                 id: 'edit_rfq',
+            //                 cell: ({ row }) => (
+            //                     <Link to={`/rfq?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
+            //                         <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
+            //                     </Link>
+            //                 ),
+            //             },
+            //         ]
+            //         : [
+            //             {
+            //                 id: 'rfq_preview',
+            //                 cell: ({ row }) => <RFQPreviewDialogButton rfq={row.original} />,
+            //             },
+            //         ]),
+
             ...(user.vendorCode
                 ? [
-                      {
-                          id: 'add_quotation',
-                          cell: ({ row }) => (
-                              <Link to={`/quotation?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
-                                  <Button variant="twoTone" size="xs" icon={<HiOutlineDocumentAdd />} />
-                              </Link>
-                          ),
-                      },
-                  ]
+                    {
+                        id: 'add_quotation',
+                        cell: ({ row }) => (
+                            <div className="flex items-center gap-2">
+                                <Link to={`/quotation?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
+                                    <Button variant="twoTone" size="xs" icon={<HiOutlineDocumentAdd />} />
+                                </Link>
+
+                                <RFQPreviewDialogButton rfq={row.original} />
+                            </div>
+                        ),
+                    },
+                ]
                 : user.authority?.includes(PERMISSIONS.MANAGE_RFQ)
-                  ? [
+                    ? [
                         {
                             id: 'edit_rfq',
                             cell: ({ row }) => (
-                                <Link to={`/rfq?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
-                                    <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
-                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Link to={`/rfq?rfqNumber=${encodeURIComponent(row.original.rfqNumber)}`}>
+                                        <Button variant="twoTone" size="xs" icon={<MdOutlineEdit />} color="red" />
+                                    </Link>
+
+                                    <RFQPreviewDialogButton rfq={row.original} />
+                                </div>
                             ),
                         },
                     ]
-                  : []),
+                    : [
+                        {
+                            id: 'rfq_preview',
+                            cell: ({ row }) => <RFQPreviewDialogButton rfq={row.original} />,
+                        },
+                    ]),
 
             { header: 'RFQ Number', accessorKey: 'rfqNumber' },
             { header: 'RFQ Date', accessorKey: 'rfqDate' },
@@ -187,47 +229,47 @@ export default function RFQs() {
 
             ...(!user.vendorCode
                 ? [
-                      {
-                          header: 'Status',
-                          accessorKey: 'status',
-                          cell: ({ row }) => (
-                              <Tag
-                                  color={row.original.status === 'Completed' ? 'green' : row.original.status === 'Authorized' ? 'indigo' : 'amber'}
-                                  className="w-full justify-center"
-                              >
-                                  {row.original.status}
-                              </Tag>
-                          ),
-                      },
-                      {
-                          header: 'Quotations',
-                          cell: ({ row }) => {
-                              const isCompleted = row.original.quotations === row.original.totalVendors
-                              return (
-                                  <div className="flex items-center justify-between gap-2">
-                                      <span>
-                                          <Tag
-                                              className="w-fit border-none p-0"
-                                              prefix={
-                                                  <span
-                                                      className={classNames(
-                                                          'size-2.5 mr-1 rounded-full block border',
-                                                          isCompleted ? 'bg-green-500 border-green-600' : 'bg-amber-500 border-amber-600/40',
-                                                      )}
-                                                  />
-                                              }
-                                          >
-                                              {isCompleted ? 'Quotations Received' : 'Pending'}
-                                          </Tag>{' '}
-                                          ({row.original.quotations + (row.original.regretVendors || 0)}/{row.original.totalVendors})
-                                      </span>
+                    {
+                        header: 'Status',
+                        accessorKey: 'status',
+                        cell: ({ row }) => (
+                            <Tag
+                                color={row.original.status === 'Completed' ? 'green' : row.original.status === 'Authorized' ? 'indigo' : 'amber'}
+                                className="w-full justify-center"
+                            >
+                                {row.original.status}
+                            </Tag>
+                        ),
+                    },
+                    {
+                        header: 'Quotations',
+                        cell: ({ row }) => {
+                            const isCompleted = row.original.quotations === row.original.totalVendors
+                            return (
+                                <div className="flex items-center justify-between gap-2">
+                                    <span>
+                                        <Tag
+                                            className="w-fit border-none p-0"
+                                            prefix={
+                                                <span
+                                                    className={classNames(
+                                                        'size-2.5 mr-1 rounded-full block border',
+                                                        isCompleted ? 'bg-green-500 border-green-600' : 'bg-amber-500 border-amber-600/40',
+                                                    )}
+                                                />
+                                            }
+                                        >
+                                            {isCompleted ? 'Quotations Received' : 'Pending'}
+                                        </Tag>{' '}
+                                        ({row.original.quotations + (row.original.regretVendors || 0)}/{row.original.totalVendors})
+                                    </span>
 
-                                      <VendorQuotationsDrawer rfqId={row.original._id as string} rfqNumber={row.original.rfqNumber} />
-                                  </div>
-                              )
-                          },
-                      },
-                  ]
+                                    <VendorQuotationsDrawer rfqId={row.original._id as string} rfqNumber={row.original.rfqNumber} />
+                                </div>
+                            )
+                        },
+                    },
+                ]
                 : []),
 
             {
@@ -245,11 +287,11 @@ export default function RFQs() {
 
             ...(!user.vendorCode
                 ? [
-                      { header: 'Created By', accessorKey: 'createdBy' },
-                      { header: 'Created At', accessorKey: 'createdAt' },
-                      { header: 'Authorized By', accessorKey: 'submittedBy' },
-                      { header: 'Authorized At', accessorKey: 'submittedAt' },
-                  ]
+                    { header: 'Created By', accessorKey: 'createdBy' },
+                    { header: 'Created At', accessorKey: 'createdAt' },
+                    { header: 'Authorized By', accessorKey: 'submittedBy' },
+                    { header: 'Authorized At', accessorKey: 'submittedAt' },
+                ]
                 : []),
 
             { header: 'Contact Person Name', accessorKey: 'contactPersonName' },
@@ -357,6 +399,96 @@ const RFQPrintComponent = (props: { rfq: RFQType }) => {
             <div ref={rfqPreviewRef} className="hidden print:block">
                 <RFQPrint rfq={rfqData as RFQType} />
             </div>
+        </>
+    )
+}
+
+const RFQPreviewDialogButton = (props: { rfq: RFQType }) => {
+    const [rfqData, setRfqData] = useState<RFQType | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [open, setOpen] = useState(false)
+    const [viewportWidth, setViewportWidth] = useState<number>(() =>
+        typeof window !== 'undefined' ? window.innerWidth : 1280,
+    )
+
+    useEffect(() => {
+        const handleResize = () => setViewportWidth(window.innerWidth)
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
+    const dialogWidth = useMemo(() => {
+        if (viewportWidth < 640) return Math.max(viewportWidth - 24, 320)
+        if (viewportWidth < 1024) return viewportWidth - 48
+        return 1200
+    }, [viewportWidth])
+
+    const handlePreview = async () => {
+        if (rfqData?._id === props.rfq?._id) {
+            setOpen(true)
+            return
+        }
+
+        setLoading(true)
+        try {
+            const [itemsRes, vendorsRes] = await Promise.all([
+                ApiService.fetchData<RFQItemType[]>({ url: `/rfq/items/${props.rfq._id}` }),
+                ApiService.fetchData<{ vendors: RFQVendorType[] }>({ url: `/rfq/vendors/${props.rfq._id}` }),
+            ])
+
+            setRfqData({
+                ...props.rfq,
+                items: itemsRes.data || [],
+                vendors: vendorsRes.data?.vendors || [],
+            })
+            setOpen(true)
+        } catch (e) {
+            showError('Failed to fetch rfq preview data. Please contact support.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <>
+            <Button
+                variant="twoTone"
+                size="xs"
+                icon={<MdOutlineRemoveRedEye />}
+                loading={loading}
+                onClick={handlePreview}
+            />
+
+            <Dialog isOpen={open} onClose={() => setOpen(false)} closable={false} width={dialogWidth}>
+                <div className="flex max-h-[85vh] min-h-0 flex-col">
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <h5>RFQ Preview</h5>
+                            <div className="mt-1 text-xs text-slate-500 break-all">{props.rfq.rfqNumber}</div>
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() => setOpen(false)}
+                        >
+                            Close
+                        </Button>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 sm:p-3">
+                        <div className="h-full overflow-auto">
+                            <div className="flex min-h-full justify-start lg:justify-center">
+                                <div className="w-full min-w-[720px] md:min-w-[820px] lg:min-w-[960px] bg-white">
+                                    <RFQPrint rfq={(rfqData || props.rfq) as RFQType} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Dialog>
         </>
     )
 }

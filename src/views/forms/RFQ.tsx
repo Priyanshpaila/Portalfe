@@ -291,7 +291,7 @@ export default function RFQ() {
     const [meUser, setMeUser] = useState<any | null>(null)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             const u = await getLoggedInUser() // your function that calls UserApi.getMe()
             setMeUser(u)
         })()
@@ -340,7 +340,7 @@ export default function RFQ() {
 
     useEffect(() => {
         if (!rfqNumber) {
-            ;(async () => {
+            ; (async () => {
                 setFlags({ loading: true })
                 try {
                     const rfqResponse = await ApiService.fetchData<{ rfqNumber: string }>({
@@ -360,7 +360,7 @@ export default function RFQ() {
             return
         }
 
-        ;(async () => {
+        ; (async () => {
             setFlags({ loading: true })
             try {
                 const rfqResponse = await ApiService.fetchData<RFQType>({
@@ -377,7 +377,7 @@ export default function RFQ() {
     }, [rfqNumber])
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             try {
                 setIndentTypeLoading(true)
                 try {
@@ -576,11 +576,118 @@ export default function RFQ() {
                     {(form) => {
                         const { values, setFieldValue: _setFieldValue, setValues: _setValues } = form
 
-                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async (_v: any, _s?: boolean) => {}
-                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async (_f: any, _v: any, _s?: boolean) => {}
+                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async (_v: any, _s?: boolean) => { }
+                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async (_f: any, _v: any, _s?: boolean) => { }
 
                         const setValues: FormikHelpers<RFQFormValues>['setValues'] = allowEdit ? (_setValues as any) : noopSetValues
                         const setFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = allowEdit ? (_setFieldValue as any) : noopSetFieldValue
+
+                        const desktopActionButtons = (
+                            <>
+                                {allowEdit && (
+                                    <>
+                                        {tabs[3] === tab && (
+                                            <>
+                                                <Button
+                                                    disabled={!allowEdit}
+                                                    type='button'
+                                                    variant='twoTone'
+                                                    size='xs'
+                                                    icon={<IoIosAdd />}
+                                                    onClick={addActionHandler}>
+                                                    Add Vendor
+                                                </Button>
+                                                <hr className='h-4 w-[1.5px] bg-slate-200' />
+                                            </>
+                                        )}
+
+                                        <Button
+                                            disabled={!allowEdit}
+                                            type='button'
+                                            variant='solid'
+                                            size='xs'
+                                            icon={<MdOutlineSave />}
+                                            onClick={() => handleSave(values as any)}>
+                                            Save
+                                        </Button>
+
+                                        <Button
+                                            disabled={!allowEdit}
+                                            type='submit'
+                                            variant='solid'
+                                            size='xs'
+                                            icon={<MdOutlineDownloadDone />}>
+                                            Submit
+                                        </Button>
+                                    </>
+                                )}
+
+                                {(formValues as any)?._id && (
+                                    <Button
+                                        type='button'
+                                        variant='solid'
+                                        size='xs'
+                                        color='red'
+                                        onClick={() => setFlags({ deleteDialog: true })}>
+                                        Delete
+                                    </Button>
+                                )}
+                            </>
+                        )
+
+                        const mobileActionButtons = (
+                            <>
+                                {allowEdit && (
+                                    <>
+                                        {tabs[3] === tab && (
+                                            <Button
+                                                disabled={!allowEdit}
+                                                type='button'
+                                                variant='twoTone'
+                                                size='xs'
+                                                icon={<IoIosAdd />}
+                                                className='flex-1 min-w-[140px]'
+                                                onClick={addActionHandler}>
+                                                Add Vendor
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            disabled={!allowEdit}
+                                            type='button'
+                                            variant='solid'
+                                            size='xs'
+                                            icon={<MdOutlineSave />}
+                                            className='flex-1 min-w-[100px]'
+                                            onClick={() => handleSave(values as any)}>
+                                            Save
+                                        </Button>
+
+                                        <Button
+                                            disabled={!allowEdit}
+                                            type='submit'
+                                            variant='solid'
+                                            size='xs'
+                                            icon={<MdOutlineDownloadDone />}
+                                            className='flex-1 min-w-[100px]'>
+                                            Submit
+                                        </Button>
+                                    </>
+                                )}
+
+                                {(formValues as any)?._id && (
+                                    <Button
+                                        type='button'
+                                        variant='solid'
+                                        size='xs'
+                                        color='red'
+                                        className='flex-1 min-w-[100px]'
+                                        onClick={() => setFlags({ deleteDialog: true })}>
+                                        Delete
+                                    </Button>
+                                )}
+                            </>
+                        )
 
                         const openIndentMetaDialog = (indent: IndentType, mode: 'select' | 'edit' = 'select') => {
                             // ✅ NO FRONTEND AUTO-GEN: keep empty if missing; server will generate
@@ -718,12 +825,12 @@ export default function RFQ() {
 
                         return (
                             <>
-                                <Form className={classNames('px-1', 'mt-3', allowEdit ? null : 'prevent-edit')}>
+                                <Form className={classNames('px-1', 'mt-3', 'pb-24 sm:pb-0', allowEdit ? null : 'prevent-edit')}>
                                     <input hidden type='file' id='file-input' onChange={(e) => onFileSelect(e, setValues as any)} />
 
                                     <FormContainer className='text-xs'>
                                         <Tabs variant='underline' value={tab} onChange={setTab}>
-                                            <TabList>
+                                            {/* <TabList>
                                                 {tabs.map((i) => (
                                                     <TabNav key={i} className='pt-0' value={i}>
                                                         <span className='text-xs'>{i}</span>
@@ -780,7 +887,32 @@ export default function RFQ() {
                                                         </Button>
                                                     )}
                                                 </TabNav>
-                                            </TabList>
+                                            </TabList> */}
+
+                                            <div className='-mx-1 overflow-x-auto px-1 pb-1'>
+                                                <TabList className='min-w-max flex-nowrap'>
+                                                    {tabs.map((i) => (
+                                                        <TabNav key={i} className='pt-0 px-2 whitespace-nowrap' value={i}>
+                                                            <span className='text-xs'>{i}</span>
+                                                        </TabNav>
+                                                    ))}
+
+                                                    <TabNav
+                                                        disabled
+                                                        className='hidden sm:flex p-0 opacity-100 cursor-auto flex-1 justify-end gap-1 min-w-max'
+                                                        value='actions'>
+                                                        {desktopActionButtons}
+                                                    </TabNav>
+                                                </TabList>
+                                            </div>
+
+                                            <div className='sm:hidden sticky bottom-3 z-30 mt-3'>
+                                                <div className='rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur'>
+                                                    <div className='flex flex-wrap gap-2'>
+                                                        {mobileActionButtons}
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             <TabContent value={tabs[0]}>
                                                 <div className='flex w-full gap-2 mt-2'>
