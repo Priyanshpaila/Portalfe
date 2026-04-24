@@ -598,7 +598,7 @@ export default function PurchaseOrder() {
                                                     </FormItem>
                                                 </div>
 
-                                                {values.refCSNumber && (
+                                                {!!values.refCSNumber && (
                                                     <div className='flex min-w-0 items-end xl:col-span-2'>
                                                         <CSModal
                                                             csNumber={values.refCSNumber}
@@ -798,7 +798,7 @@ export default function PurchaseOrder() {
                                                     />
                                                 </FormItem>
 
-                                                {values?.amendNumber && (
+                                                {Number(values?.amendNumber) > 0 && (
                                                     <FormItem asterisk className='w-full !mb-0' labelClass='text-[11px] !mb-0.5' label='Amend Remarks'>
                                                         <Field name={'amendRemarks'}>
                                                             {({ field, form }: FieldProps<POType>) => {
