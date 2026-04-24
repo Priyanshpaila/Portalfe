@@ -606,84 +606,82 @@ export default function PurchaseOrders() {
 
     return (
         <div className="w-full min-w-0">
-            <div className="overflow-x-auto">
-                <div ref={sheetRef} className="min-w-[1850px] 2xl:min-w-0">
-                    <CustomDataTable<POType>
-                        title={title}
-                        columns={columns}
-                        fetchApi={'/po/list'}
-                        actions={[
-                            {
-                                type: 'button',
-                                icon: <RiFileExcel2Line />,
-                                color: 'green',
-                                title: 'Export to Excel',
-                                handler: () => exportTableToExcel(sheetRef, { ignoreColIndexes: [0] }),
-                            },
-                        ]}
-                        filters={[
-                            { label: 'PO Number', type: 'text', value: 'poNumber' },
-                            { label: 'SAP PO Number', type: 'text', value: 'sapPONumber' },
-                            { label: 'PO Date', type: 'date-range', value: 'poDate' },
-                            { label: 'Vendor', type: 'debounced-select', value: 'vendorCode', url: '/vendor/values', hidden: Boolean(user.vendorCode) },
-                            { label: 'Source Document', type: 'select', value: 'refDocumentType', options: refDocumentTypes },
-                            { label: 'Priority', type: 'select', value: 'priority', options: priorities },
-                            {
-                                type: 'input-row',
-                                fields: [
-                                    { label: 'Indent Number', type: 'text', value: 'indentNumber' },
-                                    { label: 'Item Code', type: 'text', value: 'itemCode' },
-                                ],
-                            },
-                            {
-                                type: 'input-row',
-                                fields: [
-                                    { label: 'PO Amount - From', type: 'number', value: 'poAmountFrom' },
-                                    { label: 'To Amount', type: 'number', value: 'poAmountTo' },
-                                ],
-                            },
-                            { label: 'Item Description', type: 'text', value: 'itemDescription' },
-                            {
-                                label: 'Status',
-                                type: 'select',
-                                value: 'status',
-                                hidden: !!user.vendorCode,
-                                options: [
-                                    { label: 'Initial', value: 'initial' },
-                                    { label: 'Authorized', value: 'authorized' },
-                                ],
-                            },
-                        ]}
-                        data={tableData}
-                        setData={(_data: POType[]) => {
-                            setRawData(
-                                (_data || [])?.map((i) => {
-                                    const progressCount = i.authorize.filter((_i: any) => _i.approvalStatus === 1).length
-                                    const sorted = (i.items || [])
-                                        .slice()
-                                        .sort((a: any, b: any) => new Date(a.schedule as string).getTime() - new Date(b.schedule as string).getTime())
-                                    const priorityLabel = priorities.find((p) => p.value === i?.shippingAccount?.priority)?.label || ''
+            <div ref={sheetRef} className="w-full min-w-0">
+                <CustomDataTable<POType>
+                    title={title}
+                    columns={columns}
+                    fetchApi={'/po/list'}
+                    actions={[
+                        {
+                            type: 'button',
+                            icon: <RiFileExcel2Line />,
+                            color: 'green',
+                            title: 'Export to Excel',
+                            handler: () => exportTableToExcel(sheetRef, { ignoreColIndexes: [0] }),
+                        },
+                    ]}
+                    filters={[
+                        { label: 'PO Number', type: 'text', value: 'poNumber' },
+                        { label: 'SAP PO Number', type: 'text', value: 'sapPONumber' },
+                        { label: 'PO Date', type: 'date-range', value: 'poDate' },
+                        { label: 'Vendor', type: 'debounced-select', value: 'vendorCode', url: '/vendor/values', hidden: Boolean(user.vendorCode) },
+                        { label: 'Source Document', type: 'select', value: 'refDocumentType', options: refDocumentTypes },
+                        { label: 'Priority', type: 'select', value: 'priority', options: priorities },
+                        {
+                            type: 'input-row',
+                            fields: [
+                                { label: 'Indent Number', type: 'text', value: 'indentNumber' },
+                                { label: 'Item Code', type: 'text', value: 'itemCode' },
+                            ],
+                        },
+                        {
+                            type: 'input-row',
+                            fields: [
+                                { label: 'PO Amount - From', type: 'number', value: 'poAmountFrom' },
+                                { label: 'To Amount', type: 'number', value: 'poAmountTo' },
+                            ],
+                        },
+                        { label: 'Item Description', type: 'text', value: 'itemDescription' },
+                        {
+                            label: 'Status',
+                            type: 'select',
+                            value: 'status',
+                            hidden: !!user.vendorCode,
+                            options: [
+                                { label: 'Initial', value: 'initial' },
+                                { label: 'Authorized', value: 'authorized' },
+                            ],
+                        },
+                    ]}
+                    data={tableData}
+                    setData={(_data: POType[]) => {
+                        setRawData(
+                            (_data || [])?.map((i) => {
+                                const progressCount = i.authorize.filter((_i: any) => _i.approvalStatus === 1).length
+                                const sorted = (i.items || [])
+                                    .slice()
+                                    .sort((a: any, b: any) => new Date(a.schedule as string).getTime() - new Date(b.schedule as string).getTime())
+                                const priorityLabel = priorities.find((p) => p.value === i?.shippingAccount?.priority)?.label || ''
 
-                                    return {
-                                        ...i,
-                                        poDate: formatDate(i.poDate as string),
-                                        validityDate: formatDate(i.validityDate as string),
-                                        freightType: freightTypes.find((ft) => ft.value === i?.shippingAccount?.freightType)?.label,
-                                        scheduledDate: sorted?.[0]?.schedule ? formatDate(sorted[0].schedule as any) : '',
-                                        priority: priorityLabel,
-                                        authorizedBy:
-                                            i.status === 0
-                                                ? ''
-                                                : `${(i as any).authorizedBy} (${i.status === 1 ? 'Authorized' : i.status === 2 ? 'Rejected' : ''})`,
-                                        authorizedAt: i.status === 0 ? '' : formatDateTime((i as any).authorizedAt as string),
-                                        progressCount,
-                                        status: i.status === 2 ? 'Rejected' : progressCount === i.authorize.length ? 'Authorized' : 'Initial',
-                                    }
-                                }),
-                            )
-                        }}
-                    />
-                </div>
+                                return {
+                                    ...i,
+                                    poDate: formatDate(i.poDate as string),
+                                    validityDate: formatDate(i.validityDate as string),
+                                    freightType: freightTypes.find((ft) => ft.value === i?.shippingAccount?.freightType)?.label,
+                                    scheduledDate: sorted?.[0]?.schedule ? formatDate(sorted[0].schedule as any) : '',
+                                    priority: priorityLabel,
+                                    authorizedBy:
+                                        i.status === 0
+                                            ? ''
+                                            : `${(i as any).authorizedBy} (${i.status === 1 ? 'Authorized' : i.status === 2 ? 'Rejected' : ''})`,
+                                    authorizedAt: i.status === 0 ? '' : formatDateTime((i as any).authorizedAt as string),
+                                    progressCount,
+                                    status: i.status === 2 ? 'Rejected' : progressCount === i.authorize.length ? 'Authorized' : 'Initial',
+                                }
+                            }),
+                        )
+                    }}
+                />
             </div>
 
             <ConfirmDialog
@@ -723,6 +721,6 @@ export default function PurchaseOrders() {
                     </div>
                 </div>
             </ConfirmDialog>
-        </div>
+        </div >
     )
 }

@@ -489,41 +489,13 @@ export default function PurchaseOrder() {
                     )
 
                     return (
-                        <Form className='mt-3 px-1 pb-24 sm:pb-0'>
-                            <FormContainer className='min-w-0'>
-                                {/* <Tabs variant='underline' value={tab} onChange={setTab}> */}
-                                    {/* <div className='overflow-x-auto'>
-                                        <TabList className='min-w-max flex-nowrap'>
-                                            {tabs.map((i) => (
-                                                <TabNav key={i} className='px-2 pt-0 whitespace-nowrap' value={i}>
-                                                    <span className='text-xs'>{i}</span>
-                                                </TabNav>
-                                            ))}
-                                            <TabNav
-                                                disabled
-                                                className='flex-1 cursor-auto justify-end gap-1 p-0 opacity-100 min-w-max'
-                                                value='actions'>
-                                                {isEditable ? (
-                                                    <Button type='submit' variant='solid' size='xs'>
-                                                        Save
-                                                    </Button>
-                                                ) : (
-                                                    <Button type='button' variant='twoTone' size='xs' onClick={() => setFlags({ amendWarning: true })}>
-                                                        Edit
-                                                    </Button>
-                                                )}
-                                                {formValues?._id && (
-                                                    <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ deleteWarning: true })}>
-                                                        Delete
-                                                    </Button>
-                                                )}
-                                            </TabNav>
-                                        </TabList>
-                                    </div> */}
+                        <Form className='mt-3 px-2 pb-24 sm:px-3 lg:px-4 xl:pb-4'>
+                            <FormContainer className='min-w-0 w-full'>
+                                <div className='mx-auto w-full max-w-[1880px]'>
 
                                     <Tabs variant='underline' value={tab} onChange={setTab}>
-                                        <div className='-mx-1 overflow-x-auto px-1 pb-1'>
-                                            <TabList className='min-w-max flex-nowrap'>
+                                        <div className='-mx-2 overflow-x-auto px-2 pb-1'>
+                                            <TabList className='min-w-max flex-nowrap gap-1'>
                                                 {tabs.map((i) => (
                                                     <TabNav key={i} className='px-2 pt-0 whitespace-nowrap' value={i}>
                                                         <span className='text-xs'>{i}</span>
@@ -532,48 +504,48 @@ export default function PurchaseOrder() {
 
                                                 <TabNav
                                                     disabled
-                                                    className='hidden sm:flex flex-1 cursor-auto justify-end gap-1 p-0 opacity-100 min-w-max'
+                                                    className='hidden xl:flex flex-1 cursor-auto justify-end gap-1 p-0 opacity-100 min-w-max'
                                                     value='actions'>
                                                     {desktopActionButtons}
                                                 </TabNav>
                                             </TabList>
                                         </div>
 
-                                        <div className='sm:hidden sticky bottom-3 z-30 mt-3'>
+                                        <div className='xl:hidden sticky bottom-3 z-30 mt-3'>
                                             <div className='rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur'>
                                                 <div className='flex flex-wrap gap-2'>{mobileActionButtons}</div>
                                             </div>
                                         </div>
 
                                         <TabContent value={tabs[0]} className='text-xs'>
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 items-end'>
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
+                                            <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12 min-[1650px]:grid-cols-[repeat(14,minmax(0,1fr))]'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Document PO Number'>
                                                     <Field
                                                         disabled
                                                         type='text'
                                                         name='poNumber'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.poNumber}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Amend No'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-1' labelClass='text-[11px] !mb-0.5' label='Amend No'>
                                                     <Field
                                                         disabled
                                                         type='text'
                                                         name='amendNumber'
                                                         component={Input}
-                                                        className='w-full px-1 py-1.5 sm:w-15'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.amendNumber}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Document Date'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Document Date'>
                                                     <Field
                                                         disabled
                                                         name='poDate'
@@ -585,51 +557,60 @@ export default function PurchaseOrder() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Company'>
-                                                    <div className='flex w-full flex-col gap-1 sm:flex-row sm:items-end'>
-                                                        <div className='w-full min-w-0'>
-                                                            <Field name='company'>
-                                                                {({ field, form }: FieldProps<POType>) => {
-                                                                    const selected = companyOptions.find(
-                                                                        (i) => i.companyName?.toString() === values.company?.toString(),
-                                                                    )
+                                                <div className='min-w-0 xl:col-span-4'>
+                                                    <FormItem asterisk className='!mb-0' labelClass='text-[11px] !mb-0.5' label='Company'>
+                                                        <div className='grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_42px] md:items-end'>
+                                                            <div className='min-w-0'>
+                                                                <Field name='company'>
+                                                                    {({ field, form }: FieldProps<POType>) => {
+                                                                        const selected = companyOptions.find(
+                                                                            (i) => i.companyName?.toString() === values.company?.toString(),
+                                                                        )
 
-                                                                    return (
-                                                                        <Select
-                                                                            field={field}
-                                                                            form={form}
-                                                                            isDisabled={!isEditable || companyLoading}
-                                                                            getOptionLabel={(option) => option?.companyName}
-                                                                            getOptionValue={(option) => option?.companyName}
-                                                                            options={companyOptions}
-                                                                            className='w-full sm:w-60'
-                                                                            size={'xs'}
-                                                                            value={selected || null}
-                                                                            onChange={(option) => form.setFieldValue(field.name, option?.companyName)}
-                                                                        />
-                                                                    )
-                                                                }}
-                                                            </Field>
+                                                                        return (
+                                                                            <Select
+                                                                                field={field}
+                                                                                form={form}
+                                                                                isDisabled={!isEditable || companyLoading}
+                                                                                getOptionLabel={(option) => option?.companyName}
+                                                                                getOptionValue={(option) => option?.companyName}
+                                                                                options={companyOptions}
+                                                                                className='w-full min-w-0'
+                                                                                size={'xs'}
+                                                                                value={selected || null}
+                                                                                onChange={(option) => form.setFieldValue(field.name, option?.companyName)}
+                                                                            />
+                                                                        )
+                                                                    }}
+                                                                </Field>
+                                                            </div>
+
+                                                            <Button
+                                                                disabled={!isEditable}
+                                                                type='button'
+                                                                variant='twoTone'
+                                                                size='xs'
+                                                                icon={<MdOutlineList size={16} />}
+                                                                onClick={() => setFlags({ csModal: true })}
+                                                                className='h-[38px] w-10 shrink-0 self-end !px-0'
+                                                            />
                                                         </div>
-
-                                                        <Button
-                                                            disabled={!isEditable}
-                                                            type='button'
-                                                            variant='twoTone'
-                                                            size='xs'
-                                                            icon={<MdOutlineList size={16} />}
-                                                            onClick={() => setFlags({ csModal: true })}
-                                                            className='shrink-0'
-                                                        />
-                                                    </div>
-                                                </FormItem>
+                                                    </FormItem>
+                                                </div>
 
                                                 {values.refCSNumber && (
-                                                    <div className='w-full'>
+                                                    <div className='flex min-w-0 items-end xl:col-span-2'>
                                                         <CSModal
                                                             csNumber={values.refCSNumber}
                                                             customButton={({ onClick }) => (
-                                                                <Button type='button' variant='twoTone' size='xs' icon={<MdOpenInNew size={16} />} onClick={onClick}>
+                                                                <Button
+                                                                    type='button'
+                                                                    variant='twoTone'
+                                                                    size='xs'
+                                                                    icon={<MdOpenInNew size={16} />}
+                                                                    onClick={onClick}
+                                                                    className='w-full lg:w-auto'
+                                                                >
                                                                     View CS
                                                                 </Button>
                                                             )}
@@ -638,13 +619,13 @@ export default function PurchaseOrder() {
                                                 )}
                                             </div>
 
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end'>
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
+                                            <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12 min-[1650px]:grid-cols-[repeat(14,minmax(0,1fr))]'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Purchase Type'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='purchaseType'
                                                         component={Select}
-                                                        className='w-full sm:w-40'
+                                                        className='w-full'
                                                         options={purchaseTypes}
                                                         size={'xs'}
                                                         value={purchaseTypes.find((i) => i.value === values.purchaseType)}
@@ -652,45 +633,45 @@ export default function PurchaseOrder() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
+                                                <FormItem asterisk className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Ref. Document Type'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='refDocumentType'
                                                         component={Select}
                                                         options={refDocumentTypes}
-                                                        className='w-full sm:w-50'
+                                                        className='w-full'
                                                         size={'xs'}
                                                         value={refDocumentTypes.find((i) => i.value === values.refDocumentType)}
                                                         onChange={(option: OptionType) => handleDocTypeChange(option, setValues)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Ref. Document Number'>
                                                     <Field
                                                         disabled
                                                         type='text'
                                                         name='refDocumentNumber'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.refDocumentNumber}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Serial Number'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='serialNumber'
                                                         component={Select}
-                                                        className='w-full sm:w-40'
+                                                        className='w-full'
                                                         size={'xs'}
                                                         value={values.serialNumber}
                                                         onChange={(option: OptionType) => setFieldValue('serialNumber', option.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Validity Date'>
                                                     <Field
                                                         disabled={!isEditable}
                                                         name='validityDate'
@@ -704,8 +685,8 @@ export default function PurchaseOrder() {
                                                 </FormItem>
                                             </div>
 
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 items-end'>
-                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
+                                            <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12 min-[1650px]:grid-cols-[repeat(14,minmax(0,1fr))]'>
+                                                <FormItem asterisk className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Vendor Name'>
                                                     <Field
                                                         type='text'
                                                         name='vendorCode'
@@ -714,7 +695,7 @@ export default function PurchaseOrder() {
                                                         getOptionLabel={(option: VendorType) => option.name || option.vendorCode}
                                                         getOptionValue={(option: VendorType) => option.vendorCode.toString()}
                                                         isDisabled={!isPurchaseRequest || !isEditable}
-                                                        className='w-full sm:w-50'
+                                                        className='w-full'
                                                         size={'xs'}
                                                         value={vendors.find((i) => i.vendorCode?.toString() === values.vendorCode?.toString())}
                                                         onChange={(option: VendorType) =>
@@ -733,7 +714,7 @@ export default function PurchaseOrder() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-4' labelClass='text-[11px] !mb-0.5' label='Vendor Location'>
                                                     <Field
                                                         disabled={true}
                                                         type='text'
@@ -746,26 +727,26 @@ export default function PurchaseOrder() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Contact Person Name'>
                                                     <Field
                                                         type='text'
                                                         name='contactPersonName'
                                                         component={Select}
                                                         isDisabled={!isPurchaseRequest || !isEditable}
                                                         options={values?.vendorContacts || []}
-                                                        className='w-full sm:w-40'
+                                                        className='w-full'
                                                         size={'xs'}
                                                         value={values?.vendorContacts?.find((i: any) => i.value === values.contactPersonName)}
                                                         onChange={(option: OptionType) => setFieldValue('contactPersonName', option.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Department Name'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Department Name'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='departmentName'
                                                         component={Select}
-                                                        className='w-full sm:w-50'
+                                                        className='w-full'
                                                         size={'xs'}
                                                         value={values.departmentName}
                                                         onChange={(option: OptionType) => setFieldValue('departmentName', option.value)}
@@ -773,45 +754,43 @@ export default function PurchaseOrder() {
                                                 </FormItem>
                                             </div>
 
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
-                                                {isPurchaseRequest && (
-                                                    <>
-                                                        <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
-                                                            <Field
-                                                                disabled={!isEditable}
-                                                                name='partyRefNumber'
-                                                                component={Input}
-                                                                className='w-full sm:w-40'
-                                                                size={'xs'}
-                                                                value={values.partyRefNumber}
-                                                                onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('partyRefNumber', e.target.value)}
-                                                            />
-                                                        </FormItem>
+                                            {isPurchaseRequest && (
+                                                <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12'>
+                                                    <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Party Ref No'>
+                                                        <Field
+                                                            disabled={!isEditable}
+                                                            name='partyRefNumber'
+                                                            component={Input}
+                                                            className='w-full'
+                                                            size={'xs'}
+                                                            value={values.partyRefNumber}
+                                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('partyRefNumber', e.target.value)}
+                                                        />
+                                                    </FormItem>
 
-                                                        <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
-                                                            <Field
-                                                                disabled={!isEditable}
-                                                                name='partyRefDate'
-                                                                component={DatePicker}
-                                                                inputFormat='DD/MM/YYYY'
-                                                                className='w-full sm:w-40'
-                                                                size={'xs'}
-                                                                value={values.partyRefDate}
-                                                                onChange={(newDate: Date) => setFieldValue('partyRefDate', newDate)}
-                                                            />
-                                                        </FormItem>
-                                                    </>
-                                                )}
-                                            </div>
+                                                    <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Party Ref Date'>
+                                                        <Field
+                                                            disabled={!isEditable}
+                                                            name='partyRefDate'
+                                                            component={DatePicker}
+                                                            inputFormat='DD/MM/YYYY'
+                                                            className='w-full'
+                                                            size={'xs'}
+                                                            value={values.partyRefDate}
+                                                            onChange={(newDate: Date) => setFieldValue('partyRefDate', newDate)}
+                                                        />
+                                                    </FormItem>
+                                                </div>
+                                            )}
 
-                                            <div className='mt-2 flex flex-col gap-2 xl:flex-row'>
-                                                <FormItem className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Remarks'>
+                                            <div className='mt-2 grid grid-cols-1 gap-3 xl:grid-cols-2'>
+                                                <FormItem className='w-full !mb-0' labelClass='text-[11px] !mb-0.5' label='Remarks'>
                                                     <Field
                                                         textArea
                                                         disabled={!isEditable}
                                                         type='text'
                                                         name='remarks'
-                                                        className={'px-[5px] !h-15 min-h-15 py-1.5 text-xs'}
+                                                        className='px-[5px] !h-24 min-h-24 py-1.5 text-xs'
                                                         component={Input}
                                                         size={'xs'}
                                                         value={values.remarks}
@@ -820,7 +799,7 @@ export default function PurchaseOrder() {
                                                 </FormItem>
 
                                                 {values?.amendNumber && (
-                                                    <FormItem asterisk className='w-full' labelClass='mt-2 text-[11px] !mb-0.5' label='Amend Remarks'>
+                                                    <FormItem asterisk className='w-full !mb-0' labelClass='text-[11px] !mb-0.5' label='Amend Remarks'>
                                                         <Field name={'amendRemarks'}>
                                                             {({ field, form }: FieldProps<POType>) => {
                                                                 const isInvalid = Boolean(getIn(form.errors, field.name))
@@ -831,16 +810,14 @@ export default function PurchaseOrder() {
                                                                         type='text'
                                                                         name='amendRemarks'
                                                                         className={classNames(
-                                                                            'px-[5px] !h-15 min-h-15 py-1.5 text-xs',
+                                                                            'px-[5px] !h-24 min-h-24 py-1.5 text-xs',
                                                                             isInvalid && 'bg-red-50 !border !border-red-500',
                                                                         )}
                                                                         component={Input}
                                                                         size={'xs'}
                                                                         validate={(value: string) => !(!values?.amendNumber || value?.trim?.()?.length > 0)}
                                                                         value={values.amendRemarks}
-                                                                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                                                            setFieldValue(e.target.name, e.target.value)
-                                                                        }
+                                                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                                     />
                                                                 )
                                                             }}
@@ -887,20 +864,21 @@ export default function PurchaseOrder() {
                                         </TabContent>
 
                                         <TabContent value={tabs[2]}>
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 items-end text-xs'>
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
+                                            <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12 text-xs'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Payment Mode'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='shippingAccount[paymentMode]'
                                                         component={Select}
                                                         options={paymentModes}
                                                         size={'xs'}
+                                                        className='w-full'
                                                         value={paymentModes.find((i) => i.value === values?.shippingAccount?.paymentMode) || null}
                                                         onChange={(option: OptionType) => setFieldValue('shippingAccount[paymentMode]', option.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
+                                                <FormItem asterisk className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Freight Type'>
                                                     <Field name='shippingAccount[freightType]'>
                                                         {({ field, form }: FieldProps<POType>) => (
                                                             <Select
@@ -909,7 +887,7 @@ export default function PurchaseOrder() {
                                                                 isDisabled={!isEditable}
                                                                 options={freightTypes}
                                                                 size={'xs'}
-                                                                className='w-full sm:w-40'
+                                                                className='w-full'
                                                                 value={freightTypes.find((i) => i.value === values.shippingAccount?.freightType) || null}
                                                                 onChange={(option) => setFieldValue('shippingAccount[freightType]', (option as any)?.value)}
                                                             />
@@ -917,38 +895,40 @@ export default function PurchaseOrder() {
                                                     </Field>
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-2' labelClass='text-[11px] !mb-0.5' label='Freight Rate'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='shippingAccount[freightRate]'
                                                         component={Select}
                                                         options={freightRates}
                                                         size={'xs'}
+                                                        className='w-full'
                                                         value={freightRates.find((i) => i.value === values.shippingAccount?.freightRate) || null}
                                                         onChange={(option: OptionType) => setFieldValue('shippingAccount[freightRate]', option.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Freight Amount'>
                                                     <Field
                                                         disabled={!isEditable}
                                                         type='text'
                                                         name='shippingAccount[freightAmount]'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.shippingAccount?.freightAmount}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Priority'>
+                                                <FormItem asterisk className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='Priority'>
                                                     <Field
                                                         isDisabled={!isEditable}
                                                         name='shippingAccount[priority]'
                                                         component={Select}
                                                         options={priorities}
                                                         size={'xs'}
+                                                        className='w-full'
                                                         value={priorities.find((i) => i.value === values?.shippingAccount?.priority) || null}
                                                         onChange={(option: OptionType) => setFieldValue('shippingAccount[priority]', option.value)}
                                                         required
@@ -956,47 +936,47 @@ export default function PurchaseOrder() {
                                                 </FormItem>
                                             </div>
 
-                                            <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 items-end'>
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='From Location'>
+                                            <div className='mt-2 grid grid-cols-1 gap-x-3 gap-y-2 md:grid-cols-2 xl:grid-cols-12'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='From Location'>
                                                     <Field
                                                         disabled={!isEditable}
                                                         type='text'
                                                         name='shippingAccount[fromLocation]'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.shippingAccount?.fromLocation}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='To Location'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-3' labelClass='text-[11px] !mb-0.5' label='To Location'>
                                                     <Field
                                                         disabled={!isEditable}
                                                         type='text'
                                                         name='shippingAccount[toLocation]'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.shippingAccount?.toLocation}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem className='!mb-0 w-full' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
+                                                <FormItem className='!mb-0 min-w-0 xl:col-span-4' labelClass='text-[11px] !mb-0.5' label='Shipping Address'>
                                                     <Field
                                                         disabled={!isEditable}
                                                         type='text'
                                                         name='shippingAccount[shippingAddress]'
                                                         component={Input}
-                                                        className='px-1 py-1.5'
+                                                        className='w-full px-1 py-1.5'
                                                         size={'xs'}
                                                         value={values.shippingAccount?.shippingAddress}
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue(e.target.name, e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <div className='flex min-h-[38px] items-center'>
+                                                <div className='flex min-h-[38px] items-center xl:col-span-2'>
                                                     <label className='!mb-0 flex cursor-pointer select-none items-center py-1.5'>
                                                         <Field
                                                             disabled={!isEditable}
@@ -1048,7 +1028,7 @@ export default function PurchaseOrder() {
                                                 </div>
                                             </div>
 
-                                            <div className='my-2 ml-auto flex w-full flex-col border border-slate-200 px-3 py-2 text-xs sm:w-1/2 xl:w-1/3'>
+                                            <div className='my-2 ml-auto flex w-full max-w-[380px] flex-col rounded-lg border border-slate-200 px-3 py-2 text-xs'>
                                                 <div className='flex items-center justify-between'>
                                                     <span className='font-semibold'>Basic</span>
                                                     <span>{values.amount?.basic}</span>
@@ -1142,6 +1122,7 @@ export default function PurchaseOrder() {
                                             setFieldValue={setFieldValue}
                                         />
                                     </div>
+                                </div>
                             </FormContainer>
 
                             <TaxModal
