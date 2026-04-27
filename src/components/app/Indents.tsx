@@ -8,6 +8,7 @@ import { companies } from '@/utils/data'
 import DataTable from '@/components/shared/DataTable'
 
 export type IndentRowType = Omit<IndentType, 'items' | 'date'> & IndentItemType & RFQType & RFQItemType & { date: string }
+
 type IndentType = Omit<_IndentType, 'indentQty' | 'preRFQQty' | 'prePOQty' | 'balanceQty' | 'lastChangedOn'> & {
     _id?: string
     _documentDate?: string
@@ -25,12 +26,20 @@ interface IndentsProps {
     selection: { [id: string]: boolean }
     handleSelection: (row: IndentType, selected: boolean) => void
     handleSelectAll: (selected: boolean) => void
-
-    // ✅ NEW
     onEditIndent?: (row: IndentType) => void
+    hideGeneratedColumns?: boolean
 }
 
-function IndentsComponent({ disabled, indents, selection, handleSelection, handleSelectAll, onEditIndent }: IndentsProps) {
+function IndentsComponent({
+    disabled,
+    indents,
+    selection,
+    handleSelection,
+    handleSelectAll,
+    onEditIndent,
+    hideGeneratedColumns = false,
+    className,
+}: IndentsProps) {
     const [pageData, setPageData] = useState({ pageIndex: 1, pageSize: 320 })
 
     const _indents: IndentType[] = useMemo(() => {
@@ -47,7 +56,7 @@ function IndentsComponent({ disabled, indents, selection, handleSelection, handl
     }, [indents])
 
     const columns: ColumnDef<IndentType>[] = useMemo(() => {
-        return [
+        const allColumns: ColumnDef<IndentType>[] = [
             { enableSorting: false, header: '#', cell: ({ cell }) => cell.row.index + 1 + '.' },
 
             {
@@ -71,18 +80,12 @@ function IndentsComponent({ disabled, indents, selection, handleSelection, handl
                 ),
             },
 
-            // ✅ NEW: Edit column (button opens modal)
             {
                 id: 'edit',
                 enableSorting: false,
                 header: 'Edit',
                 cell: ({ row }) => {
                     const r = row.original
-                    const id = r.id || r._id || ''
-                    const isSelected = Boolean(selection[String(id)])
-
-                    // If you want "Edit only when selected", uncomment this:
-                    // if (!isSelected) return null;
 
                     return (
                         <div className="flex justify-center">
@@ -101,54 +104,72 @@ function IndentsComponent({ disabled, indents, selection, handleSelection, handl
                 },
             },
 
-            // { enableSorting: false, header: 'Company', accessorKey: 'company' },
-            { enableSorting: false, header: 'Indent No', accessorKey: 'indentNumber' },
-            { enableSorting: false, header: 'Indent Date', accessorKey: '_documentDate' },
-            // { enableSorting: false, header: 'Line No', accessorKey: 'lineNumber' },
-            { enableSorting: false, header: 'Item Code', accessorKey: 'itemCode' },
-            { enableSorting: false, header: 'Item Description', accessorKey: 'itemDescription' },
-            { enableSorting: false, header: 'Tech Specification', accessorKey: 'techSpec' },
-            { enableSorting: false, header: 'Make', accessorKey: 'make' },
-            { enableSorting: false, header: 'Unit', accessorKey: 'unitOfMeasure' },
-            { enableSorting: false, header: 'Indent Item Remark', accessorKey: 'remark' },
-            { enableSorting: false, header: 'Cost Center', accessorKey: 'costCenter' },
-            { enableSorting: false, header: 'Requested By', accessorKey: 'requestedBy' },
-            { enableSorting: false, header: 'Indent Type', accessorKey: 'documentType' },
-            { enableSorting: false, header: 'Last Changed On', accessorKey: 'lastChangedOn' },
+            { id: 'indentNumber', enableSorting: false, header: 'Indent No', accessorKey: 'indentNumber' },
+            { id: '_documentDate', enableSorting: false, header: 'Indent Date', accessorKey: '_documentDate' },
+            { id: 'itemCode', enableSorting: false, header: 'Item Code', accessorKey: 'itemCode' },
+            { id: 'itemDescription', enableSorting: false, header: 'Item Description', accessorKey: 'itemDescription' },
+            { id: 'techSpec', enableSorting: false, header: 'Tech Specification', accessorKey: 'techSpec' },
+            { id: 'make', enableSorting: false, header: 'Make', accessorKey: 'make' },
+            { id: 'unitOfMeasure', enableSorting: false, header: 'Unit', accessorKey: 'unitOfMeasure' },
+            { id: 'remark', enableSorting: false, header: 'Indent Item Remark', accessorKey: 'remark' },
+            { id: 'costCenter', enableSorting: false, header: 'Cost Center', accessorKey: 'costCenter' },
+            { id: 'requestedBy', enableSorting: false, header: 'Requested By', accessorKey: 'requestedBy' },
+            { id: 'documentType', enableSorting: false, header: 'Indent Type', accessorKey: 'documentType' },
+            { id: 'lastChangedOn', enableSorting: false, header: 'Last Changed On', accessorKey: 'lastChangedOn' },
 
             {
+                id: 'indentQty',
                 enableSorting: false,
                 header: 'Indent QTY',
                 accessorKey: 'indentQty',
                 cell: ({ row }) => <span className="inline-block w-full text-right">{row.original.indentQty}</span>,
             },
             {
+                id: 'preRFQQty',
                 enableSorting: false,
                 header: 'Pre RFQ Qty',
                 accessorKey: 'preRFQQty',
                 cell: ({ row }) => <span className="inline-block w-full text-right">{row.original.preRFQQty}</span>,
             },
             {
+                id: 'prePOQty',
                 enableSorting: false,
                 header: 'Pre PO Qty',
                 accessorKey: 'prePOQty',
                 cell: ({ row }) => <span className="inline-block w-full text-right">{row.original.prePOQty}</span>,
             },
             {
+                id: 'balanceQty',
                 enableSorting: false,
                 header: 'Balance Qty',
                 accessorKey: 'balanceQty',
                 cell: ({ row }) => <span className="inline-block w-full text-right">{row.original.balanceQty}</span>,
             },
         ]
-    }, [disabled, indents, selection, handleSelectAll, handleSelection, onEditIndent])
+
+        if (!hideGeneratedColumns) return allColumns
+
+        const columnsToHide = new Set([
+            'indentNumber',
+            '_documentDate',
+            'costCenter',
+            'requestedBy',
+            'documentType',
+            'lastChangedOn',
+            'preRFQQty',
+            'prePOQty',
+            'balanceQty',
+        ])
+
+        return allColumns.filter((col: any) => !columnsToHide.has(String(col.id || col.accessorKey || '')))
+    }, [disabled, indents, selection, handleSelectAll, handleSelection, onEditIndent, hideGeneratedColumns])
 
     return (
         <DataTable<IndentType>
             sliceRows
             columns={columns}
             data={_indents}
-            className="max-h-[45vh] overflow-auto"
+            className={className || 'max-h-[45vh] overflow-auto'}
             pagingData={{
                 total: indents.length,
                 pageIndex: pageData.pageIndex,
@@ -164,11 +185,20 @@ const Indents = memo(IndentsComponent, (prev, next) => {
     const selectionChanged = JSON.stringify(prev.selection) !== JSON.stringify(next.selection)
     const disabledChanged = prev.disabled !== next.disabled
     const indentsLengthChanged = prev.indents.length !== next.indents.length
-
-    // ✅ include onEditIndent ref change check (optional but safe)
+    const indentsReferenceChanged = prev.indents !== next.indents
     const onEditChanged = prev.onEditIndent !== next.onEditIndent
+    const hideGeneratedColumnsChanged = prev.hideGeneratedColumns !== next.hideGeneratedColumns
+    const classNameChanged = prev.className !== next.className
 
-    return !selectionChanged && !disabledChanged && !indentsLengthChanged && !onEditChanged
+    return (
+        !selectionChanged &&
+        !disabledChanged &&
+        !indentsLengthChanged &&
+        !indentsReferenceChanged &&
+        !onEditChanged &&
+        !hideGeneratedColumnsChanged &&
+        !classNameChanged
+    )
 })
 
 export default Indents

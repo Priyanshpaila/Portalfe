@@ -289,9 +289,10 @@ export default function RFQ() {
     const [indentTypeLoading, setIndentTypeLoading] = useState(false)
 
     const [meUser, setMeUser] = useState<any | null>(null)
+    const [showAllIndentColumns, setShowAllIndentColumns] = useState(false)
 
     useEffect(() => {
-        ; (async () => {
+        ;(async () => {
             const u = await getLoggedInUser() // your function that calls UserApi.getMe()
             setMeUser(u)
         })()
@@ -340,7 +341,7 @@ export default function RFQ() {
 
     useEffect(() => {
         if (!rfqNumber) {
-            ; (async () => {
+            ;(async () => {
                 setFlags({ loading: true })
                 try {
                     const rfqResponse = await ApiService.fetchData<{ rfqNumber: string }>({
@@ -360,7 +361,7 @@ export default function RFQ() {
             return
         }
 
-        ; (async () => {
+        ;(async () => {
             setFlags({ loading: true })
             try {
                 const rfqResponse = await ApiService.fetchData<RFQType>({
@@ -377,7 +378,7 @@ export default function RFQ() {
     }, [rfqNumber])
 
     useEffect(() => {
-        ; (async () => {
+        ;(async () => {
             try {
                 setIndentTypeLoading(true)
                 try {
@@ -576,8 +577,8 @@ export default function RFQ() {
                     {(form) => {
                         const { values, setFieldValue: _setFieldValue, setValues: _setValues } = form
 
-                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async (_v: any, _s?: boolean) => { }
-                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async (_f: any, _v: any, _s?: boolean) => { }
+                        const noopSetValues: FormikHelpers<RFQFormValues>['setValues'] = async (_v: any, _s?: boolean) => {}
+                        const noopSetFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = async (_f: any, _v: any, _s?: boolean) => {}
 
                         const setValues: FormikHelpers<RFQFormValues>['setValues'] = allowEdit ? (_setValues as any) : noopSetValues
                         const setFieldValue: FormikHelpers<RFQFormValues>['setFieldValue'] = allowEdit ? (_setFieldValue as any) : noopSetFieldValue
@@ -611,24 +612,14 @@ export default function RFQ() {
                                             Save
                                         </Button>
 
-                                        <Button
-                                            disabled={!allowEdit}
-                                            type='submit'
-                                            variant='solid'
-                                            size='xs'
-                                            icon={<MdOutlineDownloadDone />}>
+                                        <Button disabled={!allowEdit} type='submit' variant='solid' size='xs' icon={<MdOutlineDownloadDone />}>
                                             Submit
                                         </Button>
                                     </>
                                 )}
 
                                 {(formValues as any)?._id && (
-                                    <Button
-                                        type='button'
-                                        variant='solid'
-                                        size='xs'
-                                        color='red'
-                                        onClick={() => setFlags({ deleteDialog: true })}>
+                                    <Button type='button' variant='solid' size='xs' color='red' onClick={() => setFlags({ deleteDialog: true })}>
                                         Delete
                                     </Button>
                                 )}
@@ -908,9 +899,7 @@ export default function RFQ() {
 
                                             <div className='sm:hidden sticky bottom-3 z-30 mt-3'>
                                                 <div className='rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur'>
-                                                    <div className='flex flex-wrap gap-2'>
-                                                        {mobileActionButtons}
-                                                    </div>
+                                                    <div className='flex flex-wrap gap-2'>{mobileActionButtons}</div>
                                                 </div>
                                             </div>
 
@@ -1012,21 +1001,46 @@ export default function RFQ() {
                                             </TabContent>
 
                                             <TabContent value={tabs[1]}>
+                                                <div className='mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end'>
+                                                    <label className='inline-flex w-fit cursor-pointer select-none items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:bg-slate-50'>
+                                                        <span className='text-xs font-medium text-slate-700'>Show all columns</span>
+
+                                                        <input
+                                                            type='checkbox'
+                                                            className='sr-only'
+                                                            checked={showAllIndentColumns}
+                                                            onChange={(e) => setShowAllIndentColumns(e.target.checked)}
+                                                        />
+
+                                                        <span
+                                                            className={classNames(
+                                                                'relative h-5 w-9 rounded-full transition-colors duration-200',
+                                                                showAllIndentColumns ? 'bg-blue-600' : 'bg-slate-300',
+                                                            )}>
+                                                            <span
+                                                                className={classNames(
+                                                                    'absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-in-out',
+                                                                    showAllIndentColumns ? 'translate-x-4' : 'translate-x-0',
+                                                                )}
+                                                            />
+                                                        </span>
+                                                    </label>
+                                                </div>
+
                                                 <Indents
                                                     className='h-[45vh] overflow-auto'
                                                     indents={companyFilteredIndents}
                                                     disabled={!allowEdit}
                                                     selection={indentSelection}
                                                     onEditIndent={handleEditIndent}
+                                                    hideGeneratedColumns={!showAllIndentColumns}
                                                     handleSelectAll={(selectionFlag) => {
-                                                        // ✅ Unselect all
                                                         if (!selectionFlag) {
                                                             setIndentSelection({})
                                                             setValues((prev: any) => ({ ...prev, items: [] }))
                                                             return
                                                         }
 
-                                                        // ✅ Select all only if ALL VISIBLE indents are complete
                                                         const incomplete = (companyFilteredIndents || []).filter((i: any) => !isIndentComplete(i))
                                                         if (incomplete.length) {
                                                             showWarning(
@@ -1035,7 +1049,6 @@ export default function RFQ() {
                                                             return
                                                         }
 
-                                                        // ✅ mark all visible selected
                                                         const map: Record<string, boolean> = {}
                                                         for (const i of companyFilteredIndents || []) {
                                                             const id = indentId(i)
@@ -1043,7 +1056,6 @@ export default function RFQ() {
                                                         }
                                                         setIndentSelection(map)
 
-                                                        // ✅ add items for all visible indents (no duplicates)
                                                         setValues((prev: any) => {
                                                             const existing = prev.items || []
                                                             const keys = new Set(existing.map(itemKey))
@@ -1064,7 +1076,6 @@ export default function RFQ() {
                                                     handleSelection={(val: any, selectionFlag) => {
                                                         const id = indentId(val)
 
-                                                        // ✅ selecting single row
                                                         if (selectionFlag) {
                                                             if (isIndentComplete(val)) {
                                                                 setIndentSelection((prev) => ({ ...prev, [id]: true }))
@@ -1087,7 +1098,6 @@ export default function RFQ() {
                                                             return
                                                         }
 
-                                                        // ✅ unselect -> remove immediately
                                                         setIndentSelection((prev) => ({ ...prev, [id]: false }))
 
                                                         setValues((prev: any) => {
