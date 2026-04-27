@@ -18,7 +18,7 @@ const getInitialItemCharge = (currItem, taxable: number) => {
         }
 
         taxDetails.push(tax)
-    }
+    } 
 
     return taxDetails
 }

@@ -3,7 +3,18 @@ import { Form, Formik, FormikHelpers } from 'formik'
 import ApiService from '@/services/ApiService'
 import { Button, Dialog, FormContainer, FormItem, Input, Spinner } from '@/components/ui'
 import { showAlert, showError } from '@/utils/hoc/showAlert'
-import { MdAdd, MdClose, MdPerson, MdEmail, MdPhone, MdInfoOutline } from 'react-icons/md'
+import {
+    MdAdd,
+    MdClose,
+    MdPerson,
+    MdEmail,
+    MdPhone,
+    MdInfoOutline,
+    MdBusiness,
+    MdLocationOn,
+    MdBadge,
+    MdCheckCircle,
+} from 'react-icons/md'
 
 type ContactPersonForm = {
     name: string
@@ -78,7 +89,37 @@ function emptyContact(): ContactPersonForm {
     return { name: '', email: '', fullPhoneNumber: '' }
 }
 
-/** ✅ Auto-fill City + District from PIN */
+function SectionCard({
+    icon,
+    title,
+    subtitle,
+    children,
+}: {
+    icon: React.ReactNode
+    title: string
+    subtitle: string
+    children: React.ReactNode
+}) {
+    return (
+        <div className='overflow-hidden rounded-2xl sm:rounded-[26px] border border-slate-200/80 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.05)]'>
+            <div className='border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50 px-4 py-4 sm:px-6'>
+                <div className='flex items-start gap-3'>
+                    <div className='grid h-10 w-10 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-slate-100 text-base sm:text-lg text-slate-700'>
+                        {icon}
+                    </div>
+                    <div className='min-w-0'>
+                        <div className='text-sm sm:text-base font-semibold text-slate-900'>{title}</div>
+                        <div className='mt-0.5 text-xs leading-5 text-slate-500'>{subtitle}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className='px-4 py-4 sm:px-6 sm:py-6'>{children}</div>
+        </div>
+    )
+}
+
+/** Auto-fill City + District from PIN */
 function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: FormikHelpers<VendorRegisterValues>['setFieldValue'] }) {
     const [pinStatus, setPinStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
     const [pinStatusMsg, setPinStatusMsg] = useState<string>('')
@@ -86,7 +127,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
     const lastPinRef = useRef<string | null>(null)
     const setFieldValueRef = useRef(setFieldValue)
 
-    // keep latest setFieldValue without triggering effect re-run
     useEffect(() => {
         setFieldValueRef.current = setFieldValue
     }, [setFieldValue])
@@ -96,7 +136,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
             .replace(/\D/g, '')
             .slice(0, 6)
 
-        // if not 6 digits, don't fetch
         if (!/^\d{6}$/.test(p)) {
             lastPinRef.current = null
             setPinStatus('idle')
@@ -104,7 +143,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
             return
         }
 
-        // avoid refetch for same pin
         if (lastPinRef.current === p) return
 
         const ctrl = new AbortController()
@@ -112,7 +150,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
             setPinStatus('loading')
             setPinStatusMsg('Looking up city & district…')
 
-            // clear stale values while loading (optional)
             setFieldValueRef.current('city', '')
             setFieldValueRef.current('district', '')
 
@@ -126,7 +163,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
             }
 
             try {
-                // 1) India Postal API
                 try {
                     const res = await fetch(`https://api.postalpincode.in/pincode/${p}`, {
                         signal: ctrl.signal,
@@ -137,8 +173,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
 
                     if (d?.Status === 'Success' && d?.PostOffice?.length) {
                         const po = d.PostOffice[0]
-
-                        // ✅ you want city + district
                         const district = String(po?.District || '').trim()
                         const city = String(po?.Block || po?.Division || po?.Name || district || '').trim()
 
@@ -150,7 +184,6 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
 
                     throw new Error('Postal API returned no result')
                 } catch {
-                    // 2) Fallback: Zippopotam (district not available; we put state into district as fallback)
                     const res2 = await fetch(`https://api.zippopotam.us/IN/${p}`, {
                         signal: ctrl.signal,
                         mode: 'cors',
@@ -180,18 +213,17 @@ function PinAutoFill({ pin, setFieldValue }: { pin: string; setFieldValue: Formi
 
     if (pinStatus === 'idle') return null
 
-    const cls = pinStatus === 'loading' ? 'text-[11px] text-slate-600' : pinStatus === 'success' ? 'text-[11px] text-emerald-700' : 'text-[11px] text-red-700'
-
-    const box =
+    const wrapperClass =
         pinStatus === 'loading'
-            ? 'mt-1 rounded-lg border bg-slate-50 px-2 py-1'
+            ? 'mt-2 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600'
             : pinStatus === 'success'
-              ? 'mt-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1'
-              : 'mt-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1'
+              ? 'mt-2 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700'
+              : 'mt-2 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700'
 
     return (
-        <div className={box}>
-            <div className={cls}>{pinStatusMsg}</div>
+        <div className={wrapperClass}>
+            {pinStatus === 'success' ? <MdCheckCircle className='text-sm shrink-0' /> : <MdInfoOutline className='text-sm shrink-0' />}
+            <span>{pinStatusMsg}</span>
         </div>
     )
 }
@@ -244,20 +276,41 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
     }
 
     return (
-        <Dialog isOpen={open} onClose={onClose} width={860}>
-            <div className='flex max-h-[85vh] flex-col'>
+        <Dialog isOpen={open} onClose={onClose} width={960}>
+            <div className='flex max-h-[92vh] flex-col overflow-hidden rounded-2xl sm:rounded-[30px] bg-white'>
                 {/* Header */}
-                <div className='flex items-start justify-between gap-4 pb-3 border-b'>
-                    <div>
-                        <h5 className='text-lg font-semibold'>Register as Vendor</h5>
-                        <div className='mt-0.5 text-xs opacity-70'>
-                            Submit details for approval. Your request will be visible in the pending approvals list.
+                <div className='relative overflow-hidden border-b border-slate-200 bg-white'>
+                    <div className='absolute right-0 top-0 h-32 w-32 sm:h-40 sm:w-40 rounded-full bg-blue-50 blur-3xl' />
+                    <div className='absolute left-0 top-0 h-24 w-24 sm:h-32 sm:w-32 rounded-full bg-slate-100 blur-3xl' />
+
+                    <div className='relative z-10 px-4 py-4 sm:px-7 sm:py-6'>
+                        <div className='flex items-start justify-between gap-4'>
+                            <div className='min-w-0 max-w-3xl'>
+                                <div className='mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-slate-700'>
+                                    <MdBusiness className='text-sm' />
+                                    Vendor Onboarding
+                                </div>
+
+                                <h5 className='text-lg sm:text-2xl font-semibold tracking-tight text-slate-900'>Register as Vendor</h5>
+                                <p className='mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-slate-500'>
+                                    Submit your company and contact details for approval. Once reviewed, the vendor request will appear in the pending
+                                    approvals list.
+                                </p>
+                            </div>
+
+                            <button
+                                type='button'
+                                onClick={onClose}
+                                aria-label='Close'
+                                className='inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900'>
+                                <MdClose className='text-xl' />
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Body */}
-                <div className='flex-1 overflow-y-auto pr-1 pt-4'>
+                <div className='flex-1 overflow-y-auto bg-[linear-gradient(to_bottom,#f8fafc,#f1f5f9)] px-3 py-3 sm:px-6 sm:py-5'>
                     <Formik initialValues={initialValues} validate={validate} onSubmit={handleSubmit}>
                         {({ values, setFieldValue, errors, touched, isValid, dirty }) => {
                             const contactError = typeof (errors as any)?.contactPerson === 'string' ? (errors as any)?.contactPerson : ''
@@ -265,20 +318,16 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
 
                             return (
                                 <Form className='min-h-full'>
-                                    <FormContainer>
-                                        {/* Vendor info */}
-                                        <div className='rounded-2xl border bg-white p-4'>
-                                            <div className='mb-3 flex items-center gap-2'>
-                                                <div className='text-sm font-semibold'>Vendor Information</div>
-                                                <div className='text-xs opacity-60'>Basic details</div>
-                                            </div>
-
-                                            {/* ✅ Rearranged layout: address group (street -> postal -> city/district) */}
-                                            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                                    <FormContainer className='space-y-4 sm:space-y-5'>
+                                        <SectionCard
+                                            icon={<MdBusiness />}
+                                            title='Vendor Information'
+                                            subtitle='Basic business and identification details used for onboarding.'>
+                                            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
                                                 <FormItem
                                                     asterisk
                                                     label='Vendor Name'
-                                                    labelClass='text-xs !mb-1'
+                                                    labelClass='text-xs font-semibold !mb-1.5 text-slate-700'
                                                     invalid={!!(touched.name && errors.name)}
                                                     errorMessage={errors.name as any}>
                                                     <Input
@@ -289,25 +338,25 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk label='GSTIN' labelClass='text-xs !mb-1'>
+                                                <FormItem asterisk label='GSTIN' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.gstin}
-                                                        placeholder='GSTIN'
+                                                        placeholder='Enter GSTIN'
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('gstin', e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk label='PAN Number' labelClass='text-xs !mb-1'>
+                                                <FormItem asterisk label='PAN Number' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.panNumber}
-                                                        placeholder='PAN'
+                                                        placeholder='Enter PAN number'
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('panNumber', e.target.value)}
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='MSME' labelClass='text-xs !mb-1'>
+                                                <FormItem label='MSME' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.msme}
@@ -315,8 +364,15 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setFieldValue('msme', e.target.value)}
                                                     />
                                                 </FormItem>
+                                            </div>
+                                        </SectionCard>
 
-                                                <FormItem label='Street / Address' labelClass='text-xs !mb-1' className='md:col-span-2'>
+                                        <SectionCard
+                                            icon={<MdLocationOn />}
+                                            title='Address Details'
+                                            subtitle='Location information for communication and vendor records.'>
+                                            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                                                <FormItem label='Street / Address' labelClass='text-xs font-semibold !mb-1.5 text-slate-700' className='md:col-span-2'>
                                                     <Input
                                                         size='sm'
                                                         value={values.street}
@@ -325,7 +381,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Postal Code' labelClass='text-xs !mb-1'>
+                                                <FormItem label='Postal Code' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.postalCode}
@@ -338,7 +394,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     <PinAutoFill pin={values.postalCode} setFieldValue={setFieldValue} />
                                                 </FormItem>
 
-                                                <FormItem label='City (auto)' labelClass='text-xs !mb-1'>
+                                                <FormItem label='City' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.city}
@@ -347,7 +403,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='District (auto)' labelClass='text-xs !mb-1'>
+                                                <FormItem label='District' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.district}
@@ -356,7 +412,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Region' labelClass='text-xs !mb-1'>
+                                                <FormItem label='Region' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.region}
@@ -365,7 +421,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Language Key' labelClass='text-xs !mb-1'>
+                                                <FormItem label='Language Key' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                     <Input
                                                         size='sm'
                                                         value={values.languageKey}
@@ -374,21 +430,24 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     />
                                                 </FormItem>
                                             </div>
-                                        </div>
+                                        </SectionCard>
 
-                                        {/* Contact section */}
-                                        <div className='mt-4 rounded-2xl border bg-slate-50 p-4'>
-                                            <div className='flex items-start justify-between gap-3'>
+                                        <SectionCard
+                                            icon={<MdBadge />}
+                                            title='Contact Person'
+                                            subtitle='Add at least one person with a usable contact detail for further communication.'>
+                                            <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
                                                 <div>
                                                     <div className='flex items-center gap-2'>
-                                                        <div className='text-sm font-semibold'>Contact Person</div>
-                                                        <span className='rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700'>
+                                                        <span className='text-sm font-semibold text-slate-900'>Contacts</span>
+                                                        <span className='rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700'>
                                                             {contactCount}
                                                         </span>
                                                     </div>
-                                                    <div className='mt-0.5 text-xs opacity-70 flex items-center gap-1'>
-                                                        <MdInfoOutline className='opacity-60' />
-                                                        Add at least one contact method (name / email / phone).
+
+                                                    <div className='mt-1 flex items-center gap-1 text-xs text-slate-500'>
+                                                        <MdInfoOutline className='opacity-70' />
+                                                        Name, email, or phone is enough for at least one row.
                                                     </div>
                                                 </div>
 
@@ -403,41 +462,48 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                             </div>
 
                                             {contactError ? (
-                                                <div className='mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700'>
+                                                <div className='mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700'>
                                                     {contactError}
                                                 </div>
                                             ) : null}
 
-                                            <div className='mt-4 space-y-3'>
+                                            <div className='mt-5 space-y-4'>
                                                 {(values.contactPerson || []).map((c, idx) => (
-                                                    <div key={idx} className='rounded-2xl border bg-white p-4 shadow-sm'>
-                                                        <div className='mb-3 flex items-center justify-between gap-3'>
-                                                            <div className='flex items-center gap-2'>
-                                                                <span className='grid h-7 w-7 place-items-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700'>
+                                                    <div
+                                                        key={idx}
+                                                        className='rounded-2xl sm:rounded-[22px] border border-slate-200 bg-[linear-gradient(to_bottom,#ffffff,#f8fafc)] p-4 shadow-sm'>
+                                                        <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                                                            <div className='flex items-center gap-3'>
+                                                                <span className='grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm'>
                                                                     {idx + 1}
                                                                 </span>
-                                                                <div className='text-sm font-medium'>Contact #{idx + 1}</div>
+                                                                <div>
+                                                                    <div className='text-sm font-semibold text-slate-900'>Contact #{idx + 1}</div>
+                                                                    <div className='text-[11px] text-slate-500'>Primary vendor communication</div>
+                                                                </div>
                                                             </div>
 
                                                             {contactCount > 1 ? (
-                                                                <Button
-                                                                    type='button'
-                                                                    size='xs'
-                                                                    variant='plain'
-                                                                    color='red'
-                                                                    icon={<MdClose />}
-                                                                    onClick={() => {
-                                                                        const next = [...values.contactPerson]
-                                                                        next.splice(idx, 1)
-                                                                        setFieldValue('contactPerson', next.length ? next : [emptyContact()])
-                                                                    }}>
-                                                                    Remove
-                                                                </Button>
+                                                                <div className='sm:self-auto self-end'>
+                                                                    <Button
+                                                                        type='button'
+                                                                        size='xs'
+                                                                        variant='plain'
+                                                                        color='red'
+                                                                        icon={<MdClose />}
+                                                                        onClick={() => {
+                                                                            const next = [...values.contactPerson]
+                                                                            next.splice(idx, 1)
+                                                                            setFieldValue('contactPerson', next.length ? next : [emptyContact()])
+                                                                        }}>
+                                                                        Remove
+                                                                    </Button>
+                                                                </div>
                                                             ) : null}
                                                         </div>
 
-                                                        <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
-                                                            <FormItem label='Name' labelClass='text-xs !mb-1'>
+                                                        <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+                                                            <FormItem label='Name' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                                 <Input
                                                                     size='sm'
                                                                     prefix={<MdPerson className='opacity-70' />}
@@ -449,7 +515,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                                 />
                                                             </FormItem>
 
-                                                            <FormItem label='Email' labelClass='text-xs !mb-1'>
+                                                            <FormItem label='Email' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                                 <Input
                                                                     size='sm'
                                                                     prefix={<MdEmail className='opacity-70' />}
@@ -461,7 +527,7 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                                 />
                                                             </FormItem>
 
-                                                            <FormItem label='Phone' labelClass='text-xs !mb-1'>
+                                                            <FormItem label='Phone' labelClass='text-xs font-semibold !mb-1.5 text-slate-700'>
                                                                 <Input
                                                                     size='sm'
                                                                     prefix={<MdPhone className='opacity-70' />}
@@ -476,16 +542,30 @@ export default function VendorRegisterDialog({ open, onClose }: { open: boolean;
                                                     </div>
                                                 ))}
                                             </div>
-                                        </div>
+                                        </SectionCard>
 
                                         {/* Footer */}
-                                        <div className='sticky bottom-0 mt-5 flex justify-end gap-2 border-t bg-white/95 py-3 backdrop-blur'>
-                                            <Button type='button' size='sm' variant='plain' disabled={submitting} onClick={onClose}>
-                                                Cancel
-                                            </Button>
-                                            <Button type='submit' size='sm' variant='solid' disabled={submitting || !dirty || !isValid}>
-                                                {submitting ? <Spinner size={16} /> : 'Submit for Approval'}
-                                            </Button>
+                                        <div className='sticky bottom-0 z-10 -mx-3 border-t border-slate-200 bg-white/95 px-3 py-4 backdrop-blur sm:-mx-6 sm:px-6'>
+                                            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                                                <div className='text-xs text-slate-500'>
+                                                    Please review vendor details before submitting for approval.
+                                                </div>
+
+                                                <div className='flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3'>
+                                                    <Button type='button' size='sm' variant='plain' disabled={submitting} onClick={onClose}>
+                                                        Cancel
+                                                    </Button>
+
+                                                    <Button
+                                                        type='submit'
+                                                        size='sm'
+                                                        variant='solid'
+                                                        disabled={submitting || !dirty || !isValid}
+                                                        className='min-w-[170px] sm:min-w-[190px] rounded-xl'>
+                                                        {submitting ? <Spinner size={16} /> : 'Submit for Approval'}
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </FormContainer>
                                 </Form>

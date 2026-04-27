@@ -26,10 +26,9 @@ const validationSchema = Yup.object().shape({
 })
 
 const SignInForm = (props: SignInFormProps) => {
-    const { disableSubmit = false, className } = props
+    const { disableSubmit = false, className, forgotPasswordUrl } = props
 
     const [message, setMessage] = useTimeOutMessage()
-
     const { signIn } = useAuth()
 
     const onSignIn = async (values: SignInFormSchema, setSubmitting: (isSubmitting: boolean) => void) => {
@@ -48,10 +47,11 @@ const SignInForm = (props: SignInFormProps) => {
     return (
         <div className={className}>
             {message && (
-                <Alert showIcon className='mb-4' type='danger'>
+                <Alert showIcon className='mb-5 rounded-2xl border border-red-200 bg-red-50/90 shadow-sm' type='danger'>
                     <>{message}</>
                 </Alert>
             )}
+
             <Formik
                 initialValues={{
                     username: '',
@@ -67,16 +67,48 @@ const SignInForm = (props: SignInFormProps) => {
                 }}>
                 {({ touched, errors, isSubmitting }) => (
                     <Form>
-                        <FormContainer>
-                            <FormItem label='User Name' invalid={(errors.username && touched.username) as boolean} errorMessage={errors.username}>
-                                <Field type='text' autoComplete='off' name='username' placeholder='User Name' component={Input} />
+                        <FormContainer className='space-y-5'>
+                            <FormItem
+                                label='User Name'
+                                labelClass='!mb-2 text-sm font-semibold text-slate-700'
+                                invalid={(errors.username && touched.username) as boolean}
+                                errorMessage={errors.username}>
+                                <Field
+                                    type='text'
+                                    autoComplete='off'
+                                    name='username'
+                                    placeholder='Enter your user name'
+                                    component={Input}
+                                    
+                                />
                             </FormItem>
-                            <FormItem label='Password' invalid={(errors.password && touched.password) as boolean} errorMessage={errors.password}>
-                                <Field autoComplete='off' name='password' placeholder='Password' component={PasswordInput} />
+
+                            <FormItem
+                                label='Password'
+                                labelClass='!mb-2 text-sm font-semibold text-slate-700'
+                                invalid={(errors.password && touched.password) as boolean}
+                                errorMessage={errors.password}>
+                                <Field
+                                    autoComplete='off'
+                                    name='password'
+                                    placeholder='Enter your password'
+                                    component={PasswordInput}
+                                    
+                                />
                             </FormItem>
-                            <Button block loading={isSubmitting} variant='solid' type='submit'>
-                                {isSubmitting ? 'Signing in...' : 'Sign In'}
-                            </Button>
+
+
+
+                            <div className='pt-2 mt-10'>
+                                <Button
+                                    block
+                                    loading={isSubmitting}
+                                    variant='solid'
+                                    type='submit'
+                                    className='!h-12 !rounded-2xl !bg-slate-950 text-sm font-semibold shadow-[0_14px_35px_rgba(15,23,42,0.16)] transition-all duration-200 hover:!bg-black'>
+                                    {isSubmitting ? 'Signing in...' : 'Sign In'}
+                                </Button>
+                            </div>
                         </FormContainer>
                     </Form>
                 )}

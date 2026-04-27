@@ -15,7 +15,7 @@ const SignIn = () => {
             <SignInForm disableSubmit={false} />
 
             {/* ✅ Register as Vendor link */}
-            <div className='mt-4 text-center text-sm'>
+            <div className='mt-6 text-center text-sm'>
                 <span className='opacity-70'>New here? </span>
                 <button
                     type='button'
