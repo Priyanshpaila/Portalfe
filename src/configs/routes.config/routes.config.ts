@@ -127,4 +127,10 @@ export const protectedRoutes = [
         component: lazy(() => import('@/views/auth/POAuthorize')),
         authority: [PERMISSIONS.AUTHORIZE_PO],
     },
+    {
+    key: 'page.po-pending-approvals',
+    path: '/po-pending-approvals',
+    component: lazy(() => import('@/views/auth/POAuthorize/POPendingApprovals')),
+    authority: [PERMISSIONS.AUTHORIZE_PO],
+},
 ]
