@@ -122,7 +122,6 @@ function getTaxRate(poItem: any, field: 'cgst' | 'sgst' | 'igst') {
     return Number.isFinite(Number(tax?.chargeValue)) ? Number(tax.chargeValue) : 0
 }
 
-
 function toNumberSafe(value: any) {
     const n = Number(value)
     return Number.isFinite(n) ? n : 0
@@ -198,7 +197,14 @@ function getVendorMSME(vendor: any) {
 }
 
 function getVendorEmail(vendor: any, contacts: any[]) {
-    return valueOrDash(contacts?.map((i: any) => i.email).filter(Boolean).join(', ') || vendor?.email || vendor?.company?.email)
+    return valueOrDash(
+        contacts
+            ?.map((i: any) => i.email)
+            .filter(Boolean)
+            .join(', ') ||
+            vendor?.email ||
+            vendor?.company?.email,
+    )
 }
 
 function getVendorPhone(vendor: any, contacts: any[]) {
@@ -236,7 +242,9 @@ function AmountSummary({ po }: { po: any }) {
     const charges = po?.charges || {}
     const chargeRows = [
         charges?.otherCharges ? { label: getChargeLabel('Other Charges', charges.otherCharges), value: getChargeAmount(charges.otherCharges) } : null,
-        charges?.packagingForwarding ? { label: getChargeLabel('Packaging & Forwarding', charges.packagingForwarding), value: getChargeAmount(charges.packagingForwarding) } : null,
+        charges?.packagingForwarding
+            ? { label: getChargeLabel('Packaging & Forwarding', charges.packagingForwarding), value: getChargeAmount(charges.packagingForwarding) }
+            : null,
     ].filter(Boolean) as Array<{ label: string; value: any }>
 
     const rows = [
@@ -279,10 +287,16 @@ function AmountSummary({ po }: { po: any }) {
                     <tbody>
                         {rows.map((row) => (
                             <tr key={row.label} className={row.strong ? 'bg-slate-50' : ''}>
-                                <td className={`border-b border-r border-slate-100 px-3 py-2 ${row.strong ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                                <td
+                                    className={`border-b border-r border-slate-100 px-3 py-2 ${
+                                        row.strong ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'
+                                    }`}>
                                     {row.label}
                                 </td>
-                                <td className={`border-b border-slate-100 px-3 py-2 text-right ${row.strong ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-800'}`}>
+                                <td
+                                    className={`border-b border-slate-100 px-3 py-2 text-right ${
+                                        row.strong ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-800'
+                                    }`}>
                                     {formatPlainAmount(row.value)}
                                 </td>
                             </tr>
@@ -305,13 +319,27 @@ function AmountMiniRows({ row, poItem }: { row: any; poItem: any }) {
 
     return (
         <div className='grid grid-cols-2 gap-1 text-[11px]'>
-            <div className='rounded bg-slate-50 px-2 py-1'>Basic: <b>{formatPlainAmount(itemAmount.taxable ?? itemAmount.basic ?? amount.basic)}</b></div>
-            <div className='rounded bg-slate-50 px-2 py-1'>Discount: <b>{formatPlainAmount(discount)}</b></div>
-            <div className='rounded bg-slate-50 px-2 py-1'>IGST: <b>{formatPlainAmount(igstAmount || amount.igst)}</b></div>
-            <div className='rounded bg-slate-50 px-2 py-1'>CGST: <b>{formatPlainAmount(cgstAmount || amount.cgst)}</b></div>
-            <div className='rounded bg-slate-50 px-2 py-1'>SGST: <b>{formatPlainAmount(sgstAmount || amount.sgst)}</b></div>
-            <div className='rounded bg-slate-50 px-2 py-1'>Other: <b>{formatPlainAmount(otherCharges)}</b></div>
-            <div className='col-span-2 rounded bg-blue-50 px-2 py-1 text-blue-900'>Total: <b>{formatMoney(itemAmount.total ?? amount.total)}</b></div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                Basic: <b>{formatPlainAmount(itemAmount.taxable ?? itemAmount.basic ?? amount.basic)}</b>
+            </div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                Discount: <b>{formatPlainAmount(discount)}</b>
+            </div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                IGST: <b>{formatPlainAmount(igstAmount || amount.igst)}</b>
+            </div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                CGST: <b>{formatPlainAmount(cgstAmount || amount.cgst)}</b>
+            </div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                SGST: <b>{formatPlainAmount(sgstAmount || amount.sgst)}</b>
+            </div>
+            <div className='rounded bg-slate-50 px-2 py-1'>
+                Other: <b>{formatPlainAmount(otherCharges)}</b>
+            </div>
+            <div className='col-span-2 rounded bg-blue-50 px-2 py-1 text-blue-900'>
+                Total: <b>{formatMoney(itemAmount.total ?? amount.total)}</b>
+            </div>
         </div>
     )
 }
@@ -490,13 +518,20 @@ export default function POAuthorize() {
                             </div>
                         </div>
 
-                        <div className='flex shrink-0 flex-wrap gap-2'>
-                            <Link to={'/dashboard'}>
-                                <Button size='xs' variant='twoTone'>
+                        <div className='flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end'>
+                            <Link to={'/dashboard'} className='flex-1 sm:flex-none'>
+                                <Button size='xs' variant='twoTone' className='w-full sm:w-auto'>
                                     Dashboard
                                 </Button>
                             </Link>
-                            <Button size='xs' variant='twoTone' onClick={() => setSignOutPrompt(true)}>
+
+                            <Link to={'/po-pending-approvals'} className='flex-1 sm:flex-none'>
+                                <Button size='xs' variant='twoTone' className='w-full sm:w-auto'>
+                                    Show All
+                                </Button>
+                            </Link>
+
+                            <Button size='xs' variant='twoTone' className='flex-1 sm:flex-none' onClick={() => setSignOutPrompt(true)}>
                                 Logout
                             </Button>
                         </div>
@@ -509,7 +544,9 @@ export default function POAuthorize() {
                             <div className='min-w-0 flex-1'>
                                 <div className='mb-1 flex flex-wrap items-center justify-between gap-2'>
                                     <label className='font-bold text-slate-700'>Comment</label>
-                                    {po?.shippingAccount?.priority ? <Tag className='border-2 border-red-500 bg-red-500 text-white'>{po.shippingAccount.priority}</Tag> : null}
+                                    {po?.shippingAccount?.priority ? (
+                                        <Tag className='border-2 border-red-500 bg-red-500 text-white'>{po.shippingAccount.priority}</Tag>
+                                    ) : null}
                                 </div>
                                 <Input
                                     textArea
@@ -727,16 +764,27 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                                         </button>
                                                         <div className='mt-1 text-[11px] text-slate-500'>Code: {i.itemCode || '-'}</div>
                                                         <div className='mt-1 text-[11px] text-slate-500'>Indent: {i.indentNumber || '-'}</div>
-
                                                     </td>
                                                     <td className='border-r border-slate-100 px-3 py-3 align-top'>
-                                                        <div><b>HSN:</b> {i.hsnCode || '-'}</div>
-                                                        <div className='mt-1'><b>PO Make:</b> {i.make || '-'}</div>
-                                                        <div className='mt-1'><b>Delivery:</b> {formatDate(i.schedule as string)}</div>
+                                                        <div>
+                                                            <b>HSN:</b> {i.hsnCode || '-'}
+                                                        </div>
+                                                        <div className='mt-1'>
+                                                            <b>PO Make:</b> {i.make || '-'}
+                                                        </div>
+                                                        <div className='mt-1'>
+                                                            <b>Delivery:</b> {formatDate(i.schedule as string)}
+                                                        </div>
                                                     </td>
-                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>{Number(i.qty)?.toFixed(3)} {i.unit}</td>
-                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>{Number(i.rate)?.toFixed(2)}</td>
-                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>{i.amount?.taxable?.toFixed(2)}</td>
+                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>
+                                                        {Number(i.qty)?.toFixed(3)} {i.unit}
+                                                    </td>
+                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>
+                                                        {Number(i.rate)?.toFixed(2)}
+                                                    </td>
+                                                    <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>
+                                                        {i.amount?.taxable?.toFixed(2)}
+                                                    </td>
                                                     <td className='border-r border-slate-100 px-3 py-3 text-right align-top whitespace-nowrap'>
                                                         <div>{toFixedSafe(cgstAmount, 2)}</div>
                                                         <div className='text-[11px] text-slate-500'>{toFixedSafe(cgstRate, 2)}%</div>
@@ -771,21 +819,55 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                                     onClick={() => openItemPOHistory(i)}>
                                                     {i.itemDescription || '-'}
                                                 </button>
-                                                <div className='mt-1 text-[11px] text-slate-500'>Code: {i.itemCode || '-'} | Indent: {i.indentNumber || '-'}</div>
+                                                <div className='mt-1 text-[11px] text-slate-500'>
+                                                    Code: {i.itemCode || '-'} | Indent: {i.indentNumber || '-'}
+                                                </div>
                                             </div>
-
                                         </div>
 
                                         <div className='mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3'>
-                                            <div><div className='text-[11px] text-slate-500'>Qty</div><div className='font-semibold'>{Number(i.qty)?.toFixed(3)} {i.unit}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>Rate</div><div className='font-semibold'>{Number(i.rate)?.toFixed(2)}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>Basic</div><div className='font-semibold'>{i.amount?.taxable?.toFixed(2)}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>CGST</div><div className='font-semibold'>{toFixedSafe(cgstAmount, 2)} ({toFixedSafe(cgstRate, 2)}%)</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>SGST</div><div className='font-semibold'>{toFixedSafe(sgstAmount, 2)} ({toFixedSafe(sgstRate, 2)}%)</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>Net Amount</div><div className='font-bold'>{i.amount.total?.toFixed(2)}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>HSN</div><div>{i.hsnCode || '-'}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>Make</div><div>{i.make || '-'}</div></div>
-                                            <div><div className='text-[11px] text-slate-500'>Delivery</div><div>{formatDate(i.schedule as string)}</div></div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Qty</div>
+                                                <div className='font-semibold'>
+                                                    {Number(i.qty)?.toFixed(3)} {i.unit}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Rate</div>
+                                                <div className='font-semibold'>{Number(i.rate)?.toFixed(2)}</div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Basic</div>
+                                                <div className='font-semibold'>{i.amount?.taxable?.toFixed(2)}</div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>CGST</div>
+                                                <div className='font-semibold'>
+                                                    {toFixedSafe(cgstAmount, 2)} ({toFixedSafe(cgstRate, 2)}%)
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>SGST</div>
+                                                <div className='font-semibold'>
+                                                    {toFixedSafe(sgstAmount, 2)} ({toFixedSafe(sgstRate, 2)}%)
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Net Amount</div>
+                                                <div className='font-bold'>{i.amount.total?.toFixed(2)}</div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>HSN</div>
+                                                <div>{i.hsnCode || '-'}</div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Make</div>
+                                                <div>{i.make || '-'}</div>
+                                            </div>
+                                            <div>
+                                                <div className='text-[11px] text-slate-500'>Delivery</div>
+                                                <div>{formatDate(i.schedule as string)}</div>
+                                            </div>
                                         </div>
                                     </div>
                                 )
@@ -794,13 +876,19 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </SectionContent>
                 </Menu.MenuCollapse>
 
-                <Menu.MenuCollapse eventKey='chargeDetail' label='Charge Detail' className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
+                <Menu.MenuCollapse
+                    eventKey='chargeDetail'
+                    label='Charge Detail'
+                    className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
                     <SectionContent>
                         <AmountSummary po={po} />
                     </SectionContent>
                 </Menu.MenuCollapse>
 
-                <Menu.MenuCollapse eventKey='terms&condition' label='Terms & Condition' className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
+                <Menu.MenuCollapse
+                    eventKey='terms&condition'
+                    label='Terms & Condition'
+                    className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
                     <SectionContent>
                         <div className='overflow-hidden rounded-xl border border-slate-200'>
                             <Table compact containerClassName='overflow-x-auto'>
@@ -817,7 +905,10 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </SectionContent>
                 </Menu.MenuCollapse>
 
-                <Menu.MenuCollapse eventKey='paymentTerms' label='Payment Terms' className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
+                <Menu.MenuCollapse
+                    eventKey='paymentTerms'
+                    label='Payment Terms'
+                    className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
                     <SectionContent>
                         <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3'>
                             {po.paymentTerms?.map((pt, i) => (
@@ -836,7 +927,10 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </SectionContent>
                 </Menu.MenuCollapse>
 
-                <Menu.MenuCollapse eventKey='indentDetail' label='Indent Detail' className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
+                <Menu.MenuCollapse
+                    eventKey='indentDetail'
+                    label='Indent Detail'
+                    className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
                     <SectionContent>
                         <div className='hidden overflow-hidden rounded-xl border border-slate-200 md:block'>
                             <div className='overflow-x-auto'>
@@ -864,7 +958,6 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                                     </button>
                                                     <div className='text-[11px] text-slate-500'>{formatDate(i.documentDate)}</div>
                                                     <div className='text-[11px] text-slate-500'>Line: {(i as any).lineNumber || '-'}</div>
-
                                                 </td>
                                                 <td className='border-r border-slate-100 px-3 py-3 align-top'>
                                                     <div className='font-semibold text-slate-900'>{i.itemDescription || '-'}</div>
@@ -875,15 +968,28 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                                 <td className='border-r border-slate-100 px-3 py-3 align-top'>{i.techSpec || '-'}</td>
                                                 <td className='border-r border-slate-100 px-3 py-3 align-top'>{i.costCenter || '-'}</td>
                                                 <td className='border-r border-slate-100 px-3 py-3 align-top'>{i.requestedBy || '-'}</td>
-                                                <td className='border-r border-slate-100 px-3 py-3 align-top'>{(i as any).documentType || (i as any).documentCategory || '-'}</td>
+                                                <td className='border-r border-slate-100 px-3 py-3 align-top'>
+                                                    {(i as any).documentType || (i as any).documentCategory || '-'}
+                                                </td>
                                                 <td className='px-3 py-3 text-right align-top whitespace-nowrap'>
-                                                    <div><b>Indent:</b> {(+i.indentQty || 0)?.toFixed(3)}</div>
-                                                    <div className='mt-1'><b>Pre RFQ:</b> {(+((i as any).preRFQQty ?? 0))?.toFixed(3)}</div>
-                                                    <div className='mt-1'><b>Pre PO:</b> {(+((i as any).prePOQty ?? 0))?.toFixed(3)}</div>
-                                                    <div className='mt-1'><b>Balance:</b> {(+((i as any).balanceQty ?? 0))?.toFixed(3)}</div>
-                                                    <div className='mt-1'><b>This PO:</b> {(+(
-                                                        po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0
-                                                    ))?.toFixed(3)}</div>
+                                                    <div>
+                                                        <b>Indent:</b> {(+i.indentQty || 0)?.toFixed(3)}
+                                                    </div>
+                                                    <div className='mt-1'>
+                                                        <b>Pre RFQ:</b> {(+((i as any).preRFQQty ?? 0))?.toFixed(3)}
+                                                    </div>
+                                                    <div className='mt-1'>
+                                                        <b>Pre PO:</b> {(+((i as any).prePOQty ?? 0))?.toFixed(3)}
+                                                    </div>
+                                                    <div className='mt-1'>
+                                                        <b>Balance:</b> {(+((i as any).balanceQty ?? 0))?.toFixed(3)}
+                                                    </div>
+                                                    <div className='mt-1'>
+                                                        <b>This PO:</b>{' '}
+                                                        {(+(
+                                                            po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0
+                                                        ))?.toFixed(3)}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -894,7 +1000,9 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
 
                         <div className='space-y-3 md:hidden'>
                             {indents?.map((i) => (
-                                <div key={'indent-mobile:' + i.indentNumber + ':' + i.itemCode} className='rounded-xl border border-slate-200 bg-white p-3 shadow-sm'>
+                                <div
+                                    key={'indent-mobile:' + i.indentNumber + ':' + i.itemCode}
+                                    className='rounded-xl border border-slate-200 bg-white p-3 shadow-sm'>
                                     <div className='mb-3 flex items-start justify-between gap-2'>
                                         <div className='min-w-0'>
                                             <button
@@ -903,21 +1011,48 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                                 onClick={() => setSelectedIndent(i)}>
                                                 {i.indentNumber || '-'}
                                             </button>
-                                            <div className='text-[11px] text-slate-500'>{formatDate(i.documentDate)} | Item: {i.itemCode}</div>
+                                            <div className='text-[11px] text-slate-500'>
+                                                {formatDate(i.documentDate)} | Item: {i.itemCode}
+                                            </div>
                                         </div>
-
                                     </div>
                                     <div className='grid grid-cols-2 gap-3 text-xs'>
-                                        <div><div className='text-[11px] text-slate-500'>Item</div><div>{i.itemDescription || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Tech Spec</div><div>{i.techSpec || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Unit</div><div>{i.unitOfMeasure || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Make</div><div>{i.make || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Cost Center</div><div>{i.costCenter || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Requested By</div><div>{i.requestedBy || '-'}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Indent Qty</div><div>{(+i.indentQty || 0)?.toFixed(3)}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>PO Qty</div><div>{(+(
-                                            po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0
-                                        ))?.toFixed(3)}</div></div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Item</div>
+                                            <div>{i.itemDescription || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Tech Spec</div>
+                                            <div>{i.techSpec || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Unit</div>
+                                            <div>{i.unitOfMeasure || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Make</div>
+                                            <div>{i.make || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Cost Center</div>
+                                            <div>{i.costCenter || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Requested By</div>
+                                            <div>{i.requestedBy || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Indent Qty</div>
+                                            <div>{(+i.indentQty || 0)?.toFixed(3)}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>PO Qty</div>
+                                            <div>
+                                                {(+(
+                                                    po?.items?.find((_i) => _i.indentNumber === i.indentNumber && _i.itemCode === i.itemCode)?.qty ?? 0
+                                                ))?.toFixed(3)}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -933,7 +1068,10 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                     </SectionContent>
                 </Menu.MenuCollapse>
 
-                <Menu.MenuCollapse eventKey='authorizationDetail' label='Authorization Detail' className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
+                <Menu.MenuCollapse
+                    eventKey='authorizationDetail'
+                    label='Authorization Detail'
+                    className='rounded-xl bg-white shadow-sm ring-1 ring-slate-200 hover:bg-slate-50'>
                     <SectionContent>
                         <div className='hidden overflow-hidden rounded-xl border border-slate-200 md:block'>
                             <Table containerClassName='overflow-x-auto'>
@@ -985,10 +1123,22 @@ const VerticalTabs = ({ po, indents }: { po: _POType; indents: IndentType[] }) =
                                         </span>
                                     </div>
                                     <div className='grid grid-cols-1 gap-2 text-xs sm:grid-cols-2'>
-                                        <div><div className='text-[11px] text-slate-500'>Assigned On</div><div>{formatDate(i.assignOn as string)}</div></div>
-                                        <div><div className='text-[11px] text-slate-500'>Duration</div><div>{formatTimeDifference(i.assignOn as string, i.changedOn as string)}</div></div>
-                                        <div className='sm:col-span-2'><div className='text-[11px] text-slate-500'>Changed On</div><div>{i.changedOn ? formatDateTime(i.changedOn as string) : '-'}</div></div>
-                                        <div className='sm:col-span-2'><div className='text-[11px] text-slate-500'>Comment</div><div>{i.comment || '-'}</div></div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Assigned On</div>
+                                            <div>{formatDate(i.assignOn as string)}</div>
+                                        </div>
+                                        <div>
+                                            <div className='text-[11px] text-slate-500'>Duration</div>
+                                            <div>{formatTimeDifference(i.assignOn as string, i.changedOn as string)}</div>
+                                        </div>
+                                        <div className='sm:col-span-2'>
+                                            <div className='text-[11px] text-slate-500'>Changed On</div>
+                                            <div>{i.changedOn ? formatDateTime(i.changedOn as string) : '-'}</div>
+                                        </div>
+                                        <div className='sm:col-span-2'>
+                                            <div className='text-[11px] text-slate-500'>Comment</div>
+                                            <div>{i.comment || '-'}</div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1029,7 +1179,6 @@ const IndentDetailModal = ({ indent, po, onClose }: { indent: any | null; po: an
         ['This PO Qty', toFixedSafe(poQty, 3)],
         ['Created On', indent.createdOn ? formatDateTime(indent.createdOn) : '-'],
         ['Last Changed On', indent.lastChangedOn ? formatDateTime(indent.lastChangedOn) : '-'],
-        
     ]
 
     return (
@@ -1044,7 +1193,6 @@ const IndentDetailModal = ({ indent, po, onClose }: { indent: any | null; po: an
                                 <span> — {indent.itemDescription || '-'}</span>
                             </div>
                         </div>
-               
                     </div>
                 </div>
 
@@ -1106,7 +1254,6 @@ const ItemPOHistoryModal = ({
                                     {state.showAll ? 'Show Less' : `Show All (${state.rows.length})`}
                                 </Button>
                             )}
-
                         </div>
                     </div>
                 </div>
@@ -1151,20 +1298,34 @@ const ItemPOHistoryModal = ({
                                                         <td className='border-r border-slate-100 px-3 py-3'>
                                                             <div className='font-bold text-blue-700'>PO No: {valueOrDash(row?.poNumber)}</div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>SAP: {valueOrDash(row?.sapPONumber)}</div>
-                                                            <div className='mt-1 whitespace-nowrap text-[11px] text-slate-500'>Date: {formatDate(row?.poDate || row?.createdAt || row?.createdOn)}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>Ref: {valueOrDash(row?.refDocumentType)} / {valueOrDash(row?.refDocumentNumber)}</div>
+                                                            <div className='mt-1 whitespace-nowrap text-[11px] text-slate-500'>
+                                                                Date: {formatDate(row?.poDate || row?.createdAt || row?.createdOn)}
+                                                            </div>
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Ref: {valueOrDash(row?.refDocumentType)} / {valueOrDash(row?.refDocumentNumber)}
+                                                            </div>
                                                         </td>
                                                         <td className='border-r border-slate-100 px-3 py-3'>
-                                                            <div className='font-semibold text-slate-900'>{valueOrDash(row?.vendorName || row?.vendor?.name || row?.vendorCode)}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>{valueOrDash(row?.vendorCode || row?.vendor?.vendorCode)}</div>
+                                                            <div className='font-semibold text-slate-900'>
+                                                                {valueOrDash(row?.vendorName || row?.vendor?.name || row?.vendorCode)}
+                                                            </div>
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                {valueOrDash(row?.vendorCode || row?.vendor?.vendorCode)}
+                                                            </div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>{valueOrDash(row?.vendorLocation)}</div>
                                                         </td>
                                                         <td className='border-r border-slate-100 px-3 py-3'>
-                                                            <div className='max-w-[240px] font-semibold text-slate-900'>{valueOrDash(poItem?.itemDescription || row?.itemDescription)}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>Code: {valueOrDash(poItem?.itemCode || state.itemCode)}</div>
+                                                            <div className='max-w-[240px] font-semibold text-slate-900'>
+                                                                {valueOrDash(poItem?.itemDescription || row?.itemDescription)}
+                                                            </div>
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Code: {valueOrDash(poItem?.itemCode || state.itemCode)}
+                                                            </div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>Indent: {valueOrDash(poItem?.indentNumber)}</div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>Make: {valueOrDash(poItem?.make)}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>Qty: {toFixedSafe(poItem?.qty, 3)} {poItem?.unit || ''}</div>
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Qty: {toFixedSafe(poItem?.qty, 3)} {poItem?.unit || ''}
+                                                            </div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>Rate: {formatPlainAmount(poItem?.rate)}</div>
                                                             <div className='mt-1 text-[11px] text-slate-500'>Delivery: {formatDate(poItem?.schedule)}</div>
                                                         </td>
@@ -1173,9 +1334,17 @@ const ItemPOHistoryModal = ({
                                                         </td>
                                                         <td className='border-r border-slate-100 px-3 py-3'>
                                                             <div className='font-semibold text-slate-900'>{valueOrDash(auth.authorizedBy)}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>Assigned: {auth.assignedOn ? formatDateTime(auth.assignedOn) : '-'}</div>
-                                                            <div className='mt-1 text-[11px] text-slate-500'>Authorized: {auth.authorizedAt ? formatDateTime(auth.authorizedAt) : '-'}</div>
-                                                            {auth.comment ? <div className='mt-1 max-w-[180px] break-words text-[11px] text-slate-500'>Comment: {auth.comment}</div> : null}
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Assigned: {auth.assignedOn ? formatDateTime(auth.assignedOn) : '-'}
+                                                            </div>
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Authorized: {auth.authorizedAt ? formatDateTime(auth.authorizedAt) : '-'}
+                                                            </div>
+                                                            {auth.comment ? (
+                                                                <div className='mt-1 max-w-[180px] break-words text-[11px] text-slate-500'>
+                                                                    Comment: {auth.comment}
+                                                                </div>
+                                                            ) : null}
                                                         </td>
                                                         <td className='px-3 py-3'>
                                                             <StatusBadge row={row} />
@@ -1204,9 +1373,15 @@ const ItemPOHistoryModal = ({
                                                 <div className='min-w-0'>
                                                     <div className='font-bold text-blue-700'>PO No: {valueOrDash(row?.poNumber)}</div>
                                                     <div className='mt-0.5 truncate text-[11px] text-slate-500'>SAP: {valueOrDash(row?.sapPONumber)}</div>
-                                                    <div className='mt-1 truncate text-xs font-semibold text-slate-900'>{valueOrDash(row?.vendorName || row?.vendor?.name || row?.vendorCode)}</div>
-                                                    <div className='mt-1 line-clamp-1 text-[11px] text-slate-500'>{valueOrDash(poItem?.itemDescription || row?.itemDescription)}</div>
-                                                    <div className='mt-1 text-[11px] font-bold text-slate-900'>{formatMoney(poItem?.amount?.total ?? row?.amount?.total)}</div>
+                                                    <div className='mt-1 truncate text-xs font-semibold text-slate-900'>
+                                                        {valueOrDash(row?.vendorName || row?.vendor?.name || row?.vendorCode)}
+                                                    </div>
+                                                    <div className='mt-1 line-clamp-1 text-[11px] text-slate-500'>
+                                                        {valueOrDash(poItem?.itemDescription || row?.itemDescription)}
+                                                    </div>
+                                                    <div className='mt-1 text-[11px] font-bold text-slate-900'>
+                                                        {formatMoney(poItem?.amount?.total ?? row?.amount?.total)}
+                                                    </div>
                                                 </div>
                                                 <div className='flex shrink-0 flex-col items-end gap-2'>
                                                     <StatusBadge row={row} />
@@ -1220,15 +1395,21 @@ const ItemPOHistoryModal = ({
                                                         <div className='rounded-lg bg-white p-2'>
                                                             <div className='mb-1 font-bold text-slate-700'>PO Details</div>
                                                             <div>Date: {formatDate(row?.poDate || row?.createdAt || row?.createdOn)}</div>
-                                                            <div>Ref: {valueOrDash(row?.refDocumentType)} / {valueOrDash(row?.refDocumentNumber)}</div>
+                                                            <div>
+                                                                Ref: {valueOrDash(row?.refDocumentType)} / {valueOrDash(row?.refDocumentNumber)}
+                                                            </div>
                                                         </div>
                                                         <div className='rounded-lg bg-white p-2'>
                                                             <div className='mb-1 font-bold text-slate-700'>Item Details</div>
                                                             <div>{valueOrDash(poItem?.itemDescription || row?.itemDescription)}</div>
-                                                            <div className='text-[11px] text-slate-500'>Code: {valueOrDash(poItem?.itemCode || state.itemCode)}</div>
+                                                            <div className='text-[11px] text-slate-500'>
+                                                                Code: {valueOrDash(poItem?.itemCode || state.itemCode)}
+                                                            </div>
                                                             <div className='text-[11px] text-slate-500'>Indent: {valueOrDash(poItem?.indentNumber)}</div>
                                                             <div className='text-[11px] text-slate-500'>Make: {valueOrDash(poItem?.make)}</div>
-                                                            <div className='text-[11px] text-slate-500'>Qty: {toFixedSafe(poItem?.qty, 3)} {poItem?.unit || ''}</div>
+                                                            <div className='text-[11px] text-slate-500'>
+                                                                Qty: {toFixedSafe(poItem?.qty, 3)} {poItem?.unit || ''}
+                                                            </div>
                                                             <div className='text-[11px] text-slate-500'>Rate: {formatPlainAmount(poItem?.rate)}</div>
                                                             <div className='text-[11px] text-slate-500'>Delivery: {formatDate(poItem?.schedule)}</div>
                                                         </div>
