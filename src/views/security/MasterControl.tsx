@@ -500,32 +500,49 @@ export default function MasterControl() {
     const handleCreateVendor = useCallback(async (values: VendorFormValues, { resetForm }: FormikHelpers<VendorFormValues>) => {
         setLoading((p) => ({ ...p, vendor: true }))
         try {
+            const contactPersons = (values.contactPerson || [])
+                .map((c) => ({
+                    name: c.name?.trim(),
+                    email: c.email?.trim(),
+                    mobilePhoneIndicator: c.mobilePhoneIndicator?.trim() || undefined,
+                    fullPhoneNumber: c.fullPhoneNumber?.trim(),
+                    callerPhoneNumber: c.callerPhoneNumber?.trim() || undefined,
+                }))
+                .filter((c) => c.name || c.email || c.fullPhoneNumber)
+
+            if (!values.name?.trim()) throw new Error('Vendor name is required')
+            if (!values.postalCode?.trim()) throw new Error('Postal code is required')
+            if (!values.street?.trim()) throw new Error('Street address is required')
+            if (!values.city?.trim()) throw new Error('City is required')
+            if (!values.district?.trim()) throw new Error('District is required')
+            if (!values.region?.trim()) throw new Error('Region / State is required')
+            if (!values.panNumber?.trim()) throw new Error('PAN number is required')
+            if (!values.gstin?.trim()) throw new Error('GSTIN is required')
+
+            if (!contactPersons.length) {
+                throw new Error('At least one contact person is required')
+            }
+
+            const firstIncompleteContact = contactPersons.find((c) => !c.name || !c.email || !c.fullPhoneNumber)
+            if (firstIncompleteContact) {
+                throw new Error('Each added contact person must have name, email and full phone number')
+            }
+
             const payload: any = {
                 ...values,
                 name: values.name?.trim(),
                 countryKey: values.countryKey?.trim() || undefined,
-                city: values.city?.trim() || undefined,
-                district: values.district?.trim() || undefined,
-                street: values.street?.trim() || undefined,
-                postalCode: values.postalCode?.trim() || undefined,
-                panNumber: values.panNumber?.trim() || undefined,
-                gstin: values.gstin?.trim() || undefined,
+                city: values.city?.trim(),
+                district: values.district?.trim(),
+                street: values.street?.trim(),
+                postalCode: values.postalCode?.trim(),
+                panNumber: values.panNumber?.trim(),
+                gstin: values.gstin?.trim(),
                 msme: values.msme?.trim() || undefined,
-                // ✅ companyCode removed
-                region: values.region?.trim() || undefined,
+                region: values.region?.trim(),
                 languageKey: values.languageKey?.trim() || undefined,
-                contactPerson: (values.contactPerson || [])
-                    .map((c) => ({
-                        name: c.name?.trim(),
-                        email: c.email?.trim(),
-                        mobilePhoneIndicator: c.mobilePhoneIndicator?.trim() || undefined,
-                        fullPhoneNumber: c.fullPhoneNumber?.trim() || undefined,
-                        callerPhoneNumber: c.callerPhoneNumber?.trim() || undefined,
-                    }))
-                    .filter((c) => c.name || c.email || c.fullPhoneNumber),
+                contactPerson: contactPersons,
             }
-
-            if (!payload.name) throw new Error('Vendor name is required')
 
             const resp = await ApiService.fetchData<any>({
                 method: 'post',
@@ -988,8 +1005,43 @@ export default function MasterControl() {
                                 initialValues={initialVendorValues}
                                 onSubmit={handleCreateVendor}
                                 validate={(values) => {
-                                    const errors: Partial<Record<keyof VendorFormValues, string>> = {}
+                                    const errors: any = {}
+
                                     if (!values.name?.trim()) errors.name = 'Required'
+                                    if (!values.postalCode?.trim()) errors.postalCode = 'Required'
+                                    if (!values.street?.trim()) errors.street = 'Required'
+                                    if (!values.city?.trim()) errors.city = 'Required'
+                                    if (!values.district?.trim()) errors.district = 'Required'
+                                    if (!values.region?.trim()) errors.region = 'Required'
+                                    if (!values.panNumber?.trim()) errors.panNumber = 'Required'
+                                    if (!values.gstin?.trim()) errors.gstin = 'Required'
+
+                                    const contacts = values.contactPerson || []
+
+                                    if (!contacts.length) {
+                                        errors.contactPerson = 'At least one contact person is required'
+                                        return errors
+                                    }
+
+                                    const contactErrors = contacts.map((c) => {
+                                        const e: any = {}
+
+                                        if (!c.name?.trim()) e.name = 'Required'
+                                        if (!c.email?.trim()) e.email = 'Required'
+                                        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email.trim())) e.email = 'Enter valid email'
+
+                                        if (!c.fullPhoneNumber?.trim()) e.fullPhoneNumber = 'Required'
+                                        else if (!/^\d{10,15}$/.test(c.fullPhoneNumber.trim().replace(/\D/g, ''))) {
+                                            e.fullPhoneNumber = 'Enter valid phone number'
+                                        }
+
+                                        return e
+                                    })
+
+                                    if (contactErrors.some((e) => Object.keys(e).length)) {
+                                        errors.contactPerson = contactErrors
+                                    }
+
                                     return errors
                                 }}>
                                 {({ values, setFieldValue, errors, touched, isValid, dirty }) => (
@@ -1022,7 +1074,13 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Postal Code' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='Postal Code'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.postalCode && errors.postalCode)}
+                                                    errorMessage={errors.postalCode as any}>
                                                     <Input
                                                         size='sm'
                                                         value={values.postalCode || ''}
@@ -1032,7 +1090,13 @@ export default function MasterControl() {
                                                     <VendorPostalLookupHint />
                                                 </FormItem>
 
-                                                <FormItem label='Street' labelClass='text-xs !mb-1' className='mb-2.5 md:col-span-2'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='Street'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5 md:col-span-2'
+                                                    invalid={!!(touched.street && errors.street)}
+                                                    errorMessage={errors.street as any}>
                                                     <Field
                                                         name='street'
                                                         as={Input}
@@ -1042,7 +1106,13 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='City' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='City'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.city && errors.city)}
+                                                    errorMessage={errors.city as any}>
                                                     <Field
                                                         name='city'
                                                         as={Input}
@@ -1052,7 +1122,13 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='District' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='District'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.district && errors.district)}
+                                                    errorMessage={errors.district as any}>
                                                     <Field
                                                         name='district'
                                                         as={Input}
@@ -1062,7 +1138,13 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem label='Region (State)' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='Region (State)'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.region && errors.region)}
+                                                    errorMessage={errors.region as any}>
                                                     <Field
                                                         name='region'
                                                         as={Input}
@@ -1082,25 +1164,35 @@ export default function MasterControl() {
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk label='PAN Number' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='PAN Number'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.panNumber && errors.panNumber)}
+                                                    errorMessage={errors.panNumber as any}>
                                                     <Field
                                                         name='panNumber'
                                                         as={Input}
                                                         size='sm'
                                                         value={values.panNumber}
                                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('panNumber', e.target.value)}
-                                                        required
                                                     />
                                                 </FormItem>
 
-                                                <FormItem asterisk label='GSTIN' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                <FormItem
+                                                    asterisk
+                                                    label='GSTIN'
+                                                    labelClass='text-xs !mb-1'
+                                                    className='mb-2.5'
+                                                    invalid={!!(touched.gstin && errors.gstin)}
+                                                    errorMessage={errors.gstin as any}>
                                                     <Field
                                                         name='gstin'
                                                         as={Input}
                                                         size='sm'
                                                         value={values.gstin}
                                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('gstin', e.target.value)}
-                                                        required
                                                     />
                                                 </FormItem>
 
@@ -1143,7 +1235,18 @@ export default function MasterControl() {
                                                                     </div>
 
                                                                     <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-3'>
-                                                                        <FormItem label='Name' labelClass='text-xs !mb-1' className='mb-0'>
+                                                                        <FormItem
+                                                                            asterisk
+                                                                            label='Name'
+                                                                            labelClass='text-xs !mb-1'
+                                                                            className='mb-0'
+                                                                            invalid={
+                                                                                !!(
+                                                                                    (touched.contactPerson as any)?.[idx]?.name &&
+                                                                                    (errors.contactPerson as any)?.[idx]?.name
+                                                                                )
+                                                                            }
+                                                                            errorMessage={(errors.contactPerson as any)?.[idx]?.name}>
                                                                             <Input
                                                                                 size='sm'
                                                                                 value={c.name}
@@ -1151,7 +1254,18 @@ export default function MasterControl() {
                                                                             />
                                                                         </FormItem>
 
-                                                                        <FormItem label='Email' labelClass='text-xs !mb-1' className='mb-0'>
+                                                                        <FormItem
+                                                                            asterisk
+                                                                            label='Email'
+                                                                            labelClass='text-xs !mb-1'
+                                                                            className='mb-0'
+                                                                            invalid={
+                                                                                !!(
+                                                                                    (touched.contactPerson as any)?.[idx]?.email &&
+                                                                                    (errors.contactPerson as any)?.[idx]?.email
+                                                                                )
+                                                                            }
+                                                                            errorMessage={(errors.contactPerson as any)?.[idx]?.email}>
                                                                             <Input
                                                                                 size='sm'
                                                                                 value={c.email}
@@ -1169,7 +1283,18 @@ export default function MasterControl() {
                                                                             />
                                                                         </FormItem>
 
-                                                                        <FormItem label='Full Phone Number' labelClass='text-xs !mb-1' className='mb-0'>
+                                                                        <FormItem
+                                                                            asterisk
+                                                                            label='Full Phone Number'
+                                                                            labelClass='text-xs !mb-1'
+                                                                            className='mb-0'
+                                                                            invalid={
+                                                                                !!(
+                                                                                    (touched.contactPerson as any)?.[idx]?.fullPhoneNumber &&
+                                                                                    (errors.contactPerson as any)?.[idx]?.fullPhoneNumber
+                                                                                )
+                                                                            }
+                                                                            errorMessage={(errors.contactPerson as any)?.[idx]?.fullPhoneNumber}>
                                                                             <Input
                                                                                 size='sm'
                                                                                 value={c.fullPhoneNumber || ''}

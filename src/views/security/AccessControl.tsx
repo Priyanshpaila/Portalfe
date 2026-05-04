@@ -263,25 +263,31 @@ export default function AccessControl() {
                                     {user.email}
                                 </Td>
                                 <Td>{user.status === 1 ? <span className='text-green-600'>Active</span> : <span className='text-red-600'>Inactive</span>}</Td>
-                                <Td>
-                                    <Button
-                                        variant='twoTone'
-                                        size='xs'
-                                        icon={<MdOutlineModeEdit />}
-                                        onClick={() => {
-                                            setShowUserDialog(true)
-                                            setEditDialogType('user')
-                                            setEditData(user)
-                                        }}
-                                    />
-                                    <Button
-                                        variant='twoTone'
-                                        size='xs'
-                                        color='red'
-                                        className='ml-2'
-                                        icon={<MdOutlineDeleteOutline />}
-                                        onClick={() => setDeleteDialog({ type: user?.vendorCode ? 'vendor' : 'user', data: user })}
-                                    />
+                                <Td className='w-[82px] min-w-[82px]'>
+                                    <div className='flex items-center justify-end gap-1.5'>
+                                        <Button
+                                            variant='twoTone'
+                                            size='xs'
+                                            icon={<MdOutlineModeEdit />}
+                                            className='shrink-0'
+                                            onClick={() => {
+                                                setShowUserDialog(true)
+                                                setEditDialogType('user')
+                                                setEditData(user)
+                                            }}
+                                        />
+
+                                        {!user.vendorCode && (
+                                            <Button
+                                                variant='twoTone'
+                                                size='xs'
+                                                color='red'
+                                                icon={<MdOutlineDeleteOutline />}
+                                                className='shrink-0'
+                                                onClick={() => setDeleteDialog({ type: 'user', data: user })}
+                                            />
+                                        )}
+                                    </div>
                                 </Td>
                             </Tr>
                         ))
@@ -332,25 +338,29 @@ export default function AccessControl() {
                                 <Td>{role.name}</Td>
                                 <Td className='font-mono'>{role.permissions && role.permissions.length > 0 ? role.permissions.join(', ') : '-'}</Td>
                                 <Td>{role.status === 1 ? <span className='text-green-600'>Active</span> : <span className='text-red-600'>Inactive</span>}</Td>
-                                <Td>
-                                    <Button
-                                        variant='twoTone'
-                                        size='xs'
-                                        icon={<MdOutlineModeEdit />}
-                                        onClick={() => {
-                                            setShowRoleDialog(true)
-                                            setEditDialogType('role')
-                                            setEditData(role)
-                                        }}
-                                    />
-                                    <Button
-                                        variant='twoTone'
-                                        size='xs'
-                                        color='red'
-                                        className='ml-2'
-                                        icon={<MdOutlineDeleteOutline />}
-                                        onClick={() => setDeleteDialog({ type: 'role', data: role })}
-                                    />
+                                <Td className='w-[82px] min-w-[82px]'>
+                                    <div className='flex items-center justify-end gap-1.5'>
+                                        <Button
+                                            variant='twoTone'
+                                            size='xs'
+                                            icon={<MdOutlineModeEdit />}
+                                            className='shrink-0'
+                                            onClick={() => {
+                                                setShowRoleDialog(true)
+                                                setEditDialogType('role')
+                                                setEditData(role)
+                                            }}
+                                        />
+
+                                        <Button
+                                            variant='twoTone'
+                                            size='xs'
+                                            color='red'
+                                            icon={<MdOutlineDeleteOutline />}
+                                            className='shrink-0'
+                                            onClick={() => setDeleteDialog({ type: 'role', data: role })}
+                                        />
+                                    </div>
                                 </Td>
                             </Tr>
                         ))
