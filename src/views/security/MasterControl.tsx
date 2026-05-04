@@ -1396,8 +1396,20 @@ export default function MasterControl() {
                                             </div>
 
                                             <StickyActions>
-                                                <Button type='submit' size='sm' variant='solid' disabled={!!loading.vendor || !dirty || !isValid}>
-                                                    {loading.vendor ? <Spinner size={16} /> : 'Create Vendor'}
+                                                <Button
+                                                    type='submit'
+                                                    size='sm'
+                                                    variant='solid'
+                                                    disabled={!!loading.vendor || !dirty || !isValid}
+                                                    className='min-w-[130px]'>
+                                                    {loading.vendor ? (
+                                                        <span className='flex items-center justify-center gap-2'>
+                                                            <Spinner size={16} />
+                                                            <span>Creating...</span>
+                                                        </span>
+                                                    ) : (
+                                                        'Create Vendor'
+                                                    )}
                                                 </Button>
                                             </StickyActions>
                                         </FormContainer>

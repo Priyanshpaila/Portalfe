@@ -8,7 +8,7 @@ export type AppConfig = {
 }
 
 const appConfig: AppConfig = {
-    apiPrefix: window.location.hostname.includes('localhost') ? 'http://192.168.13.74:7849/api' : 'https://purchasebe.yuvaq.com/api',
+    apiPrefix: window.location.hostname.includes('localhost') ? 'https://purchasebe.yuvaq.com/api' : 'https://purchasebe.yuvaq.com/api',
     authenticatedEntryPath: '/dashboard',
     unAuthenticatedEntryPath: '/sign-in',
     tourPath: '/',
