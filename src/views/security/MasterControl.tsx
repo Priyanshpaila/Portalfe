@@ -5,6 +5,7 @@ import { Field, Form, Formik, FormikHelpers, FieldArray, useFormikContext } from
 import { showAlert, showError } from '@/utils/hoc/showAlert'
 import { MdEdit, MdSave, MdClose } from 'react-icons/md'
 import { UserApi } from '@/services/user.api'
+import { getHsnInfo, normalizeHsn } from '@/utils/hsnGstMap'
 
 type ActiveTab = 'indent' | 'vendor'
 
@@ -86,6 +87,21 @@ type MeUser = {
 
 function unwrapResponse<T = any>(res: any): T {
     return (res?.data ?? res) as T
+}
+
+function cleanHsnDescription(description?: string) {
+    return String(description || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
+function getDescriptionFromHsn(hsnCode: string) {
+    const info = getHsnInfo(hsnCode)
+    return {
+        normalized: info.normalized,
+        matchedCode: info.matchedDescriptionCode || '',
+        description: cleanHsnDescription(info.description),
+    }
 }
 
 async function fetchMeUser(): Promise<MeUser | null> {
@@ -606,87 +622,124 @@ export default function MasterControl() {
                                     }
                                     return errors
                                 }}>
-                                {({ values, setFieldValue, errors, touched, isValid, dirty }) => (
-                                    <Form>
-                                        <FormContainer>
-                                            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                                                <FormItem
-                                                    asterisk
-                                                    label='Unit'
-                                                    labelClass='text-xs !mb-1'
-                                                    className='mb-2.5'
-                                                    invalid={!!(touched.unitOfMeasure && errors.unitOfMeasure)}
-                                                    errorMessage={errors.unitOfMeasure}>
-                                                    <Field
-                                                        name='unitOfMeasure'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.unitOfMeasure}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('unitOfMeasure', e.target.value)}
-                                                    />
-                                                </FormItem>
+                                {({ values, setFieldValue, errors, touched, isValid, dirty }) => {
+                                    const hsnLookup = values.hsnCode ? getDescriptionFromHsn(values.hsnCode) : null
 
-                                                <FormItem
-                                                    asterisk
-                                                    label='Item Description'
-                                                    labelClass='text-xs !mb-1'
-                                                    className='mb-2.5 md:col-span-2'
-                                                    invalid={!!(touched.itemDescription && errors.itemDescription)}
-                                                    errorMessage={errors.itemDescription}>
-                                                    <Field
-                                                        name='itemDescription'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.itemDescription}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('itemDescription', e.target.value)}
-                                                    />
-                                                </FormItem>
+                                    return (
+                                        <Form>
+                                            <FormContainer>
+                                                <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                                                    <FormItem
+                                                        asterisk
+                                                        label='Unit'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-2.5'
+                                                        invalid={!!(touched.unitOfMeasure && errors.unitOfMeasure)}
+                                                        errorMessage={errors.unitOfMeasure}>
+                                                        <Field
+                                                            name='unitOfMeasure'
+                                                            as={Input}
+                                                            size='sm'
+                                                            value={values.unitOfMeasure}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                                                setFieldValue('unitOfMeasure', e.target.value)
+                                                            }
+                                                        />
+                                                    </FormItem>
 
-                                                <FormItem label='Tech Specification' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        name='techSpec'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.techSpec}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('techSpec', e.target.value)}
-                                                    />
-                                                </FormItem>
+                                                    <FormItem
+                                                        asterisk
+                                                        label='Item Description'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-2.5 md:col-span-2'
+                                                        invalid={!!(touched.itemDescription && errors.itemDescription)}
+                                                        errorMessage={errors.itemDescription}>
+                                                        <Field
+                                                            name='itemDescription'
+                                                            as={Input}
+                                                            size='sm'
+                                                            value={values.itemDescription}
+                                                            placeholder='Auto-filled from HSN code, editable if needed'
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                                                setFieldValue('itemDescription', e.target.value)
+                                                            }
+                                                        />
 
-                                                <FormItem
-                                                    label='HSN Code'
-                                                    labelClass='text-xs !mb-1'
-                                                    className='mb-2.5'
-                                                    invalid={!!(touched.hsnCode && errors.hsnCode)}
-                                                    errorMessage={errors.hsnCode}>
-                                                    <Field
-                                                        name='hsnCode'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={(values as any).hsnCode}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('hsnCode', e.target.value)}
-                                                    />
-                                                </FormItem>
+                                                        {values.hsnCode && hsnLookup?.description ? (
+                                                            <div className='mt-1 text-[11px] text-slate-500'>
+                                                                Auto-filled from HSN. You can edit this description before saving.
+                                                            </div>
+                                                        ) : null}
+                                                    </FormItem>
 
-                                                <FormItem asterisk label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
-                                                    <Field
-                                                        required
-                                                        name='make'
-                                                        as={Input}
-                                                        size='sm'
-                                                        value={values.make}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('make', e.target.value)}
-                                                    />
-                                                </FormItem>
-                                            </div>
+                                                    <FormItem label='Tech Specification' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                        <Field
+                                                            name='techSpec'
+                                                            as={Input}
+                                                            size='sm'
+                                                            value={values.techSpec}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('techSpec', e.target.value)}
+                                                        />
+                                                    </FormItem>
 
-                                            <StickyActions>
-                                                <Button type='submit' size='sm' variant='solid' disabled={!!loading.item || !dirty || !isValid}>
-                                                    {loading.item ? <Spinner size={16} /> : 'Add Item'}
-                                                </Button>
-                                            </StickyActions>
-                                        </FormContainer>
-                                    </Form>
-                                )}
+                                                    <FormItem
+                                                        label='HSN Code'
+                                                        labelClass='text-xs !mb-1'
+                                                        className='mb-2.5'
+                                                        invalid={!!(touched.hsnCode && errors.hsnCode)}
+                                                        errorMessage={errors.hsnCode}>
+                                                        <Input
+                                                            size='sm'
+                                                            value={values.hsnCode || ''}
+                                                            placeholder='Enter 4 to 8 digit HSN'
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                const normalized = normalizeHsn(e.target.value).slice(0, 8)
+                                                                setFieldValue('hsnCode', normalized)
+
+                                                                const lookup = getDescriptionFromHsn(normalized)
+
+                                                                if (lookup.description) {
+                                                                    setFieldValue('itemDescription', lookup.description)
+                                                                }
+                                                            }}
+                                                        />
+
+                                                        {values.hsnCode ? (
+                                                            <div className='mt-1 text-[11px]'>
+                                                                {hsnLookup?.description ? (
+                                                                    <span className='text-emerald-700'>
+                                                                        Description fetched from HSN {hsnLookup.matchedCode || hsnLookup.normalized}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className='text-amber-600'>
+                                                                        No description found for this HSN. You can enter item description manually.
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : null}
+                                                    </FormItem>
+
+                                                    <FormItem asterisk label='Make' labelClass='text-xs !mb-1' className='mb-2.5'>
+                                                        <Field
+                                                            required
+                                                            name='make'
+                                                            as={Input}
+                                                            size='sm'
+                                                            value={values.make}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue('make', e.target.value)}
+                                                        />
+                                                    </FormItem>
+                                                </div>
+
+                                                <StickyActions>
+                                                    <Button type='submit' size='sm' variant='solid' disabled={!!loading.item || !dirty || !isValid}>
+                                                        {loading.item ? <Spinner size={16} /> : 'Add Item'}
+                                                    </Button>
+                                                </StickyActions>
+                                            </FormContainer>
+                                        </Form>
+                                    )
+                                }}
                             </Formik>
                         </div>
 
